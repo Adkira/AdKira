@@ -358,6 +358,99 @@
       margin-bottom: 16px;
       opacity: 0.5;
     }
+    
+    .tabs-container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px 16px 0 0;
+      padding: 12px 12px 0 12px;
+      margin: 0 -16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      margin-bottom: -1px;
+    }
+    
+    .tabs::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .tab {
+      min-width: 120px;
+      padding: 12px 20px;
+      background: #e2e8f0;
+      border: none;
+      border-radius: 12px 12px 0 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #4a5568;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      white-space: nowrap;
+      position: relative;
+    }
+    
+    .tab:hover {
+      background: #cbd5e0;
+    }
+    
+    .tab.active {
+      background: white;
+      color: #667eea;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: #667eea;
+      border-radius: 3px 3px 0 0;
+    }
+    
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .content-wrapper {
+      background: white;
+      margin: 0 -16px;
+      padding: 20px 16px;
+      border-radius: 0 0 16px 16px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 16px;
+    }
   </style>
   <style>@view-transition { navigation: auto; }</style>
   <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
@@ -368,60 +461,78 @@
     <h1 id="event-title">Controle de Acesso QR</h1>
     <p id="welcome-message">Sistema de Gestão de Convidados</p>
    </div>
-   <div class="stats-grid">
-    <div class="stat-card">
-     <div class="stat-label">
-      Total
-     </div>
-     <div class="stat-value" id="total-guests">
-      0
-     </div>
-    </div>
-    <div class="stat-card inside">
-     <div class="stat-label">
-      Dentro
-     </div>
-     <div class="stat-value" id="inside-guests">
-      0
-     </div>
-    </div>
-    <div class="stat-card vip">
-     <div class="stat-label">
-      VIP
-     </div>
-     <div class="stat-value" id="vip-guests">
-      0
-     </div>
-    </div>
-    <div class="stat-card">
-     <div class="stat-label">
-      Entradas
-     </div>
-     <div class="stat-value" id="total-entries">
-      0
-     </div>
-    </div>
-   </div>
    <div id="alert-container"></div>
-   <div class="card">
-    <h2>📤 Importar Lista</h2><label for="file-upload" class="file-upload-btn"> 📁 Selecionar arquivo TXT </label> <input type="file" id="file-upload" accept=".txt">
-    <p style="margin: 12px 0 0 0; font-size: 12px; color: #718096;">Formato: Nome|Quantidade|VIP (1 ou 0)<br>
-      Exemplo: João Silva|2|0</p>
-   </div>
-   <div class="card">
-    <h2>📷 Scanner QR Code</h2>
-    <div id="qr-reader" class="hidden"></div><button class="btn btn-primary" id="start-scan-btn"> <span>📷</span> <span>Iniciar Scanner</span> </button> <button class="btn btn-danger hidden" id="stop-scan-btn"> <span>⏹️</span> <span>Parar Scanner</span> </button>
-    <div class="tab-buttons" style="margin-top: 16px;"><button class="tab-btn active" id="tab-entry">Entrada</button> <button class="tab-btn" id="tab-exit">Saída</button>
+   <div class="tabs-container">
+    <div class="tabs"><button class="tab active" data-tab="scanner"> <span>📷</span> <span>Scanner</span> </button> <button class="tab" data-tab="guests"> <span>👥</span> <span>Convidados</span> </button> <button class="tab" data-tab="import"> <span>📤</span> <span>Importar</span> </button> <button class="tab" data-tab="reports"> <span>📊</span> <span>Relatórios</span> </button>
     </div>
    </div>
-   <div class="card">
-    <h2>👥 Lista de Convidados</h2>
-    <div class="tab-buttons"><button class="tab-btn active" id="filter-all">Todos</button> <button class="tab-btn" id="filter-inside">Dentro</button> <button class="tab-btn" id="filter-vip">VIP</button>
+   <div class="content-wrapper">
+    <div class="tab-content active" id="scanner-content">
+     <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #2d3748; font-weight: 700;">📷 Scanner QR Code</h2>
+     <div id="qr-reader" class="hidden"></div><button class="btn btn-primary" id="start-scan-btn"> <span>📷</span> <span>Iniciar Scanner</span> </button> <button class="btn btn-danger hidden" id="stop-scan-btn"> <span>⏹️</span> <span>Parar Scanner</span> </button>
+     <div class="tab-buttons" style="margin-top: 16px;"><button class="tab-btn active" id="tab-entry">Entrada</button> <button class="tab-btn" id="tab-exit">Saída</button>
+     </div>
     </div>
-    <div id="guest-list" class="guest-list"></div>
-   </div>
-   <div class="card">
-    <h2>📊 Relatórios</h2><button class="btn btn-success" id="download-pdf-btn"> <span>📄</span> <span>Baixar Relatório PDF</span> </button> <button class="btn btn-secondary" id="reset-all-btn"> <span>🔄</span> <span>Resetar Todas as Leituras</span> </button>
+    <div class="tab-content" id="guests-content">
+     <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #2d3748; font-weight: 700;">👥 Lista de Convidados</h2>
+     <div class="stats-grid" style="margin-bottom: 20px;">
+      <div class="stat-card">
+       <div class="stat-label">
+        Total
+       </div>
+       <div class="stat-value" id="total-guests">
+        0
+       </div>
+      </div>
+      <div class="stat-card inside">
+       <div class="stat-label">
+        Dentro
+       </div>
+       <div class="stat-value" id="inside-guests">
+        0
+       </div>
+      </div>
+      <div class="stat-card vip">
+       <div class="stat-label">
+        VIP
+       </div>
+       <div class="stat-value" id="vip-guests">
+        0
+       </div>
+      </div>
+      <div class="stat-card">
+       <div class="stat-label">
+        Entradas
+       </div>
+       <div class="stat-value" id="total-entries">
+        0
+       </div>
+      </div>
+     </div>
+     <div class="tab-buttons"><button class="tab-btn active" id="filter-all">Todos</button> <button class="tab-btn" id="filter-inside">Dentro</button> <button class="tab-btn" id="filter-vip">VIP</button>
+     </div>
+     <div id="guest-list" class="guest-list"></div>
+    </div>
+    <div class="tab-content" id="import-content">
+     <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #2d3748; font-weight: 700;">📤 Importar Lista</h2><label for="file-upload" class="file-upload-btn"> 📁 Selecionar arquivo TXT </label> <input type="file" id="file-upload" accept=".txt">
+     <div style="background: #f7fafc; border-radius: 12px; padding: 16px; margin-top: 16px; border-left: 4px solid #667eea;">
+      <p style="margin: 0 0 12px 0; font-weight: 600; color: #2d3748;">📋 Formato do arquivo:</p>
+      <p style="margin: 0; font-size: 13px; color: #4a5568; font-family: 'Courier New', monospace;">codigo,Nome Completo</p>
+      <p style="margin: 12px 0 0 0; font-size: 13px; color: #718096;"><strong>Exemplo:</strong><br>
+        #validade:2025-11-29<br>
+        ssfmm0,Araujo Cataca<br>
+        a6ok8r,Marcio Artur<br>
+        1pq1xh,Alexandra Martins<br>
+        k372oa,Rubem Luis</p>
+      <p style="margin: 12px 0 0 0; font-size: 12px; color: #718096;">ℹ️ Linhas iniciadas com # são ignoradas</p>
+     </div>
+    </div>
+    <div class="tab-content" id="reports-content">
+     <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #2d3748; font-weight: 700;">📊 Relatórios</h2><button class="btn btn-success" id="download-pdf-btn"> <span>📄</span> <span>Baixar Relatório PDF</span> </button> <button class="btn btn-secondary" id="reset-all-btn"> <span>🔄</span> <span>Resetar Todas as Leituras</span> </button>
+     <div style="background: #fffaf0; border-radius: 12px; padding: 16px; margin-top: 16px; border-left: 4px solid #f6ad55;">
+      <p style="margin: 0; font-size: 13px; color: #744210;"><strong>⚠️ Atenção:</strong> Resetar as leituras irá limpar todo o histórico de entradas e saídas. Esta ação não pode ser desfeita.</p>
+     </div>
+    </div>
    </div>
   </div>
   <script>
@@ -501,18 +612,16 @@
       const reader = new FileReader();
       reader.onload = async (event) => {
         const text = event.target.result;
-        const lines = text.split('\n').filter(line => line.trim());
+        const lines = text.split('\n').filter(line => line.trim() && !line.startsWith('#'));
         
         showAlert('Importando convidados...', 'warning');
         
+        let importCount = 0;
         for (const line of lines) {
-          const parts = line.split('|').map(p => p.trim());
+          const parts = line.split(',').map(p => p.trim());
           if (parts.length >= 2) {
-            const name = parts[0];
-            const total = parseInt(parts[1]) || 1;
-            const isVip = parts[2] === '1';
-            
-            const guestId = name.toLowerCase().replace(/\s+/g, '-');
+            const guestId = parts[0];
+            const name = parts[1];
             
             if (currentGuests.length >= 999) {
               showAlert('Limite de 999 convidados atingido!', 'error');
@@ -522,21 +631,21 @@
             const result = await window.dataSdk.create({
               guest_id: guestId,
               name: name,
-              total_allowed: total,
+              total_allowed: 1,
               entries_used: 0,
-              is_vip: isVip,
+              is_vip: false,
               current_status: 'outside',
               history: JSON.stringify([]),
               last_action_time: new Date().toISOString()
             });
             
-            if (!result.isOk) {
-              console.error('Erro ao adicionar convidado:', name);
+            if (result.isOk) {
+              importCount++;
             }
           }
         }
         
-        showAlert(`${lines.length} convidados importados com sucesso!`, 'success');
+        showAlert(`${importCount} convidados importados com sucesso!`, 'success');
         e.target.value = '';
       };
       
@@ -642,6 +751,26 @@
         }
       }
     }
+    
+    // Navegação entre abas principais
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetTab = tab.getAttribute('data-tab');
+        
+        // Remover active de todas as abas
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        // Adicionar active na aba clicada
+        tab.classList.add('active');
+        document.getElementById(`${targetTab}-content`).classList.add('active');
+        
+        // Parar scanner se mudar de aba
+        if (targetTab !== 'scanner' && isScanning) {
+          stopScanning();
+        }
+      });
+    });
     
     document.getElementById('tab-entry').addEventListener('click', () => {
       scanMode = 'entry';
@@ -860,5 +989,5 @@
     
     init();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a1f9948d17f3eb1',t:'MTc2MzcyMTkzOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a1fa4aca64b3eb1',t:'MTc2MzcyMjQwNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
