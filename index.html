@@ -62,6 +62,7 @@
       border-radius: 12px;
       padding: 16px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      text-align: center;
     }
     
     .stat-label {
@@ -87,19 +88,78 @@
       color: #f6ad55;
     }
     
-    .card {
-      background: white;
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 16px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    .tabs-container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px 16px 0 0;
+      padding: 12px 12px 0 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 0;
     }
     
-    .card h2 {
-      margin: 0 0 16px 0;
-      font-size: 18px;
-      color: #2d3748;
-      font-weight: 700;
+    .tabs {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    
+    .tabs::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .tab {
+      min-width: 100px;
+      padding: 12px 16px;
+      background: #e2e8f0;
+      border: none;
+      border-radius: 12px 12px 0 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #4a5568;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    
+    .tab:hover {
+      background: #cbd5e0;
+    }
+    
+    .tab.active {
+      background: white;
+      color: #667eea;
+    }
+    
+    .content-wrapper {
+      background: white;
+      padding: 20px;
+      border-radius: 0 0 16px 16px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 16px;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
     
     .btn {
@@ -172,6 +232,21 @@
       display: none !important;
     }
     
+    .info-box {
+      background: #e6f3ff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border-left: 4px solid #667eea;
+    }
+    
+    .info-box p {
+      margin: 0;
+      font-size: 13px;
+      color: #2d3748;
+      line-height: 1.6;
+    }
+    
     .guest-list {
       max-height: 400px;
       overflow-y: auto;
@@ -193,14 +268,8 @@
       background: #f0fff4;
     }
     
-    .guest-item.partial {
-      border-left-color: #f6ad55;
-      background: #fffaf0;
-    }
-    
     .guest-item.vip {
       border-left-color: #f6ad55;
-      background: #fffaf0;
     }
     
     .guest-info {
@@ -250,16 +319,11 @@
     
     .btn-vip:hover {
       background: #fde68a;
-      color: #92400e;
     }
     
-    .btn-vip-active {
+    .btn-vip.active {
       background: #f59e0b;
       color: white;
-    }
-    
-    .btn-vip-active:hover {
-      background: #d97706;
     }
     
     .badge {
@@ -282,11 +346,6 @@
       color: #155724;
     }
     
-    .badge-partial {
-      background: #fff3cd;
-      color: #856404;
-    }
-    
     .badge-outside {
       background: #e2e8f0;
       color: #4a5568;
@@ -307,6 +366,7 @@
       color: #4a5568;
       font-weight: 600;
       transition: all 0.3s ease;
+      display: block;
     }
     
     .file-upload-btn:hover {
@@ -354,15 +414,15 @@
       border-left: 4px solid #f6ad55;
     }
     
-    .tab-buttons {
+    .filter-buttons {
       display: flex;
       gap: 8px;
       margin-bottom: 16px;
     }
     
-    .tab-btn {
+    .filter-btn {
       flex: 1;
-      padding: 12px;
+      padding: 10px;
       border: none;
       background: #e2e8f0;
       color: #4a5568;
@@ -370,32 +430,12 @@
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
+      font-size: 14px;
     }
     
-    .tab-btn.active {
+    .filter-btn.active {
       background: #667eea;
       color: white;
-    }
-    
-    .loading {
-      text-align: center;
-      padding: 20px;
-      color: #718096;
-    }
-    
-    .spinner {
-      border: 3px solid #e2e8f0;
-      border-top: 3px solid #667eea;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 12px;
-    }
-    
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
     }
     
     .empty-state {
@@ -404,106 +444,6 @@
       color: #718096;
     }
     
-    .empty-state svg {
-      width: 64px;
-      height: 64px;
-      margin-bottom: 16px;
-      opacity: 0.5;
-    }
-    
-    .tabs-container {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 16px 16px 0 0;
-      padding: 12px 12px 0 12px;
-      margin: 0 -16px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    
-    .tabs {
-      display: flex;
-      gap: 4px;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-      margin-bottom: -1px;
-    }
-    
-    .tabs::-webkit-scrollbar {
-      display: none;
-    }
-    
-    .tab {
-      min-width: 120px;
-      padding: 12px 20px;
-      background: #e2e8f0;
-      border: none;
-      border-radius: 12px 12px 0 0;
-      font-size: 14px;
-      font-weight: 600;
-      color: #4a5568;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      white-space: nowrap;
-      position: relative;
-    }
-    
-    .tab:hover {
-      background: #cbd5e0;
-    }
-    
-    .tab.active {
-      background: white;
-      color: #667eea;
-      box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
-    }
-    
-    .tab.active::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: #667eea;
-      border-radius: 3px 3px 0 0;
-    }
-    
-    .tab-content {
-      display: none;
-      animation: fadeIn 0.3s ease;
-    }
-    
-    .tab-content.active {
-      display: block;
-    }
-    
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    .content-wrapper {
-      background: white;
-      margin: 0 -16px;
-      padding: 20px 16px;
-      border-radius: 0 0 16px 16px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      margin-bottom: 16px;
-    }
-
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -548,7 +488,41 @@
   <div class="container">
    <div class="header">
     <h1 id="event-title">Controle de Acesso QR</h1>
-    <p id="welcome-message">Sistema de Gestão de Convidados</p>
+    <p id="welcome-message">Sistema de Gestão de Convidados - Modelo IN/OUT</p>
+   </div>
+   <div class="stats-grid">
+    <div class="stat-card">
+     <div class="stat-label">
+      Total
+     </div>
+     <div class="stat-value" id="total-guests">
+      0
+     </div>
+    </div>
+    <div class="stat-card inside">
+     <div class="stat-label">
+      Dentro
+     </div>
+     <div class="stat-value" id="inside-guests">
+      0
+     </div>
+    </div>
+    <div class="stat-card vip">
+     <div class="stat-label">
+      VIP
+     </div>
+     <div class="stat-value" id="vip-guests">
+      0
+     </div>
+    </div>
+    <div class="stat-card">
+     <div class="stat-label">
+      Entradas
+     </div>
+     <div class="stat-value" id="total-entries">
+      0
+     </div>
+    </div>
    </div>
    <div id="alert-container"></div>
    <div class="tabs-container">
@@ -557,252 +531,178 @@
    </div>
    <div class="content-wrapper">
     <div class="tab-content active" id="scanner-content">
-     <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #2d3748; font-weight: 700;">📷 Scanner QR Code</h2>
-     <div id="qr-reader" class="hidden"></div><button class="btn btn-primary" id="start-scan-btn"> <span>📷</span> <span>Iniciar Scanner</span> </button> <button class="btn btn-danger hidden" id="stop-scan-btn"> <span>⏹️</span> <span>Parar Scanner</span> </button>
-     <div class="tab-buttons" style="margin-top: 16px;"><button class="tab-btn active" id="tab-entry">Entrada</button> <button class="tab-btn" id="tab-exit">Saída</button>
+     <div class="info-box">
+      <p><strong>ℹ️ Como funciona:</strong><br>
+        • Se está <strong>FORA</strong> → Scanner registra <strong>ENTRADA</strong><br>
+        • Se está <strong>DENTRO</strong> → Scanner registra <strong>SAÍDA</strong><br>
+        • Sistema automático IN/OUT</p>
      </div>
+     <div id="qr-reader" class="hidden"></div><button class="btn btn-primary" id="start-scan-btn"> <span>📷</span> <span>Iniciar Scanner</span> </button> <button class="btn btn-danger hidden" id="stop-scan-btn"> <span>⏹️</span> <span>Parar Scanner</span> </button> <button class="btn btn-success hidden" id="next-scan-btn"> <span>➡️</span> <span>Próximo Scan</span> </button>
     </div>
     <div class="tab-content" id="guests-content">
-     <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #2d3748; font-weight: 700;">👥 Lista de Convidados</h2>
-     <div class="stats-grid" style="margin-bottom: 20px;">
-      <div class="stat-card">
-       <div class="stat-label">
-        Total
-       </div>
-       <div class="stat-value" id="total-guests">
-        0
-       </div>
-      </div>
-      <div class="stat-card inside">
-       <div class="stat-label">
-        Dentro
-       </div>
-       <div class="stat-value" id="inside-guests">
-        0
-       </div>
-      </div>
-      <div class="stat-card vip">
-       <div class="stat-label">
-        VIP
-       </div>
-       <div class="stat-value" id="vip-guests">
-        0
-       </div>
-      </div>
-      <div class="stat-card">
-       <div class="stat-label">
-        Entradas
-       </div>
-       <div class="stat-value" id="total-entries">
-        0
-       </div>
-      </div>
-     </div>
-     <div class="tab-buttons"><button class="tab-btn active" id="filter-all">Todos</button> <button class="tab-btn" id="filter-inside">Dentro</button> <button class="tab-btn" id="filter-vip">VIP</button>
+     <div class="filter-buttons"><button class="filter-btn active" data-filter="all">Todos</button> <button class="filter-btn" data-filter="inside">Dentro</button> <button class="filter-btn" data-filter="vip">VIP</button>
      </div>
      <div id="guest-list" class="guest-list"></div>
     </div>
     <div class="tab-content" id="import-content">
-     <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #2d3748; font-weight: 700;">📤 Importar Lista</h2><label for="file-upload" class="file-upload-btn"> 📁 Selecionar arquivo TXT </label> <input type="file" id="file-upload" accept=".txt">
+     <div class="info-box">
+      <p><strong>📋 Formato do arquivo TXT:</strong><br>
+        Cada linha: <code>ID,Nome Completo</code><br>
+        Exemplo: <code>001,João Silva</code></p>
+     </div><label for="file-upload" class="file-upload-btn"> 📁 Selecionar arquivo TXT </label> <input type="file" id="file-upload" accept=".txt">
     </div>
-    <div class="tab-content" id="reports-content">
-     <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #2d3748; font-weight: 700;">📊 Relatórios</h2><button class="btn btn-success" id="download-pdf-btn"> <span>📄</span> <span>Baixar Relatório PDF</span> </button> <button class="btn btn-secondary" id="export-data-btn"> <span>💾</span> <span>Exportar Dados (JSON)</span> </button> <button class="btn btn-secondary" id="reset-all-btn"> <span>🔄</span> <span>Resetar Todas as Leituras</span> </button> <button class="btn btn-danger" id="delete-all-btn"> <span>🗑️</span> <span>Deletar Toda a Lista</span> </button>
-     <div style="background: #fffaf0; border-radius: 12px; padding: 16px; margin-top: 16px; border-left: 4px solid #f6ad55;">
-      <p style="margin: 0; font-size: 13px; color: #744210;"><strong>⚠️ Atenção:</strong> Os dados são salvos no navegador (localStorage). Se limpar o cache do navegador, os dados serão perdidos.</p>
+    <div class="tab-content" id="reports-content"><button class="btn btn-success" id="download-pdf-btn"> <span>📄</span> <span>Baixar Relatório PDF</span> </button> <button class="btn btn-secondary" id="export-data-btn"> <span>💾</span> <span>Exportar Dados (JSON)</span> </button> <button class="btn btn-secondary" id="reset-all-btn"> <span>🔄</span> <span>Resetar Leituras</span> </button> <button class="btn btn-danger" id="delete-all-btn"> <span>🗑️</span> <span>Deletar Tudo</span> </button>
+     <div class="info-box" style="margin-top: 16px;">
+      <p><strong>⚠️ Atenção:</strong> Dados salvos no navegador (localStorage). Limpar cache = perder dados.</p>
      </div>
     </div>
    </div>
   </div>
   <script>
-    // LocalStorage para persistência de dados
-    const STORAGE_KEY = 'qr_access_control_guests';
-    
-    let currentGuests = [];
+    const STORAGE_KEY = 'qr_access_control';
+    let guests = [];
     let html5QrCode = null;
-    let scanMode = 'entry';
-    let filterMode = 'all';
     let isScanning = false;
+    let currentFilter = 'all';
     
-    // Carregar dados do localStorage
-    function loadGuestsFromStorage() {
+    function loadData() {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
-          currentGuests = JSON.parse(stored);
-          updateStats();
-          renderGuestList();
+          guests = JSON.parse(stored);
         }
-      } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        showAlert('Erro ao carregar dados salvos', 'error');
+      } catch (e) {
+        console.error('Erro ao carregar:', e);
       }
+      updateUI();
     }
     
-    // Salvar dados no localStorage
-    function saveGuestsToStorage() {
+    function saveData() {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(currentGuests));
-      } catch (error) {
-        console.error('Erro ao salvar dados:', error);
-        showAlert('Erro ao salvar dados', 'error');
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(guests));
+      } catch (e) {
+        console.error('Erro ao salvar:', e);
       }
     }
     
-    // Função para detectar número de pessoas no nome
-    function detectNumberOfPeople(name) {
-      const nameLower = name.toLowerCase();
-      
-      // Padrões que indicam 2 pessoas
-      const twoPersonPatterns = [
-        / e espos[ao]$/i,
-        / e mulher$/i,
-        / e marido$/i,
-        / e companheiro/i,
-        / e namorad[ao]$/i,
-        / e parceiro/i,
-        / \+ 1$/,
-        / \+1$/,
-      ];
-      
-      // Padrões que indicam 3 pessoas
-      const threePersonPatterns = [
-        / e familia$/i,
-        / \+ 2$/,
-        / \+2$/,
-      ];
-      
-      // Padrões que indicam 4 pessoas
-      const fourPersonPatterns = [
-        / \+ 3$/,
-        / \+3$/,
-      ];
-      
-      // Verificar padrões numéricos explícitos primeiro (ex: "+5")
-      const explicitNumberMatch = name.match(/\+\s*(\d+)$/);
-      if (explicitNumberMatch) {
-        return parseInt(explicitNumberMatch[1]) + 1;
-      }
-      
-      // Verificar padrões de 4 pessoas
-      for (const pattern of fourPersonPatterns) {
-        if (pattern.test(name)) {
-          return 4;
-        }
-      }
-      
-      // Verificar padrões de 3 pessoas
-      for (const pattern of threePersonPatterns) {
-        if (pattern.test(name)) {
-          return 3;
-        }
-      }
-      
-      // Verificar padrões de 2 pessoas
-      for (const pattern of twoPersonPatterns) {
-        if (pattern.test(name)) {
-          return 2;
-        }
-      }
-      
-      return 1;
-    }
-    
-    // Adicionar convidado
-    function addGuest(guestData) {
-      currentGuests.push(guestData);
-      saveGuestsToStorage();
+    function updateUI() {
       updateStats();
       renderGuestList();
     }
     
-    // Atualizar convidado
-    function updateGuest(guestId, updates) {
-      const index = currentGuests.findIndex(g => g.guest_id === guestId);
-      if (index !== -1) {
-        currentGuests[index] = { ...currentGuests[index], ...updates };
-        saveGuestsToStorage();
-        updateStats();
-        renderGuestList();
-      }
-    }
-    
-    // Deletar convidado
-    function deleteGuest(guestId) {
-      currentGuests = currentGuests.filter(g => g.guest_id !== guestId);
-      saveGuestsToStorage();
-      updateStats();
-      renderGuestList();
-    }
-    
-    // Deletar todos os convidados
-    function deleteAllGuests() {
-      currentGuests = [];
-      saveGuestsToStorage();
-      updateStats();
-      renderGuestList();
-    }
-    
-    document.getElementById('file-upload').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+    function updateStats() {
+      const total = guests.length;
+      const inside = guests.filter(g => g.status === 'inside').length;
+      const vip = guests.filter(g => g.isVip).length;
+      const totalEntries = guests.reduce((sum, g) => sum + g.entryCount, 0);
       
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const text = event.target.result;
-        const lines = text.split('\n').filter(line => line.trim() && !line.startsWith('#'));
+      document.getElementById('total-guests').textContent = total;
+      document.getElementById('inside-guests').textContent = inside;
+      document.getElementById('vip-guests').textContent = vip;
+      document.getElementById('total-entries').textContent = totalEntries;
+    }
+    
+    function renderGuestList() {
+      const container = document.getElementById('guest-list');
+      
+      let filtered = guests;
+      if (currentFilter === 'inside') {
+        filtered = guests.filter(g => g.status === 'inside');
+      } else if (currentFilter === 'vip') {
+        filtered = guests.filter(g => g.isVip);
+      }
+      
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>Nenhum convidado encontrado</p></div>';
+        return;
+      }
+      
+      container.innerHTML = filtered.map(guest => {
+        const itemClass = `guest-item ${guest.status === 'inside' ? 'inside' : ''} ${guest.isVip ? 'vip' : ''}`;
+        const statusBadge = guest.status === 'inside' 
+          ? '<span class="badge badge-inside">Dentro</span>' 
+          : '<span class="badge badge-outside">Fora</span>';
+        const vipBadge = guest.isVip ? '<span class="badge badge-vip">VIP</span>' : '';
         
-        showAlert('Importando convidados...', 'warning');
-        
-        let importCount = 0;
-        let skipped = 0;
-        
-        for (const line of lines) {
-          const parts = line.split(',');
-          if (parts.length >= 2) {
-            const guestId = parts[0].trim().toLowerCase();
-            const name = parts.slice(1).join(',').trim();
-            
-            // Detectar número de pessoas baseado no nome
-            const totalAllowed = detectNumberOfPeople(name);
-            
-            // Verificar se já existe
-            const exists = currentGuests.find(g => g.guest_id === guestId);
-            if (exists) {
-              skipped++;
-              continue;
-            }
-            
-            addGuest({
-              guest_id: guestId,
-              name: name,
-              total_allowed: totalAllowed,
-              entries_used: 0,
-              is_vip: false,
-              current_status: 'outside',
-              history: [],
-              last_action_time: new Date().toISOString()
-            });
-            
-            importCount++;
+        return `
+          <div class="${itemClass}">
+            <div class="guest-info">
+              <div class="guest-name">
+                ${guest.name}
+                ${vipBadge}
+                ${statusBadge}
+              </div>
+              <div class="guest-status">
+                ${guest.entryCount} entrada(s) registradas
+              </div>
+            </div>
+            <div class="guest-actions">
+              <button class="btn-small btn-vip ${guest.isVip ? 'active' : ''}" onclick="toggleVip('${guest.id}')">
+                ${guest.isVip ? '⭐' : '☆'}
+              </button>
+              <button class="btn-small btn-delete" onclick="deleteGuest('${guest.id}')">
+                🗑️
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    window.toggleVip = function(id) {
+      const guest = guests.find(g => g.id === id);
+      if (guest) {
+        guest.isVip = !guest.isVip;
+        saveData();
+        updateUI();
+        showAlert(`${guest.name} ${guest.isVip ? 'marcado como' : 'removido de'} VIP`, 'success');
+      }
+    };
+    
+    window.deleteGuest = function(id) {
+      const guest = guests.find(g => g.id === id);
+      if (guest) {
+        showConfirm(
+          'Confirmar Exclusão',
+          `Deletar "${guest.name}"?`,
+          () => {
+            guests = guests.filter(g => g.id !== id);
+            saveData();
+            updateUI();
+            showAlert(`${guest.name} deletado`, 'success');
           }
-        }
+        );
+      }
+    };
+    
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetTab = tab.dataset.tab;
         
-        let message = `${importCount} convidados importados!`;
-        if (skipped > 0) {
-          message += ` (${skipped} já existentes foram ignorados)`;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        tab.classList.add('active');
+        document.getElementById(`${targetTab}-content`).classList.add('active');
+        
+        if (targetTab !== 'scanner' && isScanning) {
+          stopScanner();
         }
-        showAlert(message, 'success');
-        e.target.value = '';
-      };
-      
-      reader.readAsText(file, 'UTF-8');
+      });
+    });
+    
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentFilter = btn.dataset.filter;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderGuestList();
+      });
     });
     
     document.getElementById('start-scan-btn').addEventListener('click', async () => {
-      if (isScanning) return;
-      
-      const qrReaderDiv = document.getElementById('qr-reader');
-      qrReaderDiv.classList.remove('hidden');
+      const qrReader = document.getElementById('qr-reader');
+      qrReader.classList.remove('hidden');
       document.getElementById('start-scan-btn').classList.add('hidden');
       document.getElementById('stop-scan-btn').classList.remove('hidden');
       
@@ -816,242 +716,109 @@
         );
         isScanning = true;
       } catch (err) {
-        showAlert('Erro ao iniciar câmera. Verifique as permissões.', 'error');
-        stopScanning();
+        showAlert('Erro ao acessar câmera', 'error');
+        stopScanner();
       }
     });
     
     document.getElementById('stop-scan-btn').addEventListener('click', () => {
-      stopScanning();
+      stopScanner();
     });
     
-    function stopScanning() {
+    document.getElementById('next-scan-btn').addEventListener('click', () => {
+      html5QrCode.resume();
+      document.getElementById('stop-scan-btn').classList.remove('hidden');
+      document.getElementById('next-scan-btn').classList.add('hidden');
+    });
+    
+    function stopScanner() {
       if (html5QrCode && isScanning) {
         html5QrCode.stop().then(() => {
           document.getElementById('qr-reader').classList.add('hidden');
           document.getElementById('start-scan-btn').classList.remove('hidden');
           document.getElementById('stop-scan-btn').classList.add('hidden');
+          document.getElementById('next-scan-btn').classList.add('hidden');
           isScanning = false;
         });
       }
     }
     
     function onScanSuccess(decodedText) {
+      html5QrCode.pause();
+      document.getElementById('stop-scan-btn').classList.add('hidden');
+      document.getElementById('next-scan-btn').classList.remove('hidden');
+      
       const guestId = decodedText.toLowerCase().trim();
-      const guest = currentGuests.find(g => g.guest_id === guestId);
+      const guest = guests.find(g => g.id === guestId);
       
       if (!guest) {
-        showAlert('Convidado não encontrado!', 'error');
+        showAlert('❌ Convidado não encontrado!', 'error');
         return;
       }
       
-      if (scanMode === 'entry') {
-        if (guest.entries_used >= guest.total_allowed) {
-          showAlert(`${guest.name} já utilizou todas as ${guest.total_allowed} entrada(s)!`, 'warning');
-          return;
-        }
-        
-        const newEntriesUsed = guest.entries_used + 1;
-        const remainingEntries = guest.total_allowed - newEntriesUsed;
-        
-        const newHistory = [...guest.history, {
+      if (guest.status === 'outside') {
+        guest.status = 'inside';
+        guest.entryCount++;
+        guest.history.push({
           action: 'entry',
           time: new Date().toISOString()
-        }];
-        
-        const newStatus = (newEntriesUsed >= guest.total_allowed) ? 'inside' : 'partial';
-        
-        updateGuest(guestId, {
-          entries_used: newEntriesUsed,
-          current_status: newStatus,
-          history: newHistory,
-          last_action_time: new Date().toISOString()
         });
-        
-        if (remainingEntries > 0) {
-          showAlert(`✅ ${guest.name} - ENTRADA registrada! Falta(m) ${remainingEntries} pessoa(s) (${newEntriesUsed}/${guest.total_allowed})`, 'success');
-        } else {
-          showAlert(`✅ ${guest.name} - ENTRADA COMPLETA registrada! (${newEntriesUsed}/${guest.total_allowed})`, 'success');
-        }
+        showAlert(`✅ ${guest.name} - ENTRADA registrada`, 'success');
       } else {
-        if (guest.current_status === 'outside') {
-          showAlert(`${guest.name} já está fora do evento!`, 'warning');
-          return;
-        }
-        
-        const newHistory = [...guest.history, {
+        guest.status = 'outside';
+        guest.history.push({
           action: 'exit',
           time: new Date().toISOString()
-        }];
+        });
+        showAlert(`↘️ ${guest.name} - SAÍDA registrada`, 'warning');
+      }
+      
+      saveData();
+      updateUI();
+    }
+    
+    document.getElementById('file-upload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target.result;
+        const lines = text.split('\n').filter(line => line.trim() && !line.startsWith('#'));
         
-        updateGuest(guestId, {
-          current_status: 'outside',
-          history: newHistory,
-          last_action_time: new Date().toISOString()
+        let imported = 0;
+        let skipped = 0;
+        
+        lines.forEach(line => {
+          const parts = line.split(',');
+          if (parts.length >= 2) {
+            const id = parts[0].trim().toLowerCase();
+            const name = parts.slice(1).join(',').trim();
+            
+            if (!guests.find(g => g.id === id)) {
+              guests.push({
+                id: id,
+                name: name,
+                status: 'outside',
+                isVip: false,
+                entryCount: 0,
+                history: []
+              });
+              imported++;
+            } else {
+              skipped++;
+            }
+          }
         });
         
-        showAlert(`���� ${guest.name} - SAÍDA registrada!`, 'success');
-      }
-    }
-    
-    // Navegação entre abas principais
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const targetTab = tab.getAttribute('data-tab');
-        
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        
-        tab.classList.add('active');
-        document.getElementById(`${targetTab}-content`).classList.add('active');
-        
-        if (targetTab !== 'scanner' && isScanning) {
-          stopScanning();
-        }
-      });
+        saveData();
+        updateUI();
+        showAlert(`${imported} importados${skipped > 0 ? `, ${skipped} já existentes` : ''}`, 'success');
+        e.target.value = '';
+      };
+      
+      reader.readAsText(file);
     });
-    
-    document.getElementById('tab-entry').addEventListener('click', () => {
-      scanMode = 'entry';
-      document.getElementById('tab-entry').classList.add('active');
-      document.getElementById('tab-exit').classList.remove('active');
-    });
-    
-    document.getElementById('tab-exit').addEventListener('click', () => {
-      scanMode = 'exit';
-      document.getElementById('tab-exit').classList.add('active');
-      document.getElementById('tab-entry').classList.remove('active');
-    });
-    
-    document.getElementById('filter-all').addEventListener('click', () => {
-      filterMode = 'all';
-      updateFilterButtons('filter-all');
-      renderGuestList();
-    });
-    
-    document.getElementById('filter-inside').addEventListener('click', () => {
-      filterMode = 'inside';
-      updateFilterButtons('filter-inside');
-      renderGuestList();
-    });
-    
-    document.getElementById('filter-vip').addEventListener('click', () => {
-      filterMode = 'vip';
-      updateFilterButtons('filter-vip');
-      renderGuestList();
-    });
-    
-    function updateFilterButtons(activeId) {
-      ['filter-all', 'filter-inside', 'filter-vip'].forEach(id => {
-        document.getElementById(id).classList.toggle('active', id === activeId);
-      });
-    }
-    
-    function updateStats() {
-      const total = currentGuests.length;
-      const inside = currentGuests.filter(g => g.current_status === 'inside').length;
-      const vip = currentGuests.filter(g => g.is_vip).length;
-      const totalEntries = currentGuests.reduce((sum, g) => sum + g.entries_used, 0);
-      
-      document.getElementById('total-guests').textContent = total;
-      document.getElementById('inside-guests').textContent = inside;
-      document.getElementById('vip-guests').textContent = vip;
-      document.getElementById('total-entries').textContent = totalEntries;
-    }
-    
-    function renderGuestList() {
-      const container = document.getElementById('guest-list');
-      
-      let filtered = currentGuests;
-      if (filterMode === 'inside') {
-        filtered = currentGuests.filter(g => g.current_status === 'inside');
-      } else if (filterMode === 'vip') {
-        filtered = currentGuests.filter(g => g.is_vip);
-      }
-      
-      if (filtered.length === 0) {
-        container.innerHTML = `
-          <div class="empty-state">
-            <p>Nenhum convidado encontrado</p>
-          </div>
-        `;
-        return;
-      }
-      
-      container.innerHTML = filtered.map(guest => {
-        let itemClass = '';
-        if (guest.current_status === 'inside') {
-          itemClass = 'inside';
-        } else if (guest.current_status === 'partial') {
-          itemClass = 'partial';
-        }
-        if (guest.is_vip) {
-          itemClass += ' vip';
-        }
-        
-        let statusBadge = '';
-        if (guest.entries_used === 0) {
-          statusBadge = '<span class="badge badge-outside">Fora</span>';
-        } else if (guest.entries_used < guest.total_allowed) {
-          statusBadge = '<span class="badge badge-partial">Parcial</span>';
-        } else {
-          statusBadge = '<span class="badge badge-inside">Completo</span>';
-        }
-        
-        return `
-          <div class="guest-item ${itemClass}">
-            <div class="guest-info">
-              <div class="guest-name">
-                ${guest.name}
-                ${guest.is_vip ? '<span class="badge badge-vip">VIP</span>' : ''}
-                ${statusBadge}
-              </div>
-              <div class="guest-status">
-                ${guest.entries_used}/${guest.total_allowed} entrada(s) utilizadas
-              </div>
-            </div>
-            <div class="guest-actions">
-              <button class="btn-small ${guest.is_vip ? 'btn-vip-active' : 'btn-vip'}" onclick="toggleVIP('${guest.guest_id}')">
-                ${guest.is_vip ? '⭐ VIP' : '☆ VIP'}
-              </button>
-              <button class="btn-small btn-delete" onclick="confirmDeleteGuest('${guest.guest_id}')">
-                🗑️
-              </button>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-    
-    // Função global para alternar VIP
-    window.toggleVIP = function(guestId) {
-      const guest = currentGuests.find(g => g.guest_id === guestId);
-      if (!guest) return;
-      
-      const newVipStatus = !guest.is_vip;
-      updateGuest(guestId, { is_vip: newVipStatus });
-      
-      if (newVipStatus) {
-        showAlert(`⭐ ${guest.name} marcado como VIP!`, 'success');
-      } else {
-        showAlert(`${guest.name} removido de VIP`, 'warning');
-      }
-    };
-    
-    // Função global para confirmar deleção
-    window.confirmDeleteGuest = function(guestId) {
-      const guest = currentGuests.find(g => g.guest_id === guestId);
-      if (!guest) return;
-      
-      showConfirmModal(
-        '⚠️ Confirmar Exclusão',
-        `Tem certeza que deseja deletar "${guest.name}"? Esta ação não pode ser desfeita.`,
-        () => {
-          deleteGuest(guestId);
-          showAlert(`"${guest.name}" foi deletado com sucesso!`, 'success');
-        }
-      );
-    };
     
     document.getElementById('download-pdf-btn').addEventListener('click', () => {
       const { jsPDF } = window.jspdf;
@@ -1060,113 +827,97 @@
       doc.setFontSize(18);
       doc.text('Relatório de Acesso', 105, 20, { align: 'center' });
       
-      doc.setFontSize(12);
-      doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 20, 35);
-      doc.text(`Hora: ${new Date().toLocaleTimeString('pt-BR')}`, 20, 42);
-      
-      doc.setFontSize(14);
-      doc.text('Estatísticas Gerais', 20, 55);
       doc.setFontSize(11);
-      doc.text(`Total de Convidados: ${currentGuests.length}`, 20, 63);
-      doc.text(`Convidados Dentro: ${currentGuests.filter(g => g.current_status === 'inside').length}`, 20, 70);
-      doc.text(`Convidados VIP: ${currentGuests.filter(g => g.is_vip).length}`, 20, 77);
-      doc.text(`Total de Entradas: ${currentGuests.reduce((sum, g) => sum + g.entries_used, 0)}`, 20, 84);
+      doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 20, 35);
+      doc.text(`Total: ${guests.length} | Dentro: ${guests.filter(g => g.status === 'inside').length} | VIP: ${guests.filter(g => g.isVip).length}`, 20, 42);
       
-      let yPos = 100;
-      doc.setFontSize(14);
-      doc.text('Lista Detalhada de Convidados', 20, yPos);
-      yPos += 10;
-      
+      let y = 55;
       doc.setFontSize(10);
-      currentGuests.forEach((guest, index) => {
-        if (yPos > 270) {
+      guests.forEach((g, i) => {
+        if (y > 270) {
           doc.addPage();
-          yPos = 20;
+          y = 20;
         }
-        
-        const vipLabel = guest.is_vip ? ' [VIP]' : '';
-        const statusLabel = guest.current_status === 'inside' ? ' [DENTRO]' : guest.current_status === 'partial' ? ' [PARCIAL]' : ' [FORA]';
-        
-        doc.text(`${index + 1}. ${guest.name}${vipLabel}${statusLabel}`, 20, yPos);
-        yPos += 6;
-        doc.text(`   Entradas: ${guest.entries_used}/${guest.total_allowed}`, 20, yPos);
-        yPos += 6;
-        
-        if (guest.history && guest.history.length > 0) {
-          doc.text(`   Histórico:`, 20, yPos);
-          yPos += 6;
-          guest.history.slice(-3).forEach(h => {
-            const time = new Date(h.time).toLocaleString('pt-BR');
-            const action = h.action === 'entry' ? 'ENTRADA' : 'SAÍDA';
-            doc.text(`     • ${action} - ${time}`, 20, yPos);
-            yPos += 6;
-          });
-        }
-        
-        yPos += 4;
+        const status = g.status === 'inside' ? '[DENTRO]' : '[FORA]';
+        const vip = g.isVip ? '[VIP]' : '';
+        doc.text(`${i + 1}. ${g.name} ${vip} ${status} - ${g.entryCount} entradas`, 20, y);
+        y += 7;
       });
       
-      doc.save(`relatorio-acesso-${new Date().toISOString().split('T')[0]}.pdf`);
-      showAlert('Relatório PDF baixado com sucesso!', 'success');
+      doc.save(`relatorio-${new Date().toISOString().split('T')[0]}.pdf`);
+      showAlert('PDF baixado!', 'success');
     });
     
     document.getElementById('export-data-btn').addEventListener('click', () => {
-      const dataStr = JSON.stringify(currentGuests, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `backup-convidados-${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
+      const blob = new Blob([JSON.stringify(guests, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
       URL.revokeObjectURL(url);
-      showAlert('Dados exportados com sucesso!', 'success');
+      showAlert('Dados exportados!', 'success');
     });
     
     document.getElementById('reset-all-btn').addEventListener('click', () => {
-      showConfirmModal(
-        '⚠️ Confirmar Reset',
-        'Tem certeza que deseja resetar todas as leituras? O histórico de entradas e saídas será limpo, mas os convidados permanecerão na lista.',
+      showConfirm(
+        'Resetar Leituras',
+        'Limpar histórico de entradas/saídas?',
         () => {
-          currentGuests = currentGuests.map(guest => ({
-            ...guest,
-            entries_used: 0,
-            current_status: 'outside',
-            history: [],
-            last_action_time: new Date().toISOString()
-          }));
-          saveGuestsToStorage();
-          updateStats();
-          renderGuestList();
-          showAlert('Todas as leituras foram resetadas!', 'success');
+          guests.forEach(g => {
+            g.status = 'outside';
+            g.entryCount = 0;
+            g.history = [];
+          });
+          saveData();
+          updateUI();
+          showAlert('Leituras resetadas!', 'success');
         }
       );
     });
     
     document.getElementById('delete-all-btn').addEventListener('click', () => {
-      showConfirmModal(
-        '🗑️ Deletar Toda a Lista',
-        'ATENÇÃO: Esta ação irá deletar TODOS os convidados e TODO o histórico permanentemente. Esta ação NÃO pode ser desfeita!',
+      showConfirm(
+        'Deletar Tudo',
+        'DELETAR TODOS os convidados permanentemente?',
         () => {
-          deleteAllGuests();
-          showAlert('Toda a lista foi deletada!', 'success');
+          guests = [];
+          saveData();
+          updateUI();
+          showAlert('Tudo deletado!', 'success');
         }
       );
     });
     
-    function showConfirmModal(title, message, onConfirm) {
+    function showAlert(message, type) {
+      const container = document.getElementById('alert-container');
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.innerHTML = `
+        <span style="font-size: 20px;">${type === 'success' ? '✅' : type === 'error' ? '❌' : '⚠️'}</span>
+        <span>${message}</span>
+      `;
+      container.appendChild(alert);
+      
+      setTimeout(() => {
+        alert.style.opacity = '0';
+        setTimeout(() => alert.remove(), 300);
+      }, 4000);
+    }
+    
+    function showConfirm(title, message, onConfirm) {
       const overlay = document.createElement('div');
       overlay.className = 'modal-overlay';
       
-      const modal = document.createElement('div');
-      modal.className = 'modal';
-      modal.innerHTML = `
-        <h2>${title}</h2>
-        <p>${message}</p>
-        <button class="btn btn-danger" id="modal-confirm">Confirmar</button>
-        <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
+      overlay.innerHTML = `
+        <div class="modal">
+          <h2>${title}</h2>
+          <p>${message}</p>
+          <button class="btn btn-danger" id="modal-confirm">Confirmar</button>
+          <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
+        </div>
       `;
       
-      overlay.appendChild(modal);
       document.body.appendChild(overlay);
       
       document.getElementById('modal-confirm').addEventListener('click', () => {
@@ -1185,24 +936,7 @@
       });
     }
     
-    function showAlert(message, type) {
-      const container = document.getElementById('alert-container');
-      const alert = document.createElement('div');
-      alert.className = `alert alert-${type}`;
-      alert.innerHTML = `
-        <span style="font-size: 20px;">${type === 'success' ? '✅' : type === 'error' ? '❌' : '⚠️'}</span>
-        <span>${message}</span>
-      `;
-      container.appendChild(alert);
-      
-      setTimeout(() => {
-        alert.style.opacity = '0';
-        setTimeout(() => alert.remove(), 300);
-      }, 4000);
-    }
-    
-    // Carregar dados ao iniciar
-    loadGuestsFromStorage();
+    loadData();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a1fc1e4f6c63eb1',t:'MTc2MzcyMzYwMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a1fda3d54a43eb1',t:'MTc2MzcyNDYwMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
