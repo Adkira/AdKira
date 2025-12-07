@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AdKira – Confirmação de Presença</title>
+  <title>AdKira – Convites & Eventos</title>
 
-  <!-- Fonte principal (mantive só 2 para não pesar tanto) -->
   <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet" />
 
   <style>
@@ -20,7 +19,6 @@
 
     body { display: flex; flex-direction: column; }
 
-    /* ==== NAVBAR ========================================================= */
     .menu-bar {
       position: fixed;
       top: 0; left: 0; right: 0;
@@ -55,6 +53,7 @@
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
+      position: relative;
     }
 
     .menu-link:hover {
@@ -78,7 +77,6 @@
       font-weight: 700;
     }
 
-    /* ==== LAYOUT PRINCIPAL =============================================== */
     .container {
       flex: 1;
       padding: 80px 16px 40px;
@@ -121,24 +119,30 @@
       font-size: 14px;
     }
 
-    .form-group input {
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
       width: 100%;
       padding: 10px 12px;
       border-radius: 10px;
       border: 2px solid #e0e0e0;
       font-size: 14px;
       transition: border-color 0.2s, box-shadow 0.2s;
+      font-family: "Quicksand", sans-serif;
     }
 
-    .form-group input:focus {
+    .form-group textarea { resize: vertical; }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
       outline: none;
       border-color: #007f9f;
       box-shadow: 0 0 0 2px rgba(0,127,159,0.15);
     }
 
     .btn {
-      width: 100%;
-      padding: 12px 16px;
+      padding: 10px 16px;
       border-radius: 10px;
       border: none;
       cursor: pointer;
@@ -147,6 +151,8 @@
       transition: all 0.2s;
       font-family: "Quicksand", sans-serif;
     }
+
+    .btn-full { width: 100%; }
 
     .btn-primary {
       background: #007f9f;
@@ -253,7 +259,6 @@
       word-break: break-all;
     }
 
-    /* ==== EVENTO PÚBLICO ================================================= */
     .event-cover {
       position: relative;
       border-radius: 24px;
@@ -275,7 +280,7 @@
       content: "";
       position: absolute;
       inset: 0;
-      background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.6));
+      background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.7));
     }
 
     .event-cover-inner {
@@ -315,7 +320,167 @@
       line-height: 1.6;
     }
 
-    /* ==== FOOTER ========================================================= */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 10px;
+    }
+
+    .info-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .info-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: #e7f5f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #007f9f;
+      flex-shrink: 0;
+    }
+
+    .info-text-title {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .info-text-sub {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .countdown {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .countdown-item {
+      width: 70px;
+      height: 70px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+
+    .countdown-number {
+      font-weight: 700;
+      font-size: 18px;
+      color: #007f9f;
+    }
+
+    .countdown-label {
+      font-size: 11px;
+      color: #777;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .two-columns {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .two-columns {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .rsvp-list {
+      margin-top: 12px;
+      max-height: 220px;
+      overflow-y: auto;
+      border-radius: 10px;
+      border: 1px solid #eee;
+    }
+
+    .rsvp-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 10px;
+      font-size: 13px;
+      border-bottom: 1px solid #f1f1f1;
+    }
+
+    .rsvp-row:last-child { border-bottom: none; }
+
+    .badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-yes {
+      background: #d1f7d6;
+      color: #137b24;
+    }
+
+    .badge-no {
+      background: #fbd3d7;
+      color: #9b1c31;
+    }
+
+    .badge-null {
+      background: #ffe9b3;
+      color: #a36a00;
+    }
+
+    .messages-list {
+      margin-top: 10px;
+      max-height: 250px;
+      overflow-y: auto;
+    }
+
+    .message-item {
+      padding: 10px 12px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+
+    .message-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: #007f9f;
+      margin-bottom: 4px;
+    }
+
+    .message-text {
+      font-size: 13px;
+      color: #555;
+    }
+
+    .gallery-grid {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 8px;
+    }
+
+    .gallery-grid img {
+      width: 100%;
+      border-radius: 12px;
+      object-fit: cover;
+      height: 100px;
+    }
+
     .footer {
       background: #007f9f;
       color: #fff;
@@ -325,7 +490,6 @@
       margin-top: auto;
     }
 
-    /* ==== FLOATING BUTTONS =============================================== */
     .back-button {
       position: fixed;
       bottom: 20px;
@@ -353,37 +517,30 @@
   </style>
 </head>
 <body>
-  <!-- NAVBAR -->
   <nav class="menu-bar">
     <div class="menu-logo">AdKira</div>
     <div class="menu-links">
       <a id="menuHome" class="menu-link">Início</a>
-      <a id="menuNotifications" class="menu-link hidden" style="position: relative;">Notificações</a>
+      <a id="menuNotifications" class="menu-link hidden">Notificações</a>
       <a id="menuAuth" class="menu-link">Login</a>
     </div>
   </nav>
 
-  <!-- CONTEÚDO -->
   <main class="container">
     <div id="appContent"></div>
   </main>
 
-  <!-- BOTÃO VOLTAR -->
   <button id="backButton" class="back-button">← Voltar</button>
 
-  <!-- FOOTER -->
   <footer class="footer">
     © 2025 AdKira. Todos os direitos reservados.
   </footer>
 
   <script>
-    // ================== CONFIGURAÇÃO SUPABASE ==================
-    // ATENÇÃO: usar APENAS a "anon public key" aqui.
     const SUPABASE_URL = "https://sekkrboqttxpathyxcun.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNla2tyYm9xdHR4cGF0aHl4Y3VuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNjY0OTYsImV4cCI6MjA3OTc0MjQ5Nn0.JqrLUWHs3-jyUNT-0s2DwiyeDjK0uv6uIh0ip1qPWBA";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNla2tyYm9xdHR4cGF0aHl4Y3VuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNjY0OTYsImV4cCI6MjA3OTc0MjQ5Nn0.JqrLUWHs3-jyUNT-0s2DwijzeDjK0uv6uIh0ip1qPWBA";
 
     async function supabaseRequest(path, options = {}) {
-      // whitelist simples de tabelas / rotas para evitar abusos
       const allowedPrefixes = ["events", "clients", "admins", "gallery_photos", "notifications", "rsvps", "messages"];
       const base = path.split("?")[0];
       if (!allowedPrefixes.some(p => base.startsWith(p))) {
@@ -391,40 +548,41 @@
         throw new Error("Operação não permitida.");
       }
 
-      const url = `${SUPABASE_URL}/rest/v1/${path}`;
+      const url = SUPABASE_URL + "/rest/v1/" + path;
       const headers = {
         apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
+        Authorization: "Bearer " + SUPABASE_KEY,
         "Content-Type": "application/json",
         Prefer: "return=representation",
         ...(options.headers || {})
       };
 
+      const res = await fetch(url, { ...options, headers });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Erro Supabase bruto:", text);
+        throw new Error("Erro ao comunicar com o servidor.");
+      }
       try {
-        const res = await fetch(url, { ...options, headers });
-        if (!res.ok) {
-          const text = await res.text();
-          console.error("Supabase erro bruto:", text);
-          throw new Error("Erro ao comunicar com o servidor.");
-        }
-        const data = await res.json();
-        return data;
-      } catch (err) {
-        console.error("Erro Supabase:", err);
-        throw err;
+        return await res.json();
+      } catch {
+        return null;
       }
     }
 
-    // ================== ESTADO GLOBAL ==================
     const appState = {
-      currentUser: null,  // {type: 'admin'|'client', id, username?, token?}
+      currentUser: null,
       currentPage: "home",
       currentData: null,
       history: [],
-      notificationsInterval: null
+      notificationsInterval: null,
+      countdownInterval: null
     };
 
-    // ================== INICIALIZAÇÃO ==================
+    function getAppContent() {
+      return document.getElementById("appContent");
+    }
+
     function initApp() {
       restoreUserFromStorage();
       setupMenuListeners();
@@ -460,7 +618,6 @@
       }
     }
 
-    // ================== NAVEGAÇÃO ==================
     function navigateTo(page, data = null, replaceHistory = false) {
       if (!replaceHistory) {
         appState.history.push({ page: appState.currentPage, data: appState.currentData });
@@ -468,14 +625,16 @@
       appState.currentPage = page;
       appState.currentData = data;
       updateBackButton();
+      clearCountdown();
 
       switch (page) {
-        case "home":       renderHome(); break;
-        case "login":      renderLogin(); break;
+        case "home": renderHome(); break;
+        case "login": renderLogin(); break;
         case "admin-dashboard": renderAdminDashboard(); break;
         case "client-dashboard": renderClientDashboard(); break;
-        case "event-view": renderEventView(data?.eventId); break;
-        default:           renderHome();
+        case "event-view": renderEventView(data && data.eventId); break;
+        case "event-editor": renderEventEditor(data && data.eventId); break;
+        default: renderHome();
       }
     }
 
@@ -485,14 +644,16 @@
       appState.currentPage = prev.page;
       appState.currentData = prev.data;
       updateBackButton();
+      clearCountdown();
 
       switch (prev.page) {
-        case "home":       renderHome(); break;
-        case "login":      renderLogin(); break;
+        case "home": renderHome(); break;
+        case "login": renderLogin(); break;
         case "admin-dashboard": renderAdminDashboard(); break;
         case "client-dashboard": renderClientDashboard(); break;
-        case "event-view": renderEventView(prev.data?.eventId); break;
-        default:           renderHome();
+        case "event-view": renderEventView(prev.data && prev.data.eventId); break;
+        case "event-editor": renderEventEditor(prev.data && prev.data.eventId); break;
+        default: renderHome();
       }
     }
 
@@ -505,7 +666,6 @@
       }
     }
 
-    // ================== MENU / SESSÃO ==================
     function setupMenuListeners() {
       document.getElementById("menuHome").addEventListener("click", () => {
         if (!appState.currentUser) {
@@ -526,8 +686,6 @@
       });
 
       document.getElementById("menuNotifications").addEventListener("click", () => {
-        // Aqui podes abrir um painel lateral com as notificações
-        // Para simplificar, vou só fazer reload de notificações numa toast simples.
         loadAndShowNotifications();
       });
 
@@ -560,7 +718,6 @@
       navigateTo("login", null, true);
     }
 
-    // ================== NOTIFICAÇÕES (BÁSICO) ==================
     function startNotificationPolling() {
       if (appState.notificationsInterval) return;
       checkNotifications();
@@ -578,7 +735,7 @@
       if (!appState.currentUser || appState.currentUser.type !== "client") return;
       try {
         const list = await supabaseRequest(
-          `notifications?client_id=eq.${encodeURIComponent(appState.currentUser.id)}&order=created_at.desc`
+          "notifications?client_id=eq." + encodeURIComponent(appState.currentUser.id) + "&order=created_at.desc"
         );
         const unread = list.filter(n => !n.read);
         updateNotificationBadge(unread.length);
@@ -602,7 +759,7 @@
       if (!appState.currentUser || appState.currentUser.type !== "client") return;
       try {
         const list = await supabaseRequest(
-          `notifications?client_id=eq.${encodeURIComponent(appState.currentUser.id)}&order=created_at.desc`
+          "notifications?client_id=eq." + encodeURIComponent(appState.currentUser.id) + "&order=created_at.desc"
         );
         if (!list.length) {
           alert("Ainda não há notificações.");
@@ -610,17 +767,12 @@
         }
         const text = list
           .slice(0, 5)
-          .map(n => `• ${n.title}: ${n.message}`)
-          .join("\n\n");
+          .map(n => "• " + n.title + ": " + n.message)
+          .join("\\n\\n");
         alert(text);
       } catch (e) {
         alert("Erro ao carregar notificações.");
       }
-    }
-
-    // ================== PÁGINAS / RENDERIZERS ==================
-    function getAppContent() {
-      return document.getElementById("appContent");
     }
 
     function renderHome() {
@@ -629,9 +781,9 @@
         <section class="card">
           <h1>Bem-vindo ao AdKira</h1>
           <p class="subtitle">
-            Gestão de convites e confirmações de presença para os seus eventos.
+            Plataforma para gerir convites, sites de casamento e confirmações de presença.
           </p>
-          <button class="btn btn-primary" id="goLogin">Entrar</button>
+          <button class="btn btn-primary btn-full" id="goLogin">Entrar</button>
         </section>
       `;
       document.getElementById("goLogin").onclick = () => navigateTo("login");
@@ -654,7 +806,7 @@
                 <label>Token (8 dígitos)</label>
                 <input type="text" id="clientToken" maxlength="8" pattern="\\d{8}" required />
               </div>
-              <button type="submit" class="btn btn-primary">Entrar</button>
+              <button type="submit" class="btn btn-primary btn-full">Entrar</button>
             </form>
           </div>
 
@@ -670,13 +822,12 @@
                 <label>Senha</label>
                 <input type="password" id="adminPassword" required />
               </div>
-              <button type="submit" class="btn btn-primary">Entrar</button>
+              <button type="submit" class="btn btn-primary btn-full">Entrar</button>
             </form>
           </div>
         </section>
       `;
 
-      // tabs
       const tabs = el.querySelectorAll(".tab");
       const clientLogin = document.getElementById("clientLogin");
       const adminLogin = document.getElementById("adminLogin");
@@ -703,13 +854,13 @@
       ev.preventDefault();
       const token = (document.getElementById("clientToken").value || "").trim();
 
-      if (!/^\d{8}$/.test(token)) {
+      if (!/^\\d{8}$/.test(token)) {
         alert("O token deve ter exactamente 8 dígitos.");
         return;
       }
 
       try {
-        const list = await supabaseRequest(`clients?token=eq.${encodeURIComponent(token)}`);
+        const list = await supabaseRequest("clients?token=eq." + encodeURIComponent(token));
         if (!list.length) {
           alert("Token inválido.");
           return;
@@ -736,9 +887,8 @@
       }
 
       try {
-        // ATENÇÃO: no Supabase, guarda a senha com hash (BCrypt, p.ex.) e aqui fazes auth via RPC ou Supabase Auth.
         const list = await supabaseRequest(
-          `admins?username=eq.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}`
+          "admins?username=eq." + encodeURIComponent(username) + "&password=eq." + encodeURIComponent(password)
         );
         if (!list.length) {
           alert("Credenciais inválidas.");
@@ -761,7 +911,7 @@
       }
 
       const el = getAppContent();
-      el.innerHTML = `<div class="loading">A carregar clientes...</div>`;
+      el.innerHTML = '<div class="loading">A carregar clientes...</div>';
 
       try {
         const clients = await supabaseRequest("clients?select=*");
@@ -782,40 +932,40 @@
         document.getElementById("generateTokenBtn").onclick = generateTokenForClient;
         renderClientsList(clients);
       } catch (e) {
-        el.innerHTML = `<div class="card"><p>Erro ao carregar clientes.</p></div>`;
+        el.innerHTML = '<div class="card"><p>Erro ao carregar clientes.</p></div>';
       }
     }
 
     function renderClientsList(clients) {
       const listEl = document.getElementById("clientsList");
       if (!clients.length) {
-        listEl.innerHTML = `<p class="subtitle">Ainda não há clientes.</p>`;
+        listEl.innerHTML = '<p class="subtitle">Ainda não há clientes.</p>';
         return;
       }
       listEl.innerHTML = clients.map(c => {
-        const created = new Date(c.created_at).toLocaleDateString("pt-PT");
-        return `
+        const created = c.created_at ? new Date(c.created_at).toLocaleDateString("pt-PT") : "";
+        return \`
           <div class="card-small">
             <h3>Cliente</h3>
             <p><span class="tag">Token</span></p>
-            <div class="token-value">${c.token}</div>
-            <p>Criado em: ${created}</p>
+            <div class="token-value">\${c.token}</div>
+            <p>Criado em: \${created}</p>
             <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
               <button class="btn btn-primary" style="flex:1; font-size:12px;"
-                onclick="adminLoginAsClient('${c.id}', '${c.token}')">
+                onclick="adminLoginAsClient('\${c.id}', '\${c.token}')">
                 Entrar como cliente
               </button>
               <button class="btn btn-secondary" style="flex:1; font-size:12px;"
-                onclick="regenerateToken('${c.id}')">
+                onclick="regenerateToken('\${c.id}')">
                 Trocar token
               </button>
               <button class="btn btn-danger" style="flex:1; font-size:12px;"
-                onclick="deleteClient('${c.id}')">
+                onclick="deleteClient('\${c.id}')">
                 Eliminar
               </button>
             </div>
           </div>
-        `;
+        \`;
       }).join("");
     }
 
@@ -846,7 +996,7 @@
       const token = String(10000000 + (array[0] % 90000000));
 
       try {
-        await supabaseRequest(`clients?id=eq.${encodeURIComponent(clientId)}`, {
+        await supabaseRequest("clients?id=eq." + encodeURIComponent(clientId), {
           method: "PATCH",
           body: JSON.stringify({ token })
         });
@@ -860,9 +1010,647 @@
     async function deleteClient(clientId) {
       if (!confirm("Tem a certeza que pretende eliminar este cliente e todos os respectivos eventos?")) return;
       try {
-        await supabaseRequest(`clients?id=eq.${encodeURIComponent(clientId)}`, {
+        await supabaseRequest("clients?id=eq." + encodeURIComponent(clientId), {
           method: "DELETE"
         });
         alert("Cliente eliminado.");
         renderAdminDashboard();
       } catch (e) {
+        alert("Erro ao eliminar cliente.");
+      }
+    }
+
+    function adminLoginAsClient(id, token) {
+      appState.currentUser = { type: "client", id, token };
+      localStorage.setItem("adkira_user", JSON.stringify(appState.currentUser));
+      updateAuthUI();
+      startNotificationPolling();
+      navigateTo("client-dashboard");
+    }
+
+    async function renderClientDashboard() {
+      if (!appState.currentUser || appState.currentUser.type !== "client") {
+        navigateTo("login");
+        return;
+      }
+
+      const el = getAppContent();
+      el.innerHTML = '<div class="loading">A carregar eventos...</div>';
+
+      try {
+        const events = await supabaseRequest(
+          "events?client_id=eq." + encodeURIComponent(appState.currentUser.id)
+        );
+
+        el.innerHTML = \`
+          <section>
+            <div class="card" style="max-width:100%;">
+              <h2>Os meus eventos</h2>
+              <p class="subtitle">Crie e personalize o site do seu casamento.</p>
+              <button class="btn btn-primary" id="newEventBtn">Criar novo evento</button>
+            </div>
+            <div class="section">
+              <h2>Lista de eventos</h2>
+              <div id="eventsList" class="list-grid"></div>
+            </div>
+          </section>
+        \`;
+
+        document.getElementById("newEventBtn").onclick = createNewEvent;
+        renderEventsList(events);
+      } catch (e) {
+        el.innerHTML = '<div class="card"><p>Erro ao carregar eventos.</p></div>';
+      }
+    }
+
+    function renderEventsList(events) {
+      const listEl = document.getElementById("eventsList");
+      if (!events.length) {
+        listEl.innerHTML = '<p class="subtitle">Ainda não criou nenhum evento.</p>';
+        return;
+      }
+      const baseUrl = window.location.origin + window.location.pathname;
+      listEl.innerHTML = events.map(ev => {
+        const link = baseUrl + "?event=" + ev.id;
+        const label = (ev.groom_name || "Noivo") + " & " + (ev.bride_name || "Noiva");
+        return \`
+          <div class="card-small">
+            <h3>\${label}</h3>
+            <p>Data: \${ev.event_date || "Por definir"}</p>
+            <p class="token-value">\${link}</p>
+            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+              <button class="btn btn-primary" style="flex:1; font-size:12px;"
+                onclick="copyText('\${link.replace(/'/g, "\\\\'")}')">
+                Copiar link
+              </button>
+              <button class="btn btn-secondary" style="flex:1; font-size:12px;"
+                onclick="navigateTo('event-view', {eventId: '\${ev.id}'})">
+                Ver site
+              </button>
+              <button class="btn btn-primary" style="flex:1; font-size:12px;"
+                onclick="navigateTo('event-editor', {eventId: '\${ev.id}'})">
+                Editar
+              </button>
+            </div>
+          </div>
+        \`;
+      }).join("");
+    }
+
+    async function createNewEvent() {
+      if (!appState.currentUser || appState.currentUser.type !== "client") return;
+
+      const today = new Date().toISOString().split("T")[0];
+      try {
+        const created = await supabaseRequest("events", {
+          method: "POST",
+          body: JSON.stringify({
+            client_id: appState.currentUser.id,
+            groom_name: "Noivo",
+            bride_name: "Noiva",
+            event_date: today,
+            welcome_text: "É com muita alegria que partilhamos convosco este momento especial."
+          })
+        });
+        const ev = created[0];
+        alert("Evento criado. Agora pode personalizar.");
+        navigateTo("event-editor", { eventId: ev.id });
+      } catch (e) {
+        alert("Erro ao criar evento.");
+      }
+    }
+
+    async function renderEventEditor(eventId) {
+      const el = getAppContent();
+      el.innerHTML = '<div class="loading">A carregar dados do evento...</div>';
+
+      try {
+        const events = await supabaseRequest(
+          "events?id=eq." + encodeURIComponent(eventId)
+        );
+
+        if (!events.length) {
+          el.innerHTML = \`
+            <section class="card">
+              <h2>Evento não encontrado</h2>
+              <p class="subtitle">O evento pode ter sido apagado.</p>
+            </section>
+          \`;
+          return;
+        }
+
+        const ev = events[0];
+
+        el.innerHTML = \`
+          <section class="card" style="max-width:900px;">
+            <h2>Editar Evento</h2>
+            <p class="subtitle">Actualize todas as informações do seu casamento.</p>
+
+            <form id="eventEditForm">
+              <div class="two-columns">
+                <div>
+                  <div class="form-group">
+                    <label>Nome do Noivo</label>
+                    <input type="text" id="editGroom" value="\${ev.groom_name || ""}" />
+                  </div>
+
+                  <div class="form-group">
+                    <label>Nome da Noiva</label>
+                    <input type="text" id="editBride" value="\${ev.bride_name || ""}" />
+                  </div>
+
+                  <div class="form-group">
+                    <label>Data do Evento</label>
+                    <input type="date" id="editDate" value="\${ev.event_date || ""}" />
+                  </div>
+
+                  <div class="form-group">
+                    <label>Texto de Boas-vindas</label>
+                    <textarea id="editWelcome" style="width:100%;height:120px;">\${ev.welcome_text || ""}</textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label>URL da Foto de Capa</label>
+                    <input type="text" id="editCover" value="\${ev.cover_photo_url || ""}" />
+                    <small style="font-size:11px;color:#777;">Use um link https:// de uma imagem (por exemplo, do Supabase Storage).</small>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="form-group">
+                    <label>Local da cerimónia</label>
+                    <input type="text" id="editCeremony" placeholder="Ex.: Igreja Metodista, Morro Bento" />
+                  </div>
+                  <div class="form-group">
+                    <label>Local da recepção</label>
+                    <input type="text" id="editReception" placeholder="Ex.: Salão Boas Festas, Morro Bento" />
+                  </div>
+                  <div class="form-group">
+                    <label>Dress code</label>
+                    <input type="text" id="editDress" placeholder="Ex.: Traje formal, cores claras" />
+                  </div>
+                  <div class="form-group">
+                    <label>Lista de presentes / IBAN</label>
+                    <textarea id="editGifts" style="width:100%;height:80px;" placeholder="Ex.: Preferimos contribuições em numerário. IBAN: ..."></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label>Link do mapa (Google Maps)</label>
+                    <input type="text" id="editMaps" placeholder="Cole aqui o link do Google Maps" />
+                  </div>
+                </div>
+              </div>
+
+              <button class="btn btn-primary btn-full" type="submit">Salvar alterações</button>
+            </form>
+
+            <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
+              <button class="btn btn-secondary" onclick="renderEventEditor('\${eventId}')">Recarregar</button>
+              <button class="btn btn-primary" onclick="navigateTo('event-view',{eventId:'\${eventId}'})">Ver Site</button>
+            </div>
+          </section>
+        \`;
+
+        document.getElementById("eventEditForm").addEventListener("submit", async (evForm) => {
+          evForm.preventDefault();
+
+          const data = {
+            groom_name: document.getElementById("editGroom").value,
+            bride_name: document.getElementById("editBride").value,
+            welcome_text: document.getElementById("editWelcome").value,
+            event_date: document.getElementById("editDate").value,
+            cover_photo_url: document.getElementById("editCover").value
+          };
+
+          try {
+            await supabaseRequest("events?id=eq." + encodeURIComponent(eventId), {
+              method: "PATCH",
+              body: JSON.stringify(data)
+            });
+
+            alert("Evento atualizado com sucesso!");
+            navigateTo("event-view", { eventId });
+          } catch (err) {
+            alert("Erro ao guardar alterações.");
+          }
+        });
+
+      } catch (error) {
+        el.innerHTML = \`
+          <section class="card">
+            <h2>Erro</h2>
+            <p class="subtitle">Não conseguimos carregar o editor. Tente novamente.</p>
+          </section>
+        \`;
+      }
+    }
+
+    function clearCountdown() {
+      if (appState.countdownInterval) {
+        clearInterval(appState.countdownInterval);
+        appState.countdownInterval = null;
+      }
+    }
+
+    function startCountdown(targetDateStr) {
+      clearCountdown();
+      const elDay = document.getElementById("cdDays");
+      const elHour = document.getElementById("cdHours");
+      const elMin = document.getElementById("cdMinutes");
+      const elSec = document.getElementById("cdSeconds");
+
+      if (!targetDateStr || !elDay) return;
+
+      function update() {
+        const now = new Date();
+        const target = new Date(targetDateStr + "T00:00:00");
+        const diff = target - now;
+        if (diff <= 0) {
+          elDay.textContent = "0";
+          elHour.textContent = "0";
+          elMin.textContent = "0";
+          elSec.textContent = "0";
+          clearCountdown();
+          return;
+        }
+        const totalSec = Math.floor(diff / 1000);
+        const days = Math.floor(totalSec / 86400);
+        const hours = Math.floor((totalSec % 86400) / 3600);
+        const minutes = Math.floor((totalSec % 3600) / 60);
+        const seconds = totalSec % 60;
+
+        elDay.textContent = String(days);
+        elHour.textContent = String(hours);
+        elMin.textContent = String(minutes);
+        elSec.textContent = String(seconds);
+      }
+
+      update();
+      appState.countdownInterval = setInterval(update, 1000);
+    }
+
+    async function loadRsvps(eventId) {
+      const list = await supabaseRequest(
+        "rsvps?event_id=eq." + encodeURIComponent(eventId) + "&order=created_at.desc"
+      );
+      const container = document.getElementById("rsvpList");
+      const summaryEl = document.getElementById("rsvpSummary");
+      if (!container) return;
+
+      if (!list.length) {
+        container.innerHTML = '<div class="subtitle" style="margin:10px 0;">Ainda não há confirmações.</div>';
+        summaryEl.textContent = "0 presentes • 0 ausentes • 0 por responder";
+        return;
+      }
+
+      let yes = 0, no = 0, nullCount = 0;
+      container.innerHTML = list.map(r => {
+        let badgeClass = "badge-null";
+        let text = "Por responder";
+        if (r.attending === true) {
+          badgeClass = "badge-yes";
+          text = "Presente";
+          yes++;
+        } else if (r.attending === false) {
+          badgeClass = "badge-no";
+          text = "Não vai";
+          no++;
+        } else {
+          nullCount++;
+        }
+        return \`
+          <div class="rsvp-row">
+            <span>\${r.guest_name}</span>
+            <span class="badge \${badgeClass}">\${text}</span>
+          </div>
+        \`;
+      }).join("");
+
+      summaryEl.textContent = yes + " presentes • " + no + " ausentes • " + nullCount + " por responder";
+    }
+
+    async function submitRsvp(eventId) {
+      const name = (document.getElementById("rsvpName").value || "").trim();
+      const phone = (document.getElementById("rsvpPhone").value || "").trim();
+      const statusVal = document.getElementById("rsvpStatus").value;
+
+      if (!name) {
+        alert("Escreva o seu nome.");
+        return;
+      }
+
+      let attending = null;
+      if (statusVal === "yes") attending = true;
+      if (statusVal === "no") attending = false;
+
+      try {
+        await supabaseRequest("rsvps", {
+          method: "POST",
+          body: JSON.stringify({
+            event_id: eventId,
+            guest_name: name,
+            phone,
+            attending
+          })
+        });
+        document.getElementById("rsvpName").value = "";
+        document.getElementById("rsvpPhone").value = "";
+        document.getElementById("rsvpStatus").value = "";
+        alert("Resposta registada. Obrigado!");
+        loadRsvps(eventId);
+      } catch (e) {
+        alert("Erro ao registar a resposta.");
+      }
+    }
+
+    async function loadMessages(eventId) {
+      const list = await supabaseRequest(
+        "messages?event_id=eq." + encodeURIComponent(eventId) + "&order=created_at.desc"
+      );
+      const container = document.getElementById("messagesList");
+      if (!container) return;
+
+      if (!list.length) {
+        container.innerHTML = '<div class="subtitle" style="margin:10px 0;">Seja o primeiro a deixar uma mensagem.</div>';
+        return;
+      }
+
+      container.innerHTML = list.map(m => {
+        return \`
+          <div class="message-item">
+            <div class="message-name">\${m.name}</div>
+            <div class="message-text">\${m.message}</div>
+          </div>
+        \`;
+      }).join("");
+    }
+
+    async function submitMessage(eventId) {
+      const name = (document.getElementById("msgName").value || "").trim();
+      const msg = (document.getElementById("msgText").value || "").trim();
+
+      if (!name || !msg) {
+        alert("Preencha o nome e a mensagem.");
+        return;
+      }
+
+      try {
+        await supabaseRequest("messages", {
+          method: "POST",
+          body: JSON.stringify({
+            event_id: eventId,
+            name,
+            message: msg
+          })
+        });
+        document.getElementById("msgName").value = "";
+        document.getElementById("msgText").value = "";
+        loadMessages(eventId);
+      } catch (e) {
+        alert("Erro ao enviar mensagem.");
+      }
+    }
+
+    async function loadGallery(eventId) {
+      const list = await supabaseRequest(
+        "gallery_photos?event_id=eq." + encodeURIComponent(eventId) + "&order=created_at.desc"
+      );
+      const container = document.getElementById("galleryGrid");
+      if (!container) return;
+
+      if (!list.length) {
+        container.innerHTML = '<div class="subtitle" style="margin:10px 0;">Ainda não há fotos na galeria.</div>';
+        return;
+      }
+
+      container.innerHTML = list.map(g => {
+        return '<img src="' + g.image_url + '" alt="Foto">';
+      }).join("");
+    }
+
+    async function addGalleryPhoto(eventId) {
+      const url = (document.getElementById("galleryUrl").value || "").trim();
+      if (!url) {
+        alert("Cole o URL da imagem.");
+        return;
+      }
+
+      try {
+        await supabaseRequest("gallery_photos", {
+          method: "POST",
+          body: JSON.stringify({
+            event_id: eventId,
+            image_url: url
+          })
+        });
+        document.getElementById("galleryUrl").value = "";
+        loadGallery(eventId);
+      } catch (e) {
+        alert("Erro ao adicionar foto.");
+      }
+    }
+
+    async function renderEventView(eventId) {
+      const el = getAppContent();
+      el.innerHTML = '<div class="loading">A carregar o evento...</div>';
+
+      try {
+        const events = await supabaseRequest(
+          "events?id=eq." + encodeURIComponent(eventId)
+        );
+
+        if (!events.length) {
+          el.innerHTML = \`
+            <section class="card">
+              <h2>Evento não encontrado</h2>
+              <p class="subtitle">Verifique o link recebido ou contacte o casal.</p>
+              <button class="btn btn-primary btn-full" onclick="navigateTo('login')">Voltar</button>
+            </section>
+          \`;
+          return;
+        }
+
+        const ev = events[0];
+
+        el.innerHTML = \`
+          <section>
+            <div class="event-cover" style="background-image:url('\${ev.cover_photo_url || ""}');">
+              <div class="event-cover-inner">
+                <div class="couple-names">\${ev.groom_name || "Noivo"} & \${ev.bride_name || "Noiva"}</div>
+                <div class="event-date">\${ev.event_date || ""}</div>
+                <div class="countdown" style="margin-top:16px;">
+                  <div class="countdown-item">
+                    <div class="countdown-number" id="cdDays">0</div>
+                    <div class="countdown-label">Dias</div>
+                  </div>
+                  <div class="countdown-item">
+                    <div class="countdown-number" id="cdHours">0</div>
+                    <div class="countdown-label">Horas</div>
+                  </div>
+                  <div class="countdown-item">
+                    <div class="countdown-number" id="cdMinutes">0</div>
+                    <div class="countdown-label">Min</div>
+                  </div>
+                  <div class="countdown-item">
+                    <div class="countdown-number" id="cdSeconds">0</div>
+                    <div class="countdown-label">Seg</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2>Bem-vindos ao nosso dia</h2>
+              <p>\${ev.welcome_text || "É com muita alegria que partilhamos convosco este momento especial."}</p>
+            </div>
+
+            <div class="section">
+              <h2>Informações importantes</h2>
+              <div class="info-grid">
+                <div class="info-item">
+                  <div class="info-icon">📍</div>
+                  <div>
+                    <div class="info-text-title">Cerimónia</div>
+                    <div class="info-text-sub">Local a combinar com o casal.</div>
+                  </div>
+                </div>
+                <div class="info-item">
+                  <div class="info-icon">🎉</div>
+                  <div>
+                    <div class="info-text-title">Recepção</div>
+                    <div class="info-text-sub">Detalhes no convite ou junto do casal.</div>
+                  </div>
+                </div>
+                <div class="info-item">
+                  <div class="info-icon">🎁</div>
+                  <div>
+                    <div class="info-text-title">Presentes</div>
+                    <div class="info-text-sub">A vossa presença é o melhor presente. Se desejarem, podem contribuir com um mimo em numerário.</div>
+                  </div>
+                </div>
+                <div class="info-item">
+                  <div class="info-icon">👗</div>
+                  <div>
+                    <div class="info-text-title">Dress code</div>
+                    <div class="info-text-sub">Traje formal e cores claras são bem-vindas.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2>Confirme a sua presença</h2>
+              <div class="two-columns">
+                <div>
+                  <div class="form-group">
+                    <label>Nome completo</label>
+                    <input type="text" id="rsvpName" placeholder="Ex.: Família Silva" />
+                  </div>
+                  <div class="form-group">
+                    <label>Telefone / WhatsApp</label>
+                    <input type="text" id="rsvpPhone" placeholder="Ex.: +244 9xx xxx xxx" />
+                  </div>
+                  <div class="form-group">
+                    <label>Vai conseguir estar presente?</label>
+                    <select id="rsvpStatus">
+                      <option value="">Selecione</option>
+                      <option value="yes">Sim, estarei presente</option>
+                      <option value="no">Infelizmente não poderei ir</option>
+                    </select>
+                  </div>
+                  <button class="btn btn-primary btn-full" onclick="submitRsvp('\${ev.id}')">Enviar resposta</button>
+                </div>
+                <div>
+                  <p id="rsvpSummary" style="font-size:13px;color:#555;margin-bottom:6px;">A carregar...</p>
+                  <div id="rsvpList" class="rsvp-list"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2>Mural de mensagens</h2>
+              <div class="two-columns">
+                <div>
+                  <div class="form-group">
+                    <label>Seu nome</label>
+                    <input type="text" id="msgName" placeholder="Ex.: Tio João" />
+                  </div>
+                  <div class="form-group">
+                    <label>Mensagem para os noivos</label>
+                    <textarea id="msgText" style="height:100px;" placeholder="Escreva uma dedicatória bonita..."></textarea>
+                  </div>
+                  <button class="btn btn-primary btn-full" onclick="submitMessage('\${ev.id}')">Enviar mensagem</button>
+                </div>
+                <div>
+                  <div id="messagesList" class="messages-list"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2>Galeria de fotos</h2>
+              <div class="two-columns">
+                <div>
+                  <div id="galleryGrid" class="gallery-grid"></div>
+                </div>
+                <div>
+                  \${appState.currentUser && appState.currentUser.type === "client"
+                    ? \`
+                      <p style="font-size:13px;color:#555;margin-bottom:8px;">
+                        Adicione fotos ao site colando o URL de uma imagem (por exemplo, alojada no Supabase Storage).
+                      </p>
+                      <div class="form-group">
+                        <label>URL da imagem</label>
+                        <input type="text" id="galleryUrl" placeholder="https://..." />
+                      </div>
+                      <button class="btn btn-primary btn-full" onclick="addGalleryPhoto('\${ev.id}')">Adicionar foto</button>
+                    \`
+                    : '<p style="font-size:13px;color:#555;">O casal poderá adicionar aqui fotos especiais.</p>'
+                  }
+                </div>
+              </div>
+            </div>
+
+            \${appState.currentUser && appState.currentUser.type === "client"
+              ? '<button class="btn btn-primary btn-full" style="margin-top:20px;" onclick="navigateTo(\\'event-editor\\',{eventId:\\'' + ev.id + '\\'})">Editar evento completo</button>'
+              : ""
+            }
+          </section>
+        \`;
+
+        if (ev.event_date) startCountdown(ev.event_date);
+        loadRsvps(ev.id);
+        loadMessages(ev.id);
+        loadGallery(ev.id);
+
+      } catch (e) {
+        el.innerHTML = \`
+          <section class="card">
+            <h2>Erro</h2>
+            <p class="subtitle">Não foi possível carregar o evento. Tente novamente mais tarde.</p>
+          </section>
+        \`;
+      }
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Link copiado!");
+      }).catch(() => {
+        alert("Não foi possível copiar. Copie manualmente.");
+      });
+    }
+
+    window.navigateTo = navigateTo;
+    window.adminLoginAsClient = adminLoginAsClient;
+    window.regenerateToken = regenerateToken;
+    window.deleteClient = deleteClient;
+    window.copyText = copyText;
+    window.submitRsvp = submitRsvp;
+    window.submitMessage = submitMessage;
+    window.addGalleryPhoto = addGalleryPhoto;
+    window.renderEventEditor = renderEventEditor;
+
+    document.addEventListener("DOMContentLoaded", initApp);
+  </script>
+</body>
+</html>
