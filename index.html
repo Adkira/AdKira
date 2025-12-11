@@ -1,1656 +1,1985 @@
 <!doctype html>
-<html lang="pt">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AdKira – Convites & Eventos</title>
-
-  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet" />
-
+<html lang="pt-BR">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Convites - Supabase</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    html, body {
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #007f9f 0%, #005f7f 100%);
       height: 100%;
-      font-family: "Quicksand", sans-serif;
-      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-      overflow-x: hidden;
+      overflow: auto;
     }
 
-    body { display: flex; flex-direction: column; }
+    html {
+      height: 100%;
+    }
 
-    .menu-bar {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      background: rgba(0, 127, 159, 0.95);
+    * {
+      box-sizing: border-box;
+    }
+
+    /* ========== TOP MENU ========== */
+    .top-menu {
+      background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
-      padding: 12px 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      padding: 16px 32px;
+    }
+
+    .menu-content {
+      max-width: 1400px;
+      margin: 0 auto;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      z-index: 1000;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
 
     .menu-logo {
-      color: #fff;
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 700;
-    }
-
-    .menu-links {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .menu-link {
-      color: #fff;
-      text-decoration: none;
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      position: relative;
-    }
-
-    .menu-link:hover {
-      background: rgba(255,255,255,0.22);
-    }
-
-    .menu-link.notification-badge::after {
-      content: attr(data-count);
-      position: absolute;
-      top: -6px;
-      right: -6px;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #dc3545;
-      color: #fff;
-      font-size: 11px;
+      color: #007f9f;
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-weight: 700;
-    }
-
-    .container {
-      flex: 1;
-      padding: 80px 16px 40px;
-      max-width: 1200px;
-      margin: 0 auto;
-      width: 100%;
-    }
-
-    .card {
-      background: #fff;
-      border-radius: 20px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-      padding: 30px 24px;
-      margin: 0 auto;
-      max-width: 500px;
-    }
-
-    .card h1, .card h2 {
-      color: #007f9f;
-      text-align: center;
-      margin-bottom: 18px;
-    }
-
-    .subtitle {
-      text-align: center;
-      color: #666;
-      margin-bottom: 22px;
-      font-size: 14px;
-    }
-
-    .form-group {
-      margin-bottom: 16px;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: 600;
-      color: #333;
-      font-size: 14px;
-    }
-
-    .form-group input,
-    .form-group textarea,
-    .form-group select {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 2px solid #e0e0e0;
-      font-size: 14px;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      font-family: "Quicksand", sans-serif;
-    }
-
-    .form-group textarea { resize: vertical; }
-
-    .form-group input:focus,
-    .form-group textarea:focus,
-    .form-group select:focus {
-      outline: none;
-      border-color: #007f9f;
-      box-shadow: 0 0 0 2px rgba(0,127,159,0.15);
-    }
-
-    .btn {
-      padding: 10px 16px;
-      border-radius: 10px;
-      border: none;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      transition: all 0.2s;
-      font-family: "Quicksand", sans-serif;
-    }
-
-    .btn-full { width: 100%; }
-
-    .btn-primary {
-      background: #007f9f;
-      color: #fff;
-    }
-
-    .btn-primary:hover {
-      background: #006080;
-      transform: translateY(-1px);
-      box-shadow: 0 5px 15px rgba(0,127,159,0.3);
-    }
-
-    .btn-secondary {
-      background: #6c757d;
-      color: #fff;
-    }
-
-    .btn-secondary:hover { background: #5a6268; }
-
-    .btn-danger {
-      background: #dc3545;
-      color: #fff;
-    }
-
-    .btn-danger:hover { background: #c82333; }
-
-    .tabs {
-      display: flex;
-      border-radius: 999px;
-      background: #f1f3f5;
-      padding: 4px;
-      margin-bottom: 24px;
-    }
-
-    .tab {
-      flex: 1;
-      text-align: center;
-      padding: 8px 0;
-      border-radius: 999px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      color: #555;
-      transition: all 0.2s;
-    }
-
-    .tab.active {
-      background: #fff;
-      color: #007f9f;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-
-    .hidden { display: none !important; }
-
-    .loading {
-      text-align: center;
-      padding: 40px;
-      color: #007f9f;
-      font-weight: 600;
-    }
-
-    .list-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
-    }
-
-    .card-small {
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-      padding: 18px 16px;
-    }
-
-    .card-small h3 {
-      color: #007f9f;
-      margin-bottom: 6px;
-      font-size: 18px;
-    }
-
-    .card-small p {
-      color: #666;
-      font-size: 13px;
-      margin-bottom: 4px;
-    }
-
-    .tag {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: #e7f5f8;
-      color: #007f9f;
-      font-size: 11px;
-      font-weight: 600;
-    }
-
-    .token-value {
-      margin: 8px 0 12px;
-      font-family: monospace;
-      font-size: 12px;
-      background: #f8f9fa;
-      padding: 8px;
-      border-radius: 8px;
-      word-break: break-all;
-    }
-
-    .event-cover {
-      position: relative;
-      border-radius: 24px;
-      overflow: hidden;
-      min-height: 260px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      color: #fff;
-      text-align: center;
-      padding: 32px 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-      background-size: cover;
-      background-position: center;
-    }
-
-    .event-cover::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.7));
-    }
-
-    .event-cover-inner {
-      position: relative;
-      z-index: 1;
-    }
-
-    .couple-names {
-      font-family: "Great Vibes", cursive;
-      font-size: 40px;
-      margin-bottom: 8px;
-    }
-
-    .event-date {
-      font-size: 16px;
-      letter-spacing: 0.06em;
-    }
-
-    .section {
-      margin-top: 28px;
-      background: #fff;
-      border-radius: 20px;
-      padding: 20px 18px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.05);
-    }
-
-    .section h2 {
-      font-size: 18px;
-      color: #007f9f;
-      margin-bottom: 10px;
-      text-align: left;
-    }
-
-    .section p {
-      font-size: 14px;
-      color: #555;
-      line-height: 1.6;
-    }
-
-    .info-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-top: 10px;
-    }
-
-    .info-item {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-    }
-
-    .info-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 999px;
-      background: #e7f5f8;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      color: #007f9f;
-      flex-shrink: 0;
-    }
-
-    .info-text-title {
-      font-weight: 600;
-      font-size: 14px;
-      margin-bottom: 4px;
-    }
-
-    .info-text-sub {
-      font-size: 13px;
-      color: #666;
-    }
-
-    .countdown {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-top: 14px;
-      flex-wrap: wrap;
-    }
-
-    .countdown-item {
-      width: 70px;
-      height: 70px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.85);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-    }
-
-    .countdown-number {
-      font-weight: 700;
-      font-size: 18px;
-      color: #007f9f;
-    }
-
-    .countdown-label {
-      font-size: 11px;
-      color: #777;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .two-columns {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 20px;
-    }
-
-    @media (max-width: 900px) {
-      .two-columns {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .rsvp-list {
-      margin-top: 12px;
-      max-height: 220px;
-      overflow-y: auto;
-      border-radius: 10px;
-      border: 1px solid #eee;
-    }
-
-    .rsvp-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 10px;
-      font-size: 13px;
-      border-bottom: 1px solid #f1f1f1;
-    }
-
-    .rsvp-row:last-child { border-bottom: none; }
-
-    .badge {
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 600;
-    }
-
-    .badge-yes {
-      background: #d1f7d6;
-      color: #137b24;
-    }
-
-    .badge-no {
-      background: #fbd3d7;
-      color: #9b1c31;
-    }
-
-    .badge-null {
-      background: #ffe9b3;
-      color: #a36a00;
-    }
-
-    .messages-list {
-      margin-top: 10px;
-      max-height: 250px;
-      overflow-y: auto;
-    }
-
-    .message-item {
-      padding: 10px 12px;
-      background: #f8f9fa;
-      border-radius: 12px;
-      margin-bottom: 8px;
-    }
-
-    .message-name {
-      font-weight: 600;
-      font-size: 13px;
-      color: #007f9f;
-      margin-bottom: 4px;
-    }
-
-    .message-text {
-      font-size: 13px;
-      color: #555;
-    }
-
-    .gallery-grid {
-      margin-top: 12px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
       gap: 8px;
     }
 
-    .gallery-grid img {
-      width: 100%;
-      border-radius: 12px;
-      object-fit: cover;
-      height: 100px;
+    .menu-actions {
+      display: flex;
+      gap: 12px;
     }
 
-    .footer {
+    .btn-menu {
+      padding: 10px 20px;
       background: #007f9f;
-      color: #fff;
-      text-align: center;
-      padding: 18px 12px;
-      font-size: 13px;
-      margin-top: auto;
-    }
-
-    .back-button {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      padding: 10px 14px;
-      border-radius: 999px;
+      color: white;
       border: none;
-      background: #007f9f;
-      color: #fff;
-      font-size: 13px;
+      border-radius: 8px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 4px 14px rgba(0,127,159,0.35);
-      display: none;
-      z-index: 900;
+      transition: all 0.2s ease;
     }
 
-    .back-button.show { display: inline-flex; align-items: center; gap: 6px; }
+    .btn-menu:hover {
+      background: #005f7f;
+      transform: translateY(-2px);
+    }
 
-    @media (max-width: 768px) {
-      .card { padding: 24px 18px; }
-      .event-cover { min-height: 220px; }
-      .couple-names { font-size: 32px; }
+    .btn-menu.outline {
+      background: transparent;
+      color: #007f9f;
+      border: 2px solid #007f9f;
+    }
+
+    .btn-menu.outline:hover {
+      background: #e6f7fb;
+    }
+
+    /* ========== HOME SCREEN ========== */
+    #homeScreen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 64px);
+      padding: 20px;
+    }
+
+    .home-container {
+      background: white;
+      border-radius: 16px;
+      padding: 48px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .home-container h1 {
+      margin: 0 0 12px 0;
+      font-size: 36px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    .home-container p {
+      margin: 0 0 32px 0;
+      font-size: 16px;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+
+    .home-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .home-form input {
+      padding: 16px 20px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: inherit;
+      transition: border-color 0.2s ease;
+    }
+
+    .home-form input:focus {
+      outline: none;
+      border-color: #007f9f;
+    }
+
+    .home-form button {
+      padding: 18px;
+      background: linear-gradient(135deg, #007f9f 0%, #005f7f 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .home-form button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .home-form button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ========== LOGIN SCREEN ========== */
+    #loginScreen {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 64px);
+      padding: 20px;
+    }
+
+    .login-container {
+      background: white;
+      border-radius: 16px;
+      padding: 48px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      max-width: 450px;
+      width: 100%;
+    }
+
+    .login-container h1 {
+      margin: 0 0 12px 0;
+      font-size: 32px;
+      font-weight: 700;
+      color: #1a1a2e;
+      text-align: center;
+    }
+
+    .login-container p {
+      margin: 0 0 32px 0;
+      font-size: 15px;
+      color: #6b7280;
+      text-align: center;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .btn-login {
+      padding: 16px;
+      background: linear-gradient(135deg, #007f9f 0%, #005f7f 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 12px;
+    }
+
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      padding: 12px 24px;
+      background: #f3f4f6;
+      color: #374151;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    /* ========== ADMIN SCREEN ========== */
+    #adminScreen {
+      display: none;
+      min-height: calc(100vh - 64px);
+      padding: 32px;
+    }
+
+    .admin-header {
+      background: white;
+      border-radius: 16px;
+      padding: 24px 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .admin-header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    .btn-logout {
+      padding: 12px 24px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-logout:hover {
+      background: #dc2626;
+      transform: translateY(-2px);
+    }
+
+    .admin-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 24px;
+    }
+
+    .admin-panel {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .admin-panel h2 {
+      margin: 0 0 24px 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    .token-generator {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .token-input-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    .token-input-group input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .token-input-group input:focus {
+      outline: none;
+      border-color: #007f9f;
+    }
+
+    .btn-action {
+      padding: 12px 24px;
+      background: #007f9f;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .btn-action:hover {
+      background: #005f7f;
+      transform: translateY(-2px);
+    }
+
+    .btn-action:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .clients-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .client-card {
+      padding: 16px;
+      background: #f9fafb;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .client-card:hover {
+      border-color: #007f9f;
+      background: #e6f7fb;
+    }
+
+    .client-card.selected {
+      border-color: #007f9f;
+      background: #e6f7fb;
+      box-shadow: 0 0 0 3px rgba(0, 127, 159, 0.1);
+    }
+
+    .client-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .client-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .client-token {
+      font-size: 13px;
+      color: #007f9f;
+      font-family: 'Courier New', monospace;
+      background: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .client-stats {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .client-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-edit {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-edit:hover {
+      background: #059669;
+    }
+
+    .btn-delete {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-delete:hover {
+      background: #dc2626;
+    }
+
+    .btn-copy {
+      background: #007f9f;
+      color: white;
+    }
+
+    .btn-copy:hover {
+      background: #005f7f;
+    }
+
+    .client-editor {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 24px;
+    }
+
+    .client-editor h3 {
+      margin: 0 0 20px 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .upload-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .upload-box {
+      position: relative;
+      border: 2px dashed #d1d5db;
+      border-radius: 8px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    .upload-box:hover {
+      border-color: #007f9f;
+      background: #e6f7fb;
+    }
+
+    .upload-box input {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .upload-label {
+      font-size: 14px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .pdf-preview {
+      margin-top: 16px;
+      padding: 16px;
+      background: #f0fdf4;
+      border: 2px solid #bbf7d0;
+      border-radius: 8px;
+    }
+
+    .pdf-preview p {
+      margin: 0;
+      font-size: 14px;
+      color: #15803d;
+      font-weight: 600;
+    }
+
+    .canvas-editor {
+      margin-top: 24px;
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .canvas-editor h4 {
+      margin: 0 0 16px 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    #adminCanvas {
+      width: 595px;
+      height: 842px;
+      background: #ffffff;
+      position: relative;
+      overflow: hidden;
+      margin: 0 auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-radius: 8px;
+    }
+
+    .text-element {
+      position: absolute;
+      cursor: move;
+      padding: 8px 12px;
+      background: transparent;
+      border: 2px solid transparent;
+      border-radius: 4px;
+      font-size: 16px;
+      color: #1a1a2e;
+      user-select: none;
+      transition: all 0.2s ease;
+      min-width: 60px;
+      text-align: center;
+      white-space: nowrap;
+      line-height: 1.1;
+    }
+
+    .text-element:hover {
+      background: rgba(0, 127, 159, 0.15);
+      border-color: #007f9f;
+    }
+
+    .text-element.selected {
+      background: rgba(0, 127, 159, 0.2);
+      border-color: #007f9f;
+      box-shadow: 0 0 0 3px rgba(0, 127, 159, 0.2);
+    }
+
+    /* ========== CLIENT SCREEN ========== */
+    #clientScreen {
+      display: none;
+      min-height: calc(100vh - 64px);
+      padding: 32px;
+    }
+
+    .client-header {
+      background: white;
+      border-radius: 16px;
+      padding: 24px 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .client-header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    .client-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .client-welcome {
+      text-align: right;
+    }
+
+    .client-welcome p {
+      margin: 0;
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .client-welcome h2 {
+      margin: 4px 0 0 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #007f9f;
+    }
+
+    .client-content {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 24px;
+    }
+
+    .client-panel {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .client-panel h3 {
+      margin: 0 0 20px 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .download-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .download-form input {
+      padding: 12px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .download-form input:focus {
+      outline: none;
+      border-color: #007f9f;
+    }
+
+    .download-form input:disabled {
+      background: #f3f4f6;
+      cursor: not-allowed;
+    }
+
+    .client-canvas-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    #clientCanvas {
+      width: 595px;
+      height: 842px;
+      background: #ffffff;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-radius: 8px;
+    }
+
+    .canvas-bg {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 0;
+      pointer-events: none;
+      object-fit: contain;
+    }
+
+    .btn-download {
+      padding: 12px 24px;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-download:hover {
+      background: #059669;
+      transform: translateY(-2px);
+    }
+
+    .btn-download:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Toast messages */
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: white;
+      padding: 16px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 10000;
+      max-width: 300px;
+      font-size: 14px;
+      color: #1a1a2e;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Modal */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    .modal-content h3 {
+      margin: 0 0 16px 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    .modal-content p {
+      margin: 0 0 24px 0;
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #007f9f;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #005f7f;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: #9ca3af;
+    }
+
+    .empty-state h3 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      color: #6b7280;
+    }
+
+    .empty-state p {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 1200px) {
+      .admin-grid, .client-content {
+        grid-template-columns: 1fr;
+      }
+
+      #adminCanvas, #clientCanvas {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 210/297;
+      }
+    }
+
+    .section {
+      margin-bottom: 20px;
+    }
+
+    .section label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+
+    .section input[type="range"] {
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .size-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .size-controls span {
+      font-weight: 600;
+      color: #374151;
+      min-width: 50px;
+      text-align: center;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #e5e7eb;
+      border-radius: 4px;
+      height: 6px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #007f9f;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #007f9f;
+      cursor: pointer;
+      border: none;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-group label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .form-group input {
+      padding: 12px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #007f9f;
     }
   </style>
-</head>
-<body>
-  <nav class="menu-bar">
-    <div class="menu-logo">AdKira</div>
-    <div class="menu-links">
-      <a id="menuHome" class="menu-link">Início</a>
-      <a id="menuNotifications" class="menu-link hidden">Notificações</a>
-      <a id="menuAuth" class="menu-link">Login</a>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body><!-- ========== TOP MENU ========== -->
+  <div class="top-menu" id="topMenu">
+   <div class="menu-content">
+    <div class="menu-logo">
+     🎉 Sistema de Convites
     </div>
-  </nav>
-
-  <main class="container">
-    <div id="appContent"></div>
-  </main>
-
-  <button id="backButton" class="back-button">← Voltar</button>
-
-  <footer class="footer">
-    © 2025 AdKira. Todos os direitos reservados.
-  </footer>
-
+    <div class="menu-actions"><button class="btn-menu outline" onclick="showAdminLogin()">🔐 Login Admin</button>
+    </div>
+   </div>
+  </div><!-- ========== HOME SCREEN ========== -->
+  <div id="homeScreen">
+   <div class="home-container">
+    <h1>🎊 Bem-vindo!</h1>
+    <p>Digite seu token de acesso para visualizar e baixar seus convites personalizados</p>
+    <div class="home-form"><input type="text" id="homeClientToken" placeholder="Digite seu token único" onkeypress="if(event.key==='Enter') loginClientFromHome()"> <button onclick="loginClientFromHome()" id="clientLoginBtn">Acessar Meus Convites</button>
+    </div>
+   </div>
+  </div><!-- ========== LOGIN SCREEN (Admin) ========== -->
+  <div id="loginScreen">
+   <div class="login-container">
+    <h1>🔐 Login do Admin</h1>
+    <p>Acesse o painel administrativo</p>
+    <div class="login-form">
+     <div class="form-group"><label for="adminUsername">Username</label> <input type="text" id="adminUsername" placeholder="Digite seu username" onkeypress="if(event.key==='Enter') document.getElementById('adminPassword').focus()">
+     </div>
+     <div class="form-group"><label for="adminPassword">Senha</label> <input type="password" id="adminPassword" placeholder="Digite sua senha" onkeypress="if(event.key==='Enter') loginAdmin()">
+     </div><button class="btn-login" onclick="loginAdmin()" id="adminLoginBtn">Entrar como Admin</button> <button class="btn-secondary" onclick="backToHome()" style="width: 100%; margin-top: 8px;">← Voltar</button>
+    </div>
+   </div>
+  </div><!-- ========== ADMIN SCREEN ========== -->
+  <div id="adminScreen">
+   <div class="admin-header">
+    <h1>🎯 Painel do Administrador</h1>
+    <div style="display: flex; align-items: center; gap: 16px;">
+     <div style="text-align: right;">
+      <p style="margin: 0; font-size: 12px; color: #6b7280;">Logado como:</p>
+      <p style="margin: 0; font-size: 14px; font-weight: 600; color: #667eea;" id="adminUsernameDisplay">Admin</p>
+     </div><button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+   </div>
+   <div class="admin-grid"><!-- Left Panel: Token Generator & Client List -->
+    <div class="admin-panel">
+     <h2>Gerenciar Clientes</h2>
+     <div class="token-generator">
+      <div class="token-input-group"><input type="text" id="clientNameInput" placeholder="Nome do Cliente"> <button class="btn-action" onclick="createClient()" id="createClientBtn">+ Criar Cliente</button>
+      </div>
+     </div>
+     <div id="clientsList" class="clients-list" style="margin-top: 24px;">
+      <div class="empty-state">
+       <h3>Carregando...</h3>
+      </div>
+     </div>
+    </div><!-- Right Panel: Client Editor -->
+    <div class="admin-panel">
+     <h2>Editor de Convite</h2>
+     <div id="clientEditorEmpty" class="empty-state">
+      <h3>Nenhum cliente selecionado</h3>
+      <p>Selecione um cliente na lista ao lado para editar seu convite</p>
+     </div>
+     <div id="clientEditor" class="client-editor" style="display: none;">
+      <h3 id="editingClientName">Cliente</h3>
+      <div class="upload-section"><label class="upload-box"> <input type="file" id="adminPdfInput" accept="application/pdf" onchange="handleAdminPdfUpload(event)">
+        <div class="upload-label">
+         📄 Upload do PDF Base
+        </div></label>
+       <div id="pdfPreview" class="pdf-preview" style="display: none;">
+        <p>✅ PDF carregado com sucesso!</p>
+       </div>
+      </div>
+      <div class="canvas-editor" id="canvasEditor" style="display: none;">
+       <h4>Posicione o nome do convidado</h4>
+       <div class="section"><label>Tamanho da Fonte</label>
+        <div class="size-controls"><button class="btn-secondary" onclick="decreaseFontSize()">A-</button> <span id="fontSizeDisplay">24px</span> <button class="btn-secondary" onclick="increaseFontSize()">A+</button>
+        </div><input type="range" id="fontSizeSlider" min="12" max="72" value="24" oninput="changeFontSize(this.value)">
+       </div>
+       <div class="section"><label>Cor do Texto</label>
+        <div style="display: flex; gap: 12px; align-items: center;"><input type="color" id="textColorPicker" value="#1a1a2e" onchange="changeTextColor(this.value)" style="width: 60px; height: 40px; border: 2px solid #d1d5db; border-radius: 8px; cursor: pointer;"> <span id="textColorDisplay" style="font-weight: 600; color: #374151;">#1a1a2e</span>
+        </div>
+       </div>
+       <div id="adminCanvas"></div>
+       <div style="margin-top: 20px; display: flex; gap: 12px;"><button class="btn-action" onclick="saveClientConfig()" style="flex: 1;" id="saveConfigBtn">💾 Salvar Configuração</button> <button class="btn-secondary" onclick="testPreview()">👁️ Testar Preview</button>
+       </div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div><!-- ========== CLIENT SCREEN ========== -->
+  <div id="clientScreen">
+   <div class="client-header">
+    <h1>🎊 Meu Convite Personalizado</h1>
+    <div class="client-info">
+     <div class="client-welcome">
+      <p>Bem-vindo(a),</p>
+      <h2 id="clientNameDisplay">Cliente</h2>
+     </div><button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+   </div>
+   <div class="client-content"><!-- Left Panel: Download Form -->
+    <div class="client-panel">
+     <h3>Baixar Convite</h3>
+     <div id="clientStatsContainer"></div>
+     <div class="download-form"><input type="text" id="guestNameInput" placeholder="Nome do Convidado" onkeypress="if(event.key==='Enter') downloadInvite()"> <button class="btn-download" onclick="downloadInvite()" id="downloadBtn"> 📥 Baixar Convite em PDF </button>
+     </div>
+    </div><!-- Right Panel: Preview -->
+    <div class="client-panel">
+     <h3>Preview do Convite</h3>
+     <div class="client-canvas-area">
+      <div id="clientCanvas">
+       <div class="empty-state">
+        <h3>Carregando...</h3>
+       </div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div>
   <script>
-    const SUPABASE_URL = "https://sekkrboqttxpathyxcun.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNla2tyYm9xdHR4cGF0aHl4Y3VuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNjY0OTYsImV4cCI6MjA3OTc0MjQ5Nn0.JqrLUWHs3-jyUNT-0s2DwijzeDjK0uv6uIh0ip1qPWBA";
+    // ========== SUPABASE CONFIG (PRÉ-CONFIGURADO) ==========
+    const SUPABASE_URL = 'https://sekkrboqttxpathyxcun.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNla2tyYm9xdHR4cGF0aHl4Y3VuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNjY0OTYsImV4cCI6MjA3OTc0MjQ5Nn0.JqrLUWHs3-jyUNT-0s2DwiyeDjK0uv6uIh0ip1qPWBA';
+    
+    let supabase = null;
+    let allClients = [];
+    let currentUser = null;
+    let selectedClientId = null;
+    
+    const ADMIN_USERNAME = "Adkira2025";
+    const ADMIN_PASSWORD = "2026adkira@!!";
 
-    async function supabaseRequest(path, options = {}) {
-      const allowedPrefixes = ["events", "clients", "admins", "gallery_photos", "notifications", "rsvps", "messages"];
-      const base = path.split("?")[0];
-      if (!allowedPrefixes.some(p => base.startsWith(p))) {
-        console.error("Rota Supabase não permitida:", path);
-        throw new Error("Operação não permitida.");
-      }
-
-      const url = SUPABASE_URL + "/rest/v1/" + path;
-      const headers = {
-        apikey: SUPABASE_KEY,
-        Authorization: "Bearer " + SUPABASE_KEY,
-        "Content-Type": "application/json",
-        Prefer: "return=representation",
-        ...(options.headers || {})
-      };
-
-      const res = await fetch(url, { ...options, headers });
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("Erro Supabase bruto:", text);
-        throw new Error("Erro ao comunicar com o servidor.");
-      }
+    // Initialize Supabase
+    function initSupabase() {
       try {
-        return await res.json();
-      } catch {
-        return null;
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log('✅ Supabase conectado!');
+      } catch (error) {
+        console.error('❌ Erro ao conectar Supabase:', error);
+        showToast('❌ Erro ao conectar com banco de dados');
       }
     }
 
-    const appState = {
-      currentUser: null,
-      currentPage: "home",
-      currentData: null,
-      history: [],
-      notificationsInterval: null,
-      countdownInterval: null
-    };
-
-    function getAppContent() {
-      return document.getElementById("appContent");
+    // Configure PDF.js worker
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
 
-    function initApp() {
-      restoreUserFromStorage();
-      setupMenuListeners();
-      updateAuthUI();
+    // ========== SUPABASE OPERATIONS ==========
+    async function loadClients() {
+      if (!supabase) return;
 
-      const params = new URLSearchParams(window.location.search);
-      const eventId = params.get("event");
-
-      if (eventId) {
-        navigateTo("event-view", { eventId }, true);
-      } else if (appState.currentUser) {
-        if (appState.currentUser.type === "admin") {
-          navigateTo("admin-dashboard", null, true);
-        } else {
-          navigateTo("client-dashboard", null, true);
-        }
-      } else {
-        navigateTo("login", null, true);
-      }
-    }
-
-    function restoreUserFromStorage() {
-      const stored = localStorage.getItem("adkira_user");
-      if (!stored) return;
       try {
-        const user = JSON.parse(stored);
-        if (user && user.type) {
-          appState.currentUser = user;
-          if (user.type === "client") startNotificationPolling();
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        allClients = data || [];
+        
+        if (currentUser && currentUser.role === 'admin') {
+          renderClientsList();
         }
-      } catch {
-        localStorage.removeItem("adkira_user");
+      } catch (error) {
+        console.error('Erro ao carregar clientes:', error);
+        showToast('❌ Erro ao carregar clientes');
       }
     }
 
-    function navigateTo(page, data = null, replaceHistory = false) {
-      if (!replaceHistory) {
-        appState.history.push({ page: appState.currentPage, data: appState.currentData });
-      }
-      appState.currentPage = page;
-      appState.currentData = data;
-      updateBackButton();
-      clearCountdown();
+    async function createClientInDB(clientData) {
+      if (!supabase) return null;
 
-      switch (page) {
-        case "home": renderHome(); break;
-        case "login": renderLogin(); break;
-        case "admin-dashboard": renderAdminDashboard(); break;
-        case "client-dashboard": renderClientDashboard(); break;
-        case "event-view": renderEventView(data && data.eventId); break;
-        case "event-editor": renderEventEditor(data && data.eventId); break;
-        default: renderHome();
-      }
-    }
+      try {
+        const { data, error } = await supabase
+          .from('clients')
+          .insert([clientData])
+          .select()
+          .single();
 
-    function goBack() {
-      const prev = appState.history.pop();
-      if (!prev) return;
-      appState.currentPage = prev.page;
-      appState.currentData = prev.data;
-      updateBackButton();
-      clearCountdown();
+        if (error) throw error;
 
-      switch (prev.page) {
-        case "home": renderHome(); break;
-        case "login": renderLogin(); break;
-        case "admin-dashboard": renderAdminDashboard(); break;
-        case "client-dashboard": renderClientDashboard(); break;
-        case "event-view": renderEventView(prev.data && prev.data.eventId); break;
-        case "event-editor": renderEventEditor(prev.data && prev.data.eventId); break;
-        default: renderHome();
+        return data;
+      } catch (error) {
+        console.error('Erro ao criar cliente:', error);
+        throw error;
       }
     }
 
-    function updateBackButton() {
-      const btn = document.getElementById("backButton");
-      if (appState.history.length > 0) {
-        btn.classList.add("show");
+    async function updateClientInDB(clientId, updates) {
+      if (!supabase) return null;
+
+      try {
+        const { data, error } = await supabase
+          .from('clients')
+          .update(updates)
+          .eq('id', clientId)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        return data;
+      } catch (error) {
+        console.error('Erro ao atualizar cliente:', error);
+        throw error;
+      }
+    }
+
+    async function deleteClientInDB(clientId) {
+      if (!supabase) return false;
+
+      try {
+        const { error } = await supabase
+          .from('clients')
+          .delete()
+          .eq('id', clientId);
+
+        if (error) throw error;
+
+        return true;
+      } catch (error) {
+        console.error('Erro ao deletar cliente:', error);
+        throw error;
+      }
+    }
+
+    // ========== NAVIGATION FUNCTIONS ==========
+    function showAdminLogin() {
+      document.getElementById('homeScreen').style.display = 'none';
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('clientScreen').style.display = 'none';
+      document.getElementById('adminScreen').style.display = 'none';
+    }
+
+    function backToHome() {
+      document.getElementById('homeScreen').style.display = 'flex';
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('clientScreen').style.display = 'none';
+      document.getElementById('adminScreen').style.display = 'none';
+      
+      document.getElementById('adminUsername').value = '';
+      document.getElementById('adminPassword').value = '';
+    }
+
+    async function loginClientFromHome() {
+      const token = document.getElementById('homeClientToken').value.trim();
+      const btn = document.getElementById('clientLoginBtn');
+      
+      if (!token) {
+        showToast('⚠️ Por favor, digite um token');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span> Verificando...';
+
+      try {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('token', token)
+          .single();
+
+        if (error || !data) {
+          showToast('❌ Token inválido!');
+          btn.disabled = false;
+          btn.textContent = 'Acessar Meus Convites';
+          return;
+        }
+
+        currentUser = { role: 'client', clientId: data.id };
+        selectedClientId = data.id;
+        
+        document.getElementById('homeScreen').style.display = 'none';
+        document.getElementById('clientScreen').style.display = 'block';
+        document.getElementById('clientNameDisplay').textContent = data.name;
+        document.getElementById('topMenu').style.display = 'none';
+        
+        await updateClientStats();
+        await updateClientPreview();
+        showToast(`✅ Bem-vindo, ${data.name}!`);
+      } catch (error) {
+        console.error('Erro no login:', error);
+        showToast('❌ Erro ao fazer login');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Acessar Meus Convites';
+      }
+    }
+
+    async function loginAdmin() {
+      const username = document.getElementById('adminUsername').value.trim();
+      const password = document.getElementById('adminPassword').value;
+      const btn = document.getElementById('adminLoginBtn');
+      
+      if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading-spinner"></span> Entrando...';
+
+        currentUser = { role: 'admin', username: username };
+        
+        document.getElementById('homeScreen').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('adminScreen').style.display = 'block';
+        document.getElementById('topMenu').style.display = 'none';
+        document.getElementById('adminUsernameDisplay').textContent = username;
+        
+        await loadClients();
+        showToast('✅ Login como Admin realizado!');
+
+        btn.disabled = false;
+        btn.textContent = 'Entrar como Admin';
       } else {
-        btn.classList.remove("show");
-      }
-    }
-
-    function setupMenuListeners() {
-      document.getElementById("menuHome").addEventListener("click", () => {
-        if (!appState.currentUser) {
-          navigateTo("login");
-        } else if (appState.currentUser.type === "admin") {
-          navigateTo("admin-dashboard");
-        } else {
-          navigateTo("client-dashboard");
-        }
-      });
-
-      document.getElementById("menuAuth").addEventListener("click", () => {
-        if (!appState.currentUser) {
-          navigateTo("login");
-        } else {
-          logout();
-        }
-      });
-
-      document.getElementById("menuNotifications").addEventListener("click", () => {
-        loadAndShowNotifications();
-      });
-
-      document.getElementById("backButton").addEventListener("click", goBack);
-    }
-
-    function updateAuthUI() {
-      const authBtn = document.getElementById("menuAuth");
-      const notifBtn = document.getElementById("menuNotifications");
-
-      if (!appState.currentUser) {
-        authBtn.textContent = "Login";
-        notifBtn.classList.add("hidden");
-      } else {
-        authBtn.textContent = "Sair";
-        if (appState.currentUser.type === "client") {
-          notifBtn.classList.remove("hidden");
-        } else {
-          notifBtn.classList.add("hidden");
-        }
+        showToast('❌ Username ou senha incorretos!');
       }
     }
 
     function logout() {
-      appState.currentUser = null;
-      localStorage.removeItem("adkira_user");
-      stopNotificationPolling();
-      updateAuthUI();
-      appState.history = [];
-      navigateTo("login", null, true);
+      currentUser = null;
+      selectedClientId = null;
+      
+      document.getElementById('adminScreen').style.display = 'none';
+      document.getElementById('clientScreen').style.display = 'none';
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('homeScreen').style.display = 'flex';
+      document.getElementById('topMenu').style.display = 'block';
+      
+      document.getElementById('adminUsername').value = '';
+      document.getElementById('adminPassword').value = '';
+      document.getElementById('homeClientToken').value = '';
+      
+      showToast('👋 Você saiu do sistema');
     }
 
-    function startNotificationPolling() {
-      if (appState.notificationsInterval) return;
-      checkNotifications();
-      appState.notificationsInterval = setInterval(checkNotifications, 10000);
+    // ========== ADMIN FUNCTIONS ==========
+    function generateToken() {
+      return 'TKN-' + Math.random().toString(36).substr(2, 9).toUpperCase();
     }
 
-    function stopNotificationPolling() {
-      if (appState.notificationsInterval) {
-        clearInterval(appState.notificationsInterval);
-        appState.notificationsInterval = null;
-      }
-    }
-
-    async function checkNotifications() {
-      if (!appState.currentUser || appState.currentUser.type !== "client") return;
-      try {
-        const list = await supabaseRequest(
-          "notifications?client_id=eq." + encodeURIComponent(appState.currentUser.id) + "&order=created_at.desc"
-        );
-        const unread = list.filter(n => !n.read);
-        updateNotificationBadge(unread.length);
-      } catch (e) {
-        console.warn("Erro ao verificar notificações:", e.message);
-      }
-    }
-
-    function updateNotificationBadge(count) {
-      const btn = document.getElementById("menuNotifications");
-      if (count > 0) {
-        btn.classList.add("notification-badge");
-        btn.setAttribute("data-count", count > 99 ? "99+" : String(count));
-      } else {
-        btn.classList.remove("notification-badge");
-        btn.removeAttribute("data-count");
-      }
-    }
-
-    async function loadAndShowNotifications() {
-      if (!appState.currentUser || appState.currentUser.type !== "client") return;
-      try {
-        const list = await supabaseRequest(
-          "notifications?client_id=eq." + encodeURIComponent(appState.currentUser.id) + "&order=created_at.desc"
-        );
-        if (!list.length) {
-          alert("Ainda não há notificações.");
-          return;
-        }
-        const text = list
-          .slice(0, 5)
-          .map(n => "• " + n.title + ": " + n.message)
-          .join("\\n\\n");
-        alert(text);
-      } catch (e) {
-        alert("Erro ao carregar notificações.");
-      }
-    }
-
-    function renderHome() {
-      const el = getAppContent();
-      el.innerHTML = `
-        <section class="card">
-          <h1>Bem-vindo ao AdKira</h1>
-          <p class="subtitle">
-            Plataforma para gerir convites, sites de casamento e confirmações de presença.
-          </p>
-          <button class="btn btn-primary btn-full" id="goLogin">Entrar</button>
-        </section>
-      `;
-      document.getElementById("goLogin").onclick = () => navigateTo("login");
-    }
-
-    function renderLogin() {
-      const el = getAppContent();
-      el.innerHTML = `
-        <section class="card">
-          <div class="tabs">
-            <div class="tab active" data-tab="client">Cliente</div>
-            <div class="tab" data-tab="admin">Administrador</div>
-          </div>
-
-          <div id="clientLogin">
-            <h2>Login Cliente</h2>
-            <p class="subtitle">Use o token de 8 dígitos fornecido pela AdKira.</p>
-            <form id="clientLoginForm">
-              <div class="form-group">
-                <label>Token (8 dígitos)</label>
-                <input type="text" id="clientToken" maxlength="8" pattern="\\d{8}" required />
-              </div>
-              <button type="submit" class="btn btn-primary btn-full">Entrar</button>
-            </form>
-          </div>
-
-          <div id="adminLogin" class="hidden">
-            <h2>Login Administrador</h2>
-            <p class="subtitle">Acesso reservado à equipa AdKira.</p>
-            <form id="adminLoginForm">
-              <div class="form-group">
-                <label>Utilizador</label>
-                <input type="text" id="adminUsername" required />
-              </div>
-              <div class="form-group">
-                <label>Senha</label>
-                <input type="password" id="adminPassword" required />
-              </div>
-              <button type="submit" class="btn btn-primary btn-full">Entrar</button>
-            </form>
-          </div>
-        </section>
-      `;
-
-      const tabs = el.querySelectorAll(".tab");
-      const clientLogin = document.getElementById("clientLogin");
-      const adminLogin = document.getElementById("adminLogin");
-
-      tabs.forEach(tab => {
-        tab.addEventListener("click", () => {
-          tabs.forEach(t => t.classList.remove("active"));
-          tab.classList.add("active");
-          if (tab.dataset.tab === "client") {
-            clientLogin.classList.remove("hidden");
-            adminLogin.classList.add("hidden");
-          } else {
-            adminLogin.classList.remove("hidden");
-            clientLogin.classList.add("hidden");
-          }
-        });
-      });
-
-      document.getElementById("clientLoginForm").addEventListener("submit", handleClientLogin);
-      document.getElementById("adminLoginForm").addEventListener("submit", handleAdminLogin);
-    }
-
-    async function handleClientLogin(ev) {
-      ev.preventDefault();
-      const token = (document.getElementById("clientToken").value || "").trim();
-
-      if (!/^\\d{8}$/.test(token)) {
-        alert("O token deve ter exactamente 8 dígitos.");
+    async function createClient() {
+      const name = document.getElementById('clientNameInput').value.trim();
+      const btn = document.getElementById('createClientBtn');
+      
+      if (!name) {
+        showToast('⚠️ Por favor, digite um nome');
         return;
       }
 
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span>';
+
+      const token = generateToken();
+      
+      const newClient = {
+        name: name,
+        token: token,
+        pdf_data: '',
+        name_position: JSON.stringify({ x: 297, y: 400 }),
+        font_size: 24,
+        text_color: '#1a1a2e',
+        invites_limit: 50,
+        invites_generated: 0,
+        token_active: true
+      };
+
       try {
-        const list = await supabaseRequest("clients?token=eq." + encodeURIComponent(token));
-        if (!list.length) {
-          alert("Token inválido.");
-          return;
-        }
-        const client = list[0];
-        appState.currentUser = { type: "client", id: client.id, token: client.token };
-        localStorage.setItem("adkira_user", JSON.stringify(appState.currentUser));
-        updateAuthUI();
-        startNotificationPolling();
-        navigateTo("client-dashboard");
-      } catch (e) {
-        alert("Erro ao efectuar login. Tente novamente.");
+        await createClientInDB(newClient);
+        await loadClients();
+        
+        document.getElementById('clientNameInput').value = '';
+        showToast(`✅ Cliente "${name}" criado!\nToken: ${token}`);
+      } catch (error) {
+        showToast('❌ Erro ao criar cliente');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '+ Criar Cliente';
       }
     }
 
-    async function handleAdminLogin(ev) {
-      ev.preventDefault();
-      const username = (document.getElementById("adminUsername").value || "").trim();
-      const password = document.getElementById("adminPassword").value || "";
-
-      if (!username || !password) {
-        alert("Preencha utilizador e senha.");
+    function renderClientsList() {
+      const container = document.getElementById('clientsList');
+      
+      if (allClients.length === 0) {
+        container.innerHTML = '<div class="empty-state"><h3>Nenhum cliente ainda</h3><p>Crie seu primeiro cliente acima</p></div>';
         return;
       }
 
-      try {
-        const list = await supabaseRequest(
-          "admins?username=eq." + encodeURIComponent(username) + "&password=eq." + encodeURIComponent(password)
-        );
-        if (!list.length) {
-          alert("Credenciais inválidas.");
-          return;
+      container.innerHTML = '';
+      
+      allClients.forEach(client => {
+        const hasPdf = client.pdf_data && client.pdf_data !== '';
+        const generated = client.invites_generated || 0;
+        const limit = client.invites_limit || 50;
+        const isActive = client.token_active !== false;
+        
+        const card = document.createElement('div');
+        card.className = 'client-card';
+        if (selectedClientId === client.id) {
+          card.className += ' selected';
         }
-        const admin = list[0];
-        appState.currentUser = { type: "admin", id: admin.id, username: admin.username };
-        localStorage.setItem("adkira_user", JSON.stringify(appState.currentUser));
-        updateAuthUI();
-        navigateTo("admin-dashboard");
-      } catch (e) {
-        alert("Erro ao efectuar login. Tente novamente.");
-      }
-    }
-
-    async function renderAdminDashboard() {
-      if (!appState.currentUser || appState.currentUser.type !== "admin") {
-        navigateTo("login");
-        return;
-      }
-
-      const el = getAppContent();
-      el.innerHTML = '<div class="loading">A carregar clientes...</div>';
-
-      try {
-        const clients = await supabaseRequest("clients?select=*");
-        el.innerHTML = `
-          <section>
-            <div class="card" style="max-width: 100%;">
-              <h2>Painel do Administrador</h2>
-              <p class="subtitle">Gestão de clientes e tokens.</p>
-              <button class="btn btn-primary" id="generateTokenBtn">Gerar novo token</button>
-            </div>
-            <div class="section">
-              <h2>Clientes</h2>
-              <div id="clientsList" class="list-grid"></div>
-            </div>
-          </section>
+        
+        card.innerHTML = `
+          <div class="client-card-header">
+            <div class="client-name">${client.name}</div>
+            <div class="client-token">${client.token}</div>
+          </div>
+          <div class="client-stats">
+            <span>${hasPdf ? '✅ PDF configurado' : '⚠️ Sem PDF'}</span>
+            <span>📊 ${generated} / ${limit} convites</span>
+            <span>${isActive ? '✅ Ativo' : '❌ Expirado'}</span>
+          </div>
+          <div class="client-actions">
+            <button class="btn-small btn-edit" onclick="editClient('${client.id}')">✏️ Editar PDF</button>
+            <button class="btn-small" style="background: #8b5cf6; color: white;" onclick="configureClient('${client.id}')">⚙️ Configurar</button>
+            <button class="btn-small btn-copy" onclick="copyToken('${client.token}')">📋 Token</button>
+            <button class="btn-small btn-delete" onclick="deleteClient('${client.id}')">🗑️</button>
+          </div>
         `;
-
-        document.getElementById("generateTokenBtn").onclick = generateTokenForClient;
-        renderClientsList(clients);
-      } catch (e) {
-        el.innerHTML = '<div class="card"><p>Erro ao carregar clientes.</p></div>';
-      }
+        
+        container.appendChild(card);
+      });
     }
 
-    function renderClientsList(clients) {
-      const listEl = document.getElementById("clientsList");
-      if (!clients.length) {
-        listEl.innerHTML = '<p class="subtitle">Ainda não há clientes.</p>';
-        return;
+    function editClient(clientId) {
+      selectedClientId = clientId;
+      const client = allClients.find(c => c.id === clientId);
+      
+      if (!client) return;
+
+      document.getElementById('clientEditorEmpty').style.display = 'none';
+      document.getElementById('clientEditor').style.display = 'block';
+      document.getElementById('editingClientName').textContent = `Editando: ${client.name}`;
+      
+      if (client.pdf_data && client.pdf_data !== '') {
+        document.getElementById('pdfPreview').style.display = 'block';
+        document.getElementById('canvasEditor').style.display = 'block';
+        loadAdminCanvas(client);
+      } else {
+        document.getElementById('pdfPreview').style.display = 'none';
+        document.getElementById('canvasEditor').style.display = 'none';
       }
-      listEl.innerHTML = clients.map(c => {
-        const created = c.created_at ? new Date(c.created_at).toLocaleDateString("pt-PT") : "";
-        return \`
-          <div class="card-small">
-            <h3>Cliente</h3>
-            <p><span class="tag">Token</span></p>
-            <div class="token-value">\${c.token}</div>
-            <p>Criado em: \${created}</p>
-            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-              <button class="btn btn-primary" style="flex:1; font-size:12px;"
-                onclick="adminLoginAsClient('\${c.id}', '\${c.token}')">
-                Entrar como cliente
-              </button>
-              <button class="btn btn-secondary" style="flex:1; font-size:12px;"
-                onclick="regenerateToken('\${c.id}')">
-                Trocar token
-              </button>
-              <button class="btn btn-danger" style="flex:1; font-size:12px;"
-                onclick="deleteClient('\${c.id}')">
-                Eliminar
-              </button>
-            </div>
-          </div>
-        \`;
-      }).join("");
-    }
-
-    async function generateTokenForClient() {
-      if (!appState.currentUser || appState.currentUser.type !== "admin") return;
-
-      const array = new Uint32Array(1);
-      crypto.getRandomValues(array);
-      const token = String(10000000 + (array[0] % 90000000));
-
-      try {
-        await supabaseRequest("clients", {
-          method: "POST",
-          body: JSON.stringify({ token, created_by: appState.currentUser.id })
-        });
-        alert("Token criado com sucesso.");
-        renderAdminDashboard();
-      } catch (e) {
-        alert("Erro ao criar token.");
-      }
-    }
-
-    async function regenerateToken(clientId) {
-      if (!confirm("Deseja mesmo alterar o token deste cliente?")) return;
-
-      const array = new Uint32Array(1);
-      crypto.getRandomValues(array);
-      const token = String(10000000 + (array[0] % 90000000));
-
-      try {
-        await supabaseRequest("clients?id=eq." + encodeURIComponent(clientId), {
-          method: "PATCH",
-          body: JSON.stringify({ token })
-        });
-        alert("Token actualizado.");
-        renderAdminDashboard();
-      } catch (e) {
-        alert("Erro ao actualizar token.");
-      }
+      
+      renderClientsList();
     }
 
     async function deleteClient(clientId) {
-      if (!confirm("Tem a certeza que pretende eliminar este cliente e todos os respectivos eventos?")) return;
-      try {
-        await supabaseRequest("clients?id=eq." + encodeURIComponent(clientId), {
-          method: "DELETE"
-        });
-        alert("Cliente eliminado.");
-        renderAdminDashboard();
-      } catch (e) {
-        alert("Erro ao eliminar cliente.");
-      }
-    }
+      const client = allClients.find(c => c.id === clientId);
+      
+      if (!client) return;
 
-    function adminLoginAsClient(id, token) {
-      appState.currentUser = { type: "client", id, token };
-      localStorage.setItem("adkira_user", JSON.stringify(appState.currentUser));
-      updateAuthUI();
-      startNotificationPolling();
-      navigateTo("client-dashboard");
-    }
-
-    async function renderClientDashboard() {
-      if (!appState.currentUser || appState.currentUser.type !== "client") {
-        navigateTo("login");
-        return;
-      }
-
-      const el = getAppContent();
-      el.innerHTML = '<div class="loading">A carregar eventos...</div>';
-
-      try {
-        const events = await supabaseRequest(
-          "events?client_id=eq." + encodeURIComponent(appState.currentUser.id)
-        );
-
-        el.innerHTML = \`
-          <section>
-            <div class="card" style="max-width:100%;">
-              <h2>Os meus eventos</h2>
-              <p class="subtitle">Crie e personalize o site do seu casamento.</p>
-              <button class="btn btn-primary" id="newEventBtn">Criar novo evento</button>
-            </div>
-            <div class="section">
-              <h2>Lista de eventos</h2>
-              <div id="eventsList" class="list-grid"></div>
-            </div>
-          </section>
-        \`;
-
-        document.getElementById("newEventBtn").onclick = createNewEvent;
-        renderEventsList(events);
-      } catch (e) {
-        el.innerHTML = '<div class="card"><p>Erro ao carregar eventos.</p></div>';
-      }
-    }
-
-    function renderEventsList(events) {
-      const listEl = document.getElementById("eventsList");
-      if (!events.length) {
-        listEl.innerHTML = '<p class="subtitle">Ainda não criou nenhum evento.</p>';
-        return;
-      }
-      const baseUrl = window.location.origin + window.location.pathname;
-      listEl.innerHTML = events.map(ev => {
-        const link = baseUrl + "?event=" + ev.id;
-        const label = (ev.groom_name || "Noivo") + " & " + (ev.bride_name || "Noiva");
-        return \`
-          <div class="card-small">
-            <h3>\${label}</h3>
-            <p>Data: \${ev.event_date || "Por definir"}</p>
-            <p class="token-value">\${link}</p>
-            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-              <button class="btn btn-primary" style="flex:1; font-size:12px;"
-                onclick="copyText('\${link.replace(/'/g, "\\\\'")}')">
-                Copiar link
-              </button>
-              <button class="btn btn-secondary" style="flex:1; font-size:12px;"
-                onclick="navigateTo('event-view', {eventId: '\${ev.id}'})">
-                Ver site
-              </button>
-              <button class="btn btn-primary" style="flex:1; font-size:12px;"
-                onclick="navigateTo('event-editor', {eventId: '\${ev.id}'})">
-                Editar
-              </button>
-            </div>
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      modal.innerHTML = `
+        <div class="modal-content">
+          <h3>⚠️ Confirmar Exclusão</h3>
+          <p>Tem certeza que deseja deletar o cliente "${client.name}"?<br>Esta ação não pode ser desfeita.</p>
+          <div class="modal-actions">
+            <button class="btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+            <button class="btn-action" style="background: #ef4444;" onclick="confirmDeleteClient('${clientId}')">Deletar</button>
           </div>
-        \`;
-      }).join("");
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+      };
     }
 
-    async function createNewEvent() {
-      if (!appState.currentUser || appState.currentUser.type !== "client") return;
-
-      const today = new Date().toISOString().split("T")[0];
-      try {
-        const created = await supabaseRequest("events", {
-          method: "POST",
-          body: JSON.stringify({
-            client_id: appState.currentUser.id,
-            groom_name: "Noivo",
-            bride_name: "Noiva",
-            event_date: today,
-            welcome_text: "É com muita alegria que partilhamos convosco este momento especial."
-          })
-        });
-        const ev = created[0];
-        alert("Evento criado. Agora pode personalizar.");
-        navigateTo("event-editor", { eventId: ev.id });
-      } catch (e) {
-        alert("Erro ao criar evento.");
-      }
-    }
-
-    async function renderEventEditor(eventId) {
-      const el = getAppContent();
-      el.innerHTML = '<div class="loading">A carregar dados do evento...</div>';
+    async function confirmDeleteClient(clientId) {
+      const client = allClients.find(c => c.id === clientId);
+      
+      if (!client) return;
 
       try {
-        const events = await supabaseRequest(
-          "events?id=eq." + encodeURIComponent(eventId)
-        );
-
-        if (!events.length) {
-          el.innerHTML = \`
-            <section class="card">
-              <h2>Evento não encontrado</h2>
-              <p class="subtitle">O evento pode ter sido apagado.</p>
-            </section>
-          \`;
-          return;
+        await deleteClientInDB(clientId);
+        await loadClients();
+        
+        if (selectedClientId === clientId) {
+          selectedClientId = null;
+          document.getElementById('clientEditorEmpty').style.display = 'block';
+          document.getElementById('clientEditor').style.display = 'none';
         }
-
-        const ev = events[0];
-
-        el.innerHTML = \`
-          <section class="card" style="max-width:900px;">
-            <h2>Editar Evento</h2>
-            <p class="subtitle">Actualize todas as informações do seu casamento.</p>
-
-            <form id="eventEditForm">
-              <div class="two-columns">
-                <div>
-                  <div class="form-group">
-                    <label>Nome do Noivo</label>
-                    <input type="text" id="editGroom" value="\${ev.groom_name || ""}" />
-                  </div>
-
-                  <div class="form-group">
-                    <label>Nome da Noiva</label>
-                    <input type="text" id="editBride" value="\${ev.bride_name || ""}" />
-                  </div>
-
-                  <div class="form-group">
-                    <label>Data do Evento</label>
-                    <input type="date" id="editDate" value="\${ev.event_date || ""}" />
-                  </div>
-
-                  <div class="form-group">
-                    <label>Texto de Boas-vindas</label>
-                    <textarea id="editWelcome" style="width:100%;height:120px;">\${ev.welcome_text || ""}</textarea>
-                  </div>
-
-                  <div class="form-group">
-                    <label>URL da Foto de Capa</label>
-                    <input type="text" id="editCover" value="\${ev.cover_photo_url || ""}" />
-                    <small style="font-size:11px;color:#777;">Use um link https:// de uma imagem (por exemplo, do Supabase Storage).</small>
-                  </div>
-                </div>
-
-                <div>
-                  <div class="form-group">
-                    <label>Local da cerimónia</label>
-                    <input type="text" id="editCeremony" placeholder="Ex.: Igreja Metodista, Morro Bento" />
-                  </div>
-                  <div class="form-group">
-                    <label>Local da recepção</label>
-                    <input type="text" id="editReception" placeholder="Ex.: Salão Boas Festas, Morro Bento" />
-                  </div>
-                  <div class="form-group">
-                    <label>Dress code</label>
-                    <input type="text" id="editDress" placeholder="Ex.: Traje formal, cores claras" />
-                  </div>
-                  <div class="form-group">
-                    <label>Lista de presentes / IBAN</label>
-                    <textarea id="editGifts" style="width:100%;height:80px;" placeholder="Ex.: Preferimos contribuições em numerário. IBAN: ..."></textarea>
-                  </div>
-                  <div class="form-group">
-                    <label>Link do mapa (Google Maps)</label>
-                    <input type="text" id="editMaps" placeholder="Cole aqui o link do Google Maps" />
-                  </div>
-                </div>
-              </div>
-
-              <button class="btn btn-primary btn-full" type="submit">Salvar alterações</button>
-            </form>
-
-            <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
-              <button class="btn btn-secondary" onclick="renderEventEditor('\${eventId}')">Recarregar</button>
-              <button class="btn btn-primary" onclick="navigateTo('event-view',{eventId:'\${eventId}'})">Ver Site</button>
-            </div>
-          </section>
-        \`;
-
-        document.getElementById("eventEditForm").addEventListener("submit", async (evForm) => {
-          evForm.preventDefault();
-
-          const data = {
-            groom_name: document.getElementById("editGroom").value,
-            bride_name: document.getElementById("editBride").value,
-            welcome_text: document.getElementById("editWelcome").value,
-            event_date: document.getElementById("editDate").value,
-            cover_photo_url: document.getElementById("editCover").value
-          };
-
-          try {
-            await supabaseRequest("events?id=eq." + encodeURIComponent(eventId), {
-              method: "PATCH",
-              body: JSON.stringify(data)
-            });
-
-            alert("Evento atualizado com sucesso!");
-            navigateTo("event-view", { eventId });
-          } catch (err) {
-            alert("Erro ao guardar alterações.");
-          }
-        });
-
+        
+        showToast(`✅ Cliente "${client.name}" deletado`);
       } catch (error) {
-        el.innerHTML = \`
-          <section class="card">
-            <h2>Erro</h2>
-            <p class="subtitle">Não conseguimos carregar o editor. Tente novamente.</p>
-          </section>
-        \`;
+        showToast('❌ Erro ao deletar cliente');
       }
+      
+      document.querySelector('.modal')?.remove();
     }
 
-    function clearCountdown() {
-      if (appState.countdownInterval) {
-        clearInterval(appState.countdownInterval);
-        appState.countdownInterval = null;
-      }
-    }
-
-    function startCountdown(targetDateStr) {
-      clearCountdown();
-      const elDay = document.getElementById("cdDays");
-      const elHour = document.getElementById("cdHours");
-      const elMin = document.getElementById("cdMinutes");
-      const elSec = document.getElementById("cdSeconds");
-
-      if (!targetDateStr || !elDay) return;
-
-      function update() {
-        const now = new Date();
-        const target = new Date(targetDateStr + "T00:00:00");
-        const diff = target - now;
-        if (diff <= 0) {
-          elDay.textContent = "0";
-          elHour.textContent = "0";
-          elMin.textContent = "0";
-          elSec.textContent = "0";
-          clearCountdown();
-          return;
-        }
-        const totalSec = Math.floor(diff / 1000);
-        const days = Math.floor(totalSec / 86400);
-        const hours = Math.floor((totalSec % 86400) / 3600);
-        const minutes = Math.floor((totalSec % 3600) / 60);
-        const seconds = totalSec % 60;
-
-        elDay.textContent = String(days);
-        elHour.textContent = String(hours);
-        elMin.textContent = String(minutes);
-        elSec.textContent = String(seconds);
-      }
-
-      update();
-      appState.countdownInterval = setInterval(update, 1000);
-    }
-
-    async function loadRsvps(eventId) {
-      const list = await supabaseRequest(
-        "rsvps?event_id=eq." + encodeURIComponent(eventId) + "&order=created_at.desc"
-      );
-      const container = document.getElementById("rsvpList");
-      const summaryEl = document.getElementById("rsvpSummary");
-      if (!container) return;
-
-      if (!list.length) {
-        container.innerHTML = '<div class="subtitle" style="margin:10px 0;">Ainda não há confirmações.</div>';
-        summaryEl.textContent = "0 presentes • 0 ausentes • 0 por responder";
-        return;
-      }
-
-      let yes = 0, no = 0, nullCount = 0;
-      container.innerHTML = list.map(r => {
-        let badgeClass = "badge-null";
-        let text = "Por responder";
-        if (r.attending === true) {
-          badgeClass = "badge-yes";
-          text = "Presente";
-          yes++;
-        } else if (r.attending === false) {
-          badgeClass = "badge-no";
-          text = "Não vai";
-          no++;
-        } else {
-          nullCount++;
-        }
-        return \`
-          <div class="rsvp-row">
-            <span>\${r.guest_name}</span>
-            <span class="badge \${badgeClass}">\${text}</span>
-          </div>
-        \`;
-      }).join("");
-
-      summaryEl.textContent = yes + " presentes • " + no + " ausentes • " + nullCount + " por responder";
-    }
-
-    async function submitRsvp(eventId) {
-      const name = (document.getElementById("rsvpName").value || "").trim();
-      const phone = (document.getElementById("rsvpPhone").value || "").trim();
-      const statusVal = document.getElementById("rsvpStatus").value;
-
-      if (!name) {
-        alert("Escreva o seu nome.");
-        return;
-      }
-
-      let attending = null;
-      if (statusVal === "yes") attending = true;
-      if (statusVal === "no") attending = false;
-
-      try {
-        await supabaseRequest("rsvps", {
-          method: "POST",
-          body: JSON.stringify({
-            event_id: eventId,
-            guest_name: name,
-            phone,
-            attending
-          })
-        });
-        document.getElementById("rsvpName").value = "";
-        document.getElementById("rsvpPhone").value = "";
-        document.getElementById("rsvpStatus").value = "";
-        alert("Resposta registada. Obrigado!");
-        loadRsvps(eventId);
-      } catch (e) {
-        alert("Erro ao registar a resposta.");
-      }
-    }
-
-    async function loadMessages(eventId) {
-      const list = await supabaseRequest(
-        "messages?event_id=eq." + encodeURIComponent(eventId) + "&order=created_at.desc"
-      );
-      const container = document.getElementById("messagesList");
-      if (!container) return;
-
-      if (!list.length) {
-        container.innerHTML = '<div class="subtitle" style="margin:10px 0;">Seja o primeiro a deixar uma mensagem.</div>';
-        return;
-      }
-
-      container.innerHTML = list.map(m => {
-        return \`
-          <div class="message-item">
-            <div class="message-name">\${m.name}</div>
-            <div class="message-text">\${m.message}</div>
-          </div>
-        \`;
-      }).join("");
-    }
-
-    async function submitMessage(eventId) {
-      const name = (document.getElementById("msgName").value || "").trim();
-      const msg = (document.getElementById("msgText").value || "").trim();
-
-      if (!name || !msg) {
-        alert("Preencha o nome e a mensagem.");
-        return;
-      }
-
-      try {
-        await supabaseRequest("messages", {
-          method: "POST",
-          body: JSON.stringify({
-            event_id: eventId,
-            name,
-            message: msg
-          })
-        });
-        document.getElementById("msgName").value = "";
-        document.getElementById("msgText").value = "";
-        loadMessages(eventId);
-      } catch (e) {
-        alert("Erro ao enviar mensagem.");
-      }
-    }
-
-    async function loadGallery(eventId) {
-      const list = await supabaseRequest(
-        "gallery_photos?event_id=eq." + encodeURIComponent(eventId) + "&order=created_at.desc"
-      );
-      const container = document.getElementById("galleryGrid");
-      if (!container) return;
-
-      if (!list.length) {
-        container.innerHTML = '<div class="subtitle" style="margin:10px 0;">Ainda não há fotos na galeria.</div>';
-        return;
-      }
-
-      container.innerHTML = list.map(g => {
-        return '<img src="' + g.image_url + '" alt="Foto">';
-      }).join("");
-    }
-
-    async function addGalleryPhoto(eventId) {
-      const url = (document.getElementById("galleryUrl").value || "").trim();
-      if (!url) {
-        alert("Cole o URL da imagem.");
-        return;
-      }
-
-      try {
-        await supabaseRequest("gallery_photos", {
-          method: "POST",
-          body: JSON.stringify({
-            event_id: eventId,
-            image_url: url
-          })
-        });
-        document.getElementById("galleryUrl").value = "";
-        loadGallery(eventId);
-      } catch (e) {
-        alert("Erro ao adicionar foto.");
-      }
-    }
-
-    async function renderEventView(eventId) {
-      const el = getAppContent();
-      el.innerHTML = '<div class="loading">A carregar o evento...</div>';
-
-      try {
-        const events = await supabaseRequest(
-          "events?id=eq." + encodeURIComponent(eventId)
-        );
-
-        if (!events.length) {
-          el.innerHTML = \`
-            <section class="card">
-              <h2>Evento não encontrado</h2>
-              <p class="subtitle">Verifique o link recebido ou contacte o casal.</p>
-              <button class="btn btn-primary btn-full" onclick="navigateTo('login')">Voltar</button>
-            </section>
-          \`;
-          return;
-        }
-
-        const ev = events[0];
-
-        el.innerHTML = \`
-          <section>
-            <div class="event-cover" style="background-image:url('\${ev.cover_photo_url || ""}');">
-              <div class="event-cover-inner">
-                <div class="couple-names">\${ev.groom_name || "Noivo"} & \${ev.bride_name || "Noiva"}</div>
-                <div class="event-date">\${ev.event_date || ""}</div>
-                <div class="countdown" style="margin-top:16px;">
-                  <div class="countdown-item">
-                    <div class="countdown-number" id="cdDays">0</div>
-                    <div class="countdown-label">Dias</div>
-                  </div>
-                  <div class="countdown-item">
-                    <div class="countdown-number" id="cdHours">0</div>
-                    <div class="countdown-label">Horas</div>
-                  </div>
-                  <div class="countdown-item">
-                    <div class="countdown-number" id="cdMinutes">0</div>
-                    <div class="countdown-label">Min</div>
-                  </div>
-                  <div class="countdown-item">
-                    <div class="countdown-number" id="cdSeconds">0</div>
-                    <div class="countdown-label">Seg</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="section">
-              <h2>Bem-vindos ao nosso dia</h2>
-              <p>\${ev.welcome_text || "É com muita alegria que partilhamos convosco este momento especial."}</p>
-            </div>
-
-            <div class="section">
-              <h2>Informações importantes</h2>
-              <div class="info-grid">
-                <div class="info-item">
-                  <div class="info-icon">📍</div>
-                  <div>
-                    <div class="info-text-title">Cerimónia</div>
-                    <div class="info-text-sub">Local a combinar com o casal.</div>
-                  </div>
-                </div>
-                <div class="info-item">
-                  <div class="info-icon">🎉</div>
-                  <div>
-                    <div class="info-text-title">Recepção</div>
-                    <div class="info-text-sub">Detalhes no convite ou junto do casal.</div>
-                  </div>
-                </div>
-                <div class="info-item">
-                  <div class="info-icon">🎁</div>
-                  <div>
-                    <div class="info-text-title">Presentes</div>
-                    <div class="info-text-sub">A vossa presença é o melhor presente. Se desejarem, podem contribuir com um mimo em numerário.</div>
-                  </div>
-                </div>
-                <div class="info-item">
-                  <div class="info-icon">👗</div>
-                  <div>
-                    <div class="info-text-title">Dress code</div>
-                    <div class="info-text-sub">Traje formal e cores claras são bem-vindas.</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="section">
-              <h2>Confirme a sua presença</h2>
-              <div class="two-columns">
-                <div>
-                  <div class="form-group">
-                    <label>Nome completo</label>
-                    <input type="text" id="rsvpName" placeholder="Ex.: Família Silva" />
-                  </div>
-                  <div class="form-group">
-                    <label>Telefone / WhatsApp</label>
-                    <input type="text" id="rsvpPhone" placeholder="Ex.: +244 9xx xxx xxx" />
-                  </div>
-                  <div class="form-group">
-                    <label>Vai conseguir estar presente?</label>
-                    <select id="rsvpStatus">
-                      <option value="">Selecione</option>
-                      <option value="yes">Sim, estarei presente</option>
-                      <option value="no">Infelizmente não poderei ir</option>
-                    </select>
-                  </div>
-                  <button class="btn btn-primary btn-full" onclick="submitRsvp('\${ev.id}')">Enviar resposta</button>
-                </div>
-                <div>
-                  <p id="rsvpSummary" style="font-size:13px;color:#555;margin-bottom:6px;">A carregar...</p>
-                  <div id="rsvpList" class="rsvp-list"></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="section">
-              <h2>Mural de mensagens</h2>
-              <div class="two-columns">
-                <div>
-                  <div class="form-group">
-                    <label>Seu nome</label>
-                    <input type="text" id="msgName" placeholder="Ex.: Tio João" />
-                  </div>
-                  <div class="form-group">
-                    <label>Mensagem para os noivos</label>
-                    <textarea id="msgText" style="height:100px;" placeholder="Escreva uma dedicatória bonita..."></textarea>
-                  </div>
-                  <button class="btn btn-primary btn-full" onclick="submitMessage('\${ev.id}')">Enviar mensagem</button>
-                </div>
-                <div>
-                  <div id="messagesList" class="messages-list"></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="section">
-              <h2>Galeria de fotos</h2>
-              <div class="two-columns">
-                <div>
-                  <div id="galleryGrid" class="gallery-grid"></div>
-                </div>
-                <div>
-                  \${appState.currentUser && appState.currentUser.type === "client"
-                    ? \`
-                      <p style="font-size:13px;color:#555;margin-bottom:8px;">
-                        Adicione fotos ao site colando o URL de uma imagem (por exemplo, alojada no Supabase Storage).
-                      </p>
-                      <div class="form-group">
-                        <label>URL da imagem</label>
-                        <input type="text" id="galleryUrl" placeholder="https://..." />
-                      </div>
-                      <button class="btn btn-primary btn-full" onclick="addGalleryPhoto('\${ev.id}')">Adicionar foto</button>
-                    \`
-                    : '<p style="font-size:13px;color:#555;">O casal poderá adicionar aqui fotos especiais.</p>'
-                  }
-                </div>
-              </div>
-            </div>
-
-            \${appState.currentUser && appState.currentUser.type === "client"
-              ? '<button class="btn btn-primary btn-full" style="margin-top:20px;" onclick="navigateTo(\\'event-editor\\',{eventId:\\'' + ev.id + '\\'})">Editar evento completo</button>'
-              : ""
-            }
-          </section>
-        \`;
-
-        if (ev.event_date) startCountdown(ev.event_date);
-        loadRsvps(ev.id);
-        loadMessages(ev.id);
-        loadGallery(ev.id);
-
-      } catch (e) {
-        el.innerHTML = \`
-          <section class="card">
-            <h2>Erro</h2>
-            <p class="subtitle">Não foi possível carregar o evento. Tente novamente mais tarde.</p>
-          </section>
-        \`;
-      }
-    }
-
-    function copyText(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        alert("Link copiado!");
-      }).catch(() => {
-        alert("Não foi possível copiar. Copie manualmente.");
+    function copyToken(token) {
+      navigator.clipboard.writeText(token).then(() => {
+        showToast(`📋 Token copiado: ${token}`);
       });
     }
 
-    window.navigateTo = navigateTo;
-    window.adminLoginAsClient = adminLoginAsClient;
-    window.regenerateToken = regenerateToken;
-    window.deleteClient = deleteClient;
-    window.copyText = copyText;
-    window.submitRsvp = submitRsvp;
-    window.submitMessage = submitMessage;
-    window.addGalleryPhoto = addGalleryPhoto;
-    window.renderEventEditor = renderEventEditor;
+    function configureClient(clientId) {
+      const client = allClients.find(c => c.id === clientId);
+      if (!client) return;
 
-    document.addEventListener("DOMContentLoaded", initApp);
+      const generated = client.invites_generated || 0;
+      const limit = client.invites_limit || 50;
+      const isActive = client.token_active !== false;
+
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      modal.innerHTML = `
+        <div class="modal-content">
+          <h3>⚙️ Configurar Cliente</h3>
+          <p style="margin-bottom: 20px;">Ajuste as configurações de "${client.name}"</p>
+          
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label>Nome do Cliente</label>
+            <input type="text" id="configClientName" value="${client.name}" style="padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; width: 100%; font-family: inherit; font-size: 14px;">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label>Limite de Convites</label>
+            <input type="number" id="configInvitesLimit" value="${limit}" min="1" max="999999" style="padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; width: 100%; font-family: inherit; font-size: 14px;">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label>Convites Gerados</label>
+            <input type="number" id="configInvitesGenerated" value="${generated}" min="0" max="999999" style="padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; width: 100%; font-family: inherit; font-size: 14px;">
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Ajuste se necessário corrigir o contador</p>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 24px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="configTokenActive" ${isActive ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer;">
+              <span>Token Ativo</span>
+            </label>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Desmarque para desativar manualmente</p>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+            <button class="btn-action" onclick="saveClientConfiguration('${clientId}')">💾 Salvar</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+      };
+    }
+
+    async function saveClientConfiguration(clientId) {
+      const newName = document.getElementById('configClientName').value.trim();
+      const newLimit = parseInt(document.getElementById('configInvitesLimit').value);
+      const newGenerated = parseInt(document.getElementById('configInvitesGenerated').value);
+      const newActive = document.getElementById('configTokenActive').checked;
+
+      if (!newName) {
+        showToast('⚠️ Nome não pode estar vazio');
+        return;
+      }
+
+      if (newLimit < 1) {
+        showToast('⚠️ Limite deve ser maior que 0');
+        return;
+      }
+
+      if (newGenerated < 0) {
+        showToast('⚠️ Convites gerados não pode ser negativo');
+        return;
+      }
+
+      try {
+        await updateClientInDB(clientId, {
+          name: newName,
+          invites_limit: newLimit,
+          invites_generated: newGenerated,
+          token_active: newActive
+        });
+
+        await loadClients();
+        showToast('✅ Configuração atualizada!');
+        document.querySelector('.modal').remove();
+      } catch (error) {
+        showToast('❌ Erro ao atualizar configuração');
+      }
+    }
+
+    // ========== ADMIN PDF & CANVAS ==========
+    let adminPdfData = null;
+    let adminNameElement = null;
+    let draggedElement = null;
+    let offsetX = 0;
+    let offsetY = 0;
+    let currentFontSize = 24;
+    let currentTextColor = '#1a1a2e';
+
+    async function handleAdminPdfUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function(ev) {
+        try {
+          const arrayBuffer = ev.target.result;
+          adminPdfData = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          
+          document.getElementById('pdfPreview').style.display = 'block';
+          document.getElementById('canvasEditor').style.display = 'block';
+          
+          await renderAdminPdf();
+          createNameElement();
+          
+          showToast('✅ PDF carregado com sucesso!');
+        } catch (error) {
+          console.error('Erro ao carregar PDF:', error);
+          showToast('❌ Erro ao carregar PDF');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    async function renderAdminPdf() {
+      const canvas = document.getElementById('adminCanvas');
+      canvas.innerHTML = '';
+      
+      if (!adminPdfData) return;
+
+      try {
+        const pdfBytes = Uint8Array.from(atob(adminPdfData), c => c.charCodeAt(0));
+        
+        const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+        
+        const scale = 1.5;
+        const viewport = page.getViewport({scale: scale});
+        
+        const renderCanvas = document.createElement('canvas');
+        const context = renderCanvas.getContext('2d');
+        renderCanvas.width = viewport.width;
+        renderCanvas.height = viewport.height;
+        
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport
+        };
+        
+        await page.render(renderContext).promise;
+        
+        const img = document.createElement('img');
+        img.className = 'canvas-bg';
+        img.src = renderCanvas.toDataURL('image/png');
+        canvas.appendChild(img);
+      } catch (error) {
+        console.error('Erro ao renderizar PDF:', error);
+        canvas.innerHTML = '<div class="empty-state"><h3>Erro ao carregar PDF</h3><p>Tente fazer upload novamente</p></div>';
+      }
+    }
+
+    function createNameElement() {
+      const canvas = document.getElementById('adminCanvas');
+      
+      if (adminNameElement) {
+        adminNameElement.remove();
+      }
+
+      adminNameElement = document.createElement('div');
+      adminNameElement.className = 'text-element selected';
+      adminNameElement.textContent = '{NOME DO CONVIDADO}';
+      adminNameElement.style.position = 'absolute';
+      adminNameElement.style.left = '50%';
+      adminNameElement.style.top = '50%';
+      adminNameElement.style.transform = 'translate(-50%, -50%)';
+      adminNameElement.style.fontSize = currentFontSize + 'px';
+      adminNameElement.style.color = currentTextColor;
+      adminNameElement.style.zIndex = '10';
+      
+      canvas.appendChild(adminNameElement);
+      
+      adminNameElement.addEventListener('mousedown', handleAdminMouseDown);
+    }
+
+    function handleAdminMouseDown(e) {
+      draggedElement = adminNameElement;
+      const rect = draggedElement.getBoundingClientRect();
+      const canvasRect = document.getElementById('adminCanvas').getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      draggedElement.style.cursor = 'grabbing';
+    }
+
+    document.addEventListener('mousemove', (e) => {
+      if (draggedElement && draggedElement === adminNameElement) {
+        const canvasRect = document.getElementById('adminCanvas').getBoundingClientRect();
+        let newX = e.clientX - canvasRect.left - offsetX;
+        let newY = e.clientY - canvasRect.top - offsetY;
+
+        newX = Math.max(0, Math.min(newX, canvasRect.width - draggedElement.offsetWidth));
+        newY = Math.max(0, Math.min(newY, canvasRect.height - draggedElement.offsetHeight));
+
+        draggedElement.style.left = newX + 'px';
+        draggedElement.style.top = newY + 'px';
+        draggedElement.style.transform = 'none';
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (draggedElement) {
+        draggedElement.style.cursor = 'move';
+        draggedElement = null;
+      }
+    });
+
+    function changeFontSize(size) {
+      currentFontSize = parseInt(size);
+      document.getElementById('fontSizeDisplay').textContent = currentFontSize + 'px';
+      if (adminNameElement) {
+        adminNameElement.style.fontSize = currentFontSize + 'px';
+      }
+    }
+
+    function increaseFontSize() {
+      changeFontSize(Math.min(72, currentFontSize + 2));
+      document.getElementById('fontSizeSlider').value = currentFontSize;
+    }
+
+    function decreaseFontSize() {
+      changeFontSize(Math.max(12, currentFontSize - 2));
+      document.getElementById('fontSizeSlider').value = currentFontSize;
+    }
+
+    function changeTextColor(color) {
+      currentTextColor = color;
+      document.getElementById('textColorDisplay').textContent = color;
+      if (adminNameElement) {
+        adminNameElement.style.color = color;
+      }
+    }
+
+    async function saveClientConfig() {
+      if (!selectedClientId || !adminPdfData || !adminNameElement) {
+        showToast('⚠️ Configure o PDF e posicione o nome primeiro');
+        return;
+      }
+
+      const btn = document.getElementById('saveConfigBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span> Salvando...';
+
+      const canvasRect = document.getElementById('adminCanvas').getBoundingClientRect();
+      const elementRect = adminNameElement.getBoundingClientRect();
+      
+      const position = {
+        x: elementRect.left - canvasRect.left,
+        y: elementRect.top - canvasRect.top
+      };
+
+      try {
+        await updateClientInDB(selectedClientId, {
+          pdf_data: adminPdfData,
+          name_position: JSON.stringify(position),
+          font_size: currentFontSize,
+          text_color: currentTextColor
+        });
+
+        await loadClients();
+        showToast('✅ Configuração salva com sucesso!');
+      } catch (error) {
+        showToast('❌ Erro ao salvar configuração');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Salvar Configuração';
+      }
+    }
+
+    function testPreview() {
+      if (adminNameElement) {
+        const originalText = adminNameElement.textContent;
+        adminNameElement.textContent = 'João da Silva';
+        
+        setTimeout(() => {
+          adminNameElement.textContent = originalText;
+        }, 2000);
+      }
+    }
+
+    async function loadAdminCanvas(client) {
+      adminPdfData = client.pdf_data;
+      currentFontSize = client.font_size || 24;
+      currentTextColor = client.text_color || '#1a1a2e';
+      
+      document.getElementById('fontSizeSlider').value = currentFontSize;
+      document.getElementById('fontSizeDisplay').textContent = currentFontSize + 'px';
+      document.getElementById('textColorPicker').value = currentTextColor;
+      document.getElementById('textColorDisplay').textContent = currentTextColor;
+      
+      await renderAdminPdf();
+      createNameElement();
+      
+      const position = JSON.parse(client.name_position || '{"x": 297, "y": 400}');
+      adminNameElement.style.left = position.x + 'px';
+      adminNameElement.style.top = position.y + 'px';
+      adminNameElement.style.transform = 'none';
+    }
+
+    // ========== CLIENT FUNCTIONS ==========
+    let isDownloading = false;
+
+    async function updateClientStats() {
+      try {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('id', selectedClientId)
+          .single();
+
+        if (error || !data) return;
+
+        const generated = data.invites_generated || 0;
+        const limit = data.invites_limit || 50;
+        const remaining = Math.max(0, limit - generated);
+        const isActive = data.token_active !== false;
+        const progress = Math.min(100, (generated / limit) * 100);
+
+        const statsHTML = `
+          <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px;">
+              <div style="text-align: center;">
+                <p style="margin: 0; font-size: 12px; color: #6b7280;">Gerados</p>
+                <p style="margin: 4px 0 0 0; font-size: 24px; font-weight: 700; color: #007f9f;">${generated}</p>
+              </div>
+              <div style="text-align: center;">
+                <p style="margin: 0; font-size: 12px; color: #6b7280;">Limite</p>
+                <p style="margin: 4px 0 0 0; font-size: 24px; font-weight: 700; color: #1a1a2e;">${limit}</p>
+              </div>
+              <div style="text-align: center;">
+                <p style="margin: 0; font-size: 12px; color: #6b7280;">Restantes</p>
+                <p style="margin: 4px 0 0 0; font-size: 24px; font-weight: 700; color: ${remaining > 0 ? '#10b981' : '#ef4444'};">${remaining}</p>
+              </div>
+            </div>
+            <div style="background: #e5e7eb; height: 12px; border-radius: 6px; overflow: hidden;">
+              <div style="background: ${remaining > 0 ? 'linear-gradient(90deg, #007f9f 0%, #10b981 100%)' : '#ef4444'}; height: 100%; width: ${progress}%; transition: width 0.3s ease;"></div>
+            </div>
+            ${!isActive ? '<div style="margin-top: 12px; padding: 12px; background: #fee2e2; border-radius: 8px; text-align: center;"><p style="margin: 0; color: #dc2626; font-weight: 600;">⚠️ Token expirado - limite atingido</p></div>' : ''}
+          </div>
+        `;
+
+        document.getElementById('clientStatsContainer').innerHTML = statsHTML;
+
+        const input = document.getElementById('guestNameInput');
+        const button = document.getElementById('downloadBtn');
+        
+        if (!isActive || remaining <= 0) {
+          input.disabled = true;
+          input.placeholder = 'Limite de convites atingido';
+          button.disabled = true;
+        } else {
+          input.disabled = false;
+          input.placeholder = 'Nome do Convidado';
+          button.disabled = false;
+        }
+      } catch (error) {
+        console.error('Erro ao atualizar stats:', error);
+      }
+    }
+
+    async function updateClientPreview() {
+      try {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('id', selectedClientId)
+          .single();
+
+        if (error || !data) return;
+
+        const canvas = document.getElementById('clientCanvas');
+        canvas.innerHTML = '';
+        
+        if (!data.pdf_data || data.pdf_data === '') {
+          canvas.innerHTML = '<div class="empty-state"><h3>Aguardando configuração</h3><p>O administrador ainda não configurou seu convite</p></div>';
+          return;
+        }
+
+        const pdfBytes = Uint8Array.from(atob(data.pdf_data), c => c.charCodeAt(0));
+        
+        const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+        
+        const scale = 1.5;
+        const viewport = page.getViewport({scale: scale});
+        
+        const renderCanvas = document.createElement('canvas');
+        const context = renderCanvas.getContext('2d');
+        renderCanvas.width = viewport.width;
+        renderCanvas.height = viewport.height;
+        
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport
+        };
+        
+        await page.render(renderContext).promise;
+        
+        const img = document.createElement('img');
+        img.className = 'canvas-bg';
+        img.src = renderCanvas.toDataURL('image/png');
+        canvas.appendChild(img);
+        
+        const position = JSON.parse(data.name_position || '{"x": 297, "y": 400}');
+        
+        const nameEl = document.createElement('div');
+        nameEl.className = 'text-element';
+        nameEl.textContent = '{NOME DO CONVIDADO}';
+        nameEl.style.position = 'absolute';
+        nameEl.style.left = position.x + 'px';
+        nameEl.style.top = position.y + 'px';
+        nameEl.style.fontSize = (data.font_size || 24) + 'px';
+        nameEl.style.color = data.text_color || '#1a1a2e';
+        nameEl.style.zIndex = '10';
+        nameEl.style.pointerEvents = 'none';
+        
+        canvas.appendChild(nameEl);
+      } catch (error) {
+        console.error('Erro ao renderizar preview:', error);
+        const canvas = document.getElementById('clientCanvas');
+        canvas.innerHTML = '<div class="empty-state"><h3>Erro ao carregar preview</h3></div>';
+      }
+    }
+
+    async function downloadInvite() {
+      const guestName = document.getElementById('guestNameInput').value.trim();
+      const btn = document.getElementById('downloadBtn');
+      
+      if (!guestName) {
+        showToast('⚠️ Digite um nome');
+        return;
+      }
+
+      if (isDownloading) return;
+      isDownloading = true;
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span> Gerando PDF...';
+
+      try {
+        const { data: client, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('id', selectedClientId)
+          .single();
+
+        if (error || !client) {
+          showToast('❌ Erro ao buscar dados');
+          return;
+        }
+
+        const generated = client.invites_generated || 0;
+        const limit = client.invites_limit || 50;
+        const isActive = client.token_active !== false;
+
+        if (!isActive || generated >= limit) {
+          showToast('❌ Limite de convites atingido!');
+          return;
+        }
+
+        await generatePdfWithName(client, guestName);
+
+        const newGenerated = generated + 1;
+        const shouldExpire = newGenerated >= limit;
+
+        await updateClientInDB(selectedClientId, {
+          invites_generated: newGenerated,
+          token_active: !shouldExpire
+        });
+
+        document.getElementById('guestNameInput').value = '';
+        await updateClientStats();
+        
+        showToast(`✅ Convite baixado! (${newGenerated}/${limit})`);
+        
+        if (shouldExpire) {
+          showToast('⚠️ Limite atingido - token expirado');
+        }
+      } catch (error) {
+        console.error('Erro ao baixar:', error);
+        showToast('❌ Erro ao gerar convite');
+      } finally {
+        isDownloading = false;
+        btn.disabled = false;
+        btn.textContent = '📥 Baixar Convite em PDF';
+      }
+    }
+
+    async function generatePdfWithName(client, guestName) {
+      if (!client.pdf_data) {
+        throw new Error('PDF não configurado');
+      }
+
+      const pdfBytes = Uint8Array.from(atob(client.pdf_data), c => c.charCodeAt(0));
+      const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+      
+      const pages = pdfDoc.getPages();
+      const firstPage = pages[0];
+      
+      const position = JSON.parse(client.name_position || '{"x": 297, "y": 400}');
+      const fontSize = client.font_size || 24;
+      const textColor = client.text_color || '#1a1a2e';
+      
+      const r = parseInt(textColor.slice(1, 3), 16) / 255;
+      const g = parseInt(textColor.slice(3, 5), 16) / 255;
+      const b = parseInt(textColor.slice(5, 7), 16) / 255;
+      
+      const { height } = firstPage.getSize();
+      const yPos = height - position.y - fontSize;
+      
+      firstPage.drawText(guestName, {
+        x: position.x,
+        y: yPos,
+        size: fontSize,
+        color: PDFLib.rgb(r, g, b)
+      });
+      
+      const modifiedPdfBytes = await pdfDoc.save();
+      const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `convite_${guestName.replace(/\s+/g, '_')}.pdf`;
+      link.click();
+      
+      URL.revokeObjectURL(url);
+    }
+
+    // ========== UTILITY FUNCTIONS ==========
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    // Initialize on load
+    window.addEventListener('load', () => {
+      initSupabase();
+    });
   </script>
-</body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ac3375da125c13d',t:'MTc2NTQzNzU5My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
