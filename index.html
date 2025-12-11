@@ -1,1985 +1,2173 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="h-full">
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Convites - Supabase</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <title>AdKira Check-In</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
   <style>
     body {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #007f9f 0%, #005f7f 100%);
-      height: 100%;
-      overflow: auto;
     }
-
-    html {
-      height: 100%;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    /* ========== TOP MENU ========== */
-    .top-menu {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-      padding: 16px 32px;
-    }
-
-    .menu-content {
-      max-width: 1400px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .menu-logo {
-      font-size: 24px;
-      font-weight: 700;
-      color: #007f9f;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .menu-actions {
-      display: flex;
-      gap: 12px;
-    }
-
-    .btn-menu {
-      padding: 10px 20px;
-      background: #007f9f;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .btn-menu:hover {
-      background: #005f7f;
-      transform: translateY(-2px);
-    }
-
-    .btn-menu.outline {
-      background: transparent;
-      color: #007f9f;
-      border: 2px solid #007f9f;
-    }
-
-    .btn-menu.outline:hover {
-      background: #e6f7fb;
-    }
-
-    /* ========== HOME SCREEN ========== */
-    #homeScreen {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: calc(100vh - 64px);
-      padding: 20px;
-    }
-
-    .home-container {
-      background: white;
-      border-radius: 16px;
-      padding: 48px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-      max-width: 500px;
-      width: 100%;
-      text-align: center;
-    }
-
-    .home-container h1 {
-      margin: 0 0 12px 0;
-      font-size: 36px;
-      font-weight: 700;
-      color: #1a1a2e;
-    }
-
-    .home-container p {
-      margin: 0 0 32px 0;
-      font-size: 16px;
-      color: #6b7280;
-      line-height: 1.6;
-    }
-
-    .home-form {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    .home-form input {
-      padding: 16px 20px;
-      border: 2px solid #e5e7eb;
-      border-radius: 8px;
-      font-size: 16px;
-      font-family: inherit;
-      transition: border-color 0.2s ease;
-    }
-
-    .home-form input:focus {
-      outline: none;
-      border-color: #007f9f;
-    }
-
-    .home-form button {
-      padding: 18px;
-      background: linear-gradient(135deg, #007f9f 0%, #005f7f 100%);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 18px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .home-form button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-    }
-
-    .home-form button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    /* ========== LOGIN SCREEN ========== */
-    #loginScreen {
-      display: none;
-      align-items: center;
-      justify-content: center;
-      min-height: calc(100vh - 64px);
-      padding: 20px;
-    }
-
-    .login-container {
-      background: white;
-      border-radius: 16px;
-      padding: 48px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-      max-width: 450px;
-      width: 100%;
-    }
-
-    .login-container h1 {
-      margin: 0 0 12px 0;
-      font-size: 32px;
-      font-weight: 700;
-      color: #1a1a2e;
-      text-align: center;
-    }
-
-    .login-container p {
-      margin: 0 0 32px 0;
-      font-size: 15px;
-      color: #6b7280;
-      text-align: center;
-    }
-
-    .login-form {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    .btn-login {
-      padding: 16px;
-      background: linear-gradient(135deg, #007f9f 0%, #005f7f 100%);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      margin-top: 12px;
-    }
-
-    .btn-login:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-    }
-
-    .btn-secondary {
-      padding: 12px 24px;
-      background: #f3f4f6;
-      color: #374151;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .btn-secondary:hover {
-      background: #e5e7eb;
-    }
-
-    /* ========== ADMIN SCREEN ========== */
-    #adminScreen {
-      display: none;
-      min-height: calc(100vh - 64px);
-      padding: 32px;
-    }
-
-    .admin-header {
-      background: white;
-      border-radius: 16px;
-      padding: 24px 32px;
-      margin-bottom: 24px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .admin-header h1 {
-      margin: 0;
-      font-size: 28px;
-      font-weight: 700;
-      color: #1a1a2e;
-    }
-
-    .btn-logout {
-      padding: 12px 24px;
-      background: #ef4444;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .btn-logout:hover {
-      background: #dc2626;
-      transform: translateY(-2px);
-    }
-
-    .admin-grid {
-      display: grid;
-      grid-template-columns: 1fr 2fr;
-      gap: 24px;
-    }
-
-    .admin-panel {
-      background: white;
-      border-radius: 16px;
-      padding: 32px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .admin-panel h2 {
-      margin: 0 0 24px 0;
-      font-size: 20px;
-      font-weight: 700;
-      color: #1a1a2e;
-    }
-
-    .token-generator {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .token-input-group {
-      display: flex;
-      gap: 12px;
-    }
-
-    .token-input-group input {
-      flex: 1;
-      padding: 12px 16px;
-      border: 2px solid #e5e7eb;
-      border-radius: 8px;
-      font-size: 14px;
-      font-family: inherit;
-    }
-
-    .token-input-group input:focus {
-      outline: none;
-      border-color: #007f9f;
-    }
-
-    .btn-action {
-      padding: 12px 24px;
-      background: #007f9f;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      white-space: nowrap;
-    }
-
-    .btn-action:hover {
-      background: #005f7f;
-      transform: translateY(-2px);
-    }
-
-    .btn-action:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .clients-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-
-    .client-card {
-      padding: 16px;
-      background: #f9fafb;
-      border: 2px solid #e5e7eb;
-      border-radius: 12px;
-      transition: all 0.2s ease;
-      cursor: pointer;
-    }
-
-    .client-card:hover {
-      border-color: #007f9f;
-      background: #e6f7fb;
-    }
-
-    .client-card.selected {
-      border-color: #007f9f;
-      background: #e6f7fb;
-      box-shadow: 0 0 0 3px rgba(0, 127, 159, 0.1);
-    }
-
-    .client-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .client-name {
-      font-size: 16px;
-      font-weight: 600;
-      color: #1a1a2e;
-    }
-
-    .client-token {
-      font-size: 13px;
-      color: #007f9f;
-      font-family: 'Courier New', monospace;
-      background: white;
-      padding: 4px 8px;
-      border-radius: 4px;
-    }
-
-    .client-stats {
-      display: flex;
-      gap: 16px;
-      font-size: 13px;
-      color: #6b7280;
-    }
-
-    .client-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .btn-small {
-      padding: 6px 12px;
-      font-size: 12px;
-      font-weight: 600;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .btn-edit {
-      background: #10b981;
-      color: white;
-    }
-
-    .btn-edit:hover {
-      background: #059669;
-    }
-
-    .btn-delete {
-      background: #ef4444;
-      color: white;
-    }
-
-    .btn-delete:hover {
-      background: #dc2626;
-    }
-
-    .btn-copy {
-      background: #007f9f;
-      color: white;
-    }
-
-    .btn-copy:hover {
-      background: #005f7f;
-    }
-
-    .client-editor {
-      background: #f9fafb;
-      border-radius: 12px;
-      padding: 24px;
-      margin-top: 24px;
-    }
-
-    .client-editor h3 {
-      margin: 0 0 20px 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: #1a1a2e;
-    }
-
-    .upload-section {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .upload-box {
-      position: relative;
-      border: 2px dashed #d1d5db;
-      border-radius: 8px;
-      padding: 24px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      background: white;
-    }
-
-    .upload-box:hover {
-      border-color: #007f9f;
-      background: #e6f7fb;
-    }
-
-    .upload-box input {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      top: 0;
-      left: 0;
-      opacity: 0;
-      cursor: pointer;
-    }
-
-    .upload-label {
-      font-size: 14px;
-      color: #6b7280;
-      font-weight: 500;
-    }
-
-    .pdf-preview {
-      margin-top: 16px;
-      padding: 16px;
-      background: #f0fdf4;
-      border: 2px solid #bbf7d0;
-      border-radius: 8px;
-    }
-
-    .pdf-preview p {
-      margin: 0;
-      font-size: 14px;
-      color: #15803d;
-      font-weight: 600;
-    }
-
-    .canvas-editor {
-      margin-top: 24px;
-      background: white;
-      border-radius: 12px;
-      padding: 24px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .canvas-editor h4 {
-      margin: 0 0 16px 0;
-      font-size: 16px;
-      font-weight: 600;
-      color: #1a1a2e;
-    }
-
-    #adminCanvas {
-      width: 595px;
-      height: 842px;
-      background: #ffffff;
-      position: relative;
-      overflow: hidden;
-      margin: 0 auto;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      border-radius: 8px;
-    }
-
-    .text-element {
-      position: absolute;
-      cursor: move;
-      padding: 8px 12px;
-      background: transparent;
-      border: 2px solid transparent;
-      border-radius: 4px;
-      font-size: 16px;
-      color: #1a1a2e;
-      user-select: none;
-      transition: all 0.2s ease;
-      min-width: 60px;
-      text-align: center;
-      white-space: nowrap;
-      line-height: 1.1;
-    }
-
-    .text-element:hover {
-      background: rgba(0, 127, 159, 0.15);
-      border-color: #007f9f;
-    }
-
-    .text-element.selected {
-      background: rgba(0, 127, 159, 0.2);
-      border-color: #007f9f;
-      box-shadow: 0 0 0 3px rgba(0, 127, 159, 0.2);
-    }
-
-    /* ========== CLIENT SCREEN ========== */
-    #clientScreen {
-      display: none;
-      min-height: calc(100vh - 64px);
-      padding: 32px;
-    }
-
-    .client-header {
-      background: white;
-      border-radius: 16px;
-      padding: 24px 32px;
-      margin-bottom: 24px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .client-header h1 {
-      margin: 0;
-      font-size: 28px;
-      font-weight: 700;
-      color: #1a1a2e;
-    }
-
-    .client-info {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .client-welcome {
-      text-align: right;
-    }
-
-    .client-welcome p {
-      margin: 0;
-      font-size: 14px;
-      color: #6b7280;
-    }
-
-    .client-welcome h2 {
-      margin: 4px 0 0 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: #007f9f;
-    }
-
-    .client-content {
-      display: grid;
-      grid-template-columns: 1fr 2fr;
-      gap: 24px;
-    }
-
-    .client-panel {
-      background: white;
-      border-radius: 16px;
-      padding: 32px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .client-panel h3 {
-      margin: 0 0 20px 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: #1a1a2e;
-    }
-
-    .download-form {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .download-form input {
-      padding: 12px 16px;
-      border: 2px solid #e5e7eb;
-      border-radius: 8px;
-      font-size: 14px;
-      font-family: inherit;
-    }
-
-    .download-form input:focus {
-      outline: none;
-      border-color: #007f9f;
-    }
-
-    .download-form input:disabled {
-      background: #f3f4f6;
-      cursor: not-allowed;
-    }
-
-    .client-canvas-area {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-    }
-
-    #clientCanvas {
-      width: 595px;
-      height: 842px;
-      background: #ffffff;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      border-radius: 8px;
-    }
-
-    .canvas-bg {
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 0;
-      pointer-events: none;
-      object-fit: contain;
-    }
-
-    .btn-download {
-      padding: 12px 24px;
-      background: #10b981;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .btn-download:hover {
-      background: #059669;
-      transform: translateY(-2px);
-    }
-
-    .btn-download:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    /* Toast messages */
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes fall {
+      to {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+      }
+    }
+    
+    .animate-slide-in {
+      animation: slideIn 0.4s ease-out;
+    }
+    
     .toast {
       position: fixed;
       top: 20px;
       right: 20px;
-      background: white;
-      padding: 16px 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      z-index: 10000;
-      max-width: 300px;
+      padding: 16px 24px;
+      border-radius: 12px;
       font-size: 14px;
-      color: #1a1a2e;
-      animation: slideIn 0.3s ease;
+      z-index: 10000;
+      animation: slideIn 0.3s ease-out;
+      max-width: 90%;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
     }
 
-    @keyframes slideIn {
-      from {
-        transform: translateX(400px);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-
-    /* Modal */
-    .modal {
+    .modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.85);
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 10000;
-      padding: 20px;
+      z-index: 9000;
+      padding: 16px;
+      animation: fadeIn 0.2s ease-out;
     }
 
     .modal-content {
-      background: white;
-      border-radius: 16px;
-      padding: 32px;
-      max-width: 500px;
+      animation: slideIn 0.3s ease-out;
+      max-width: 600px;
       width: 100%;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      max-height: 90%;
+      overflow-y: auto;
     }
 
-    .modal-content h3 {
-      margin: 0 0 16px 0;
-      font-size: 20px;
-      font-weight: 700;
-      color: #1a1a2e;
+    #qr-reader {
+      width: 100% !important;
+      border: none !important;
     }
 
-    .modal-content p {
-      margin: 0 0 24px 0;
-      font-size: 14px;
-      color: #6b7280;
+    #qr-reader__scan_region {
+      border: 3px solid #007f9f !important;
     }
 
-    .modal-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
+    .tab-button {
+      transition: all 0.3s ease;
+      border-bottom: 3px solid transparent;
     }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
+    .tab-button.active {
+      border-bottom-color: #007f9f;
     }
 
-    ::-webkit-scrollbar-track {
-      background: #f1f1f1;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: #007f9f;
-      border-radius: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #005f7f;
-    }
-
-    /* Empty state */
-    .empty-state {
-      text-align: center;
-      padding: 48px 24px;
-      color: #9ca3af;
-    }
-
-    .empty-state h3 {
-      margin: 0 0 8px 0;
-      font-size: 18px;
-      color: #6b7280;
-    }
-
-    .empty-state p {
-      margin: 0;
-      font-size: 14px;
+    .confetti {
+      position: fixed;
+      animation: fall 3s linear;
     }
 
     .loading-spinner {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
       border: 3px solid rgba(255,255,255,0.3);
+      border-top: 3px solid white;
       border-radius: 50%;
-      border-top-color: white;
-      animation: spin 0.8s linear infinite;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
     }
 
     @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    @media (max-width: 1200px) {
-      .admin-grid, .client-content {
-        grid-template-columns: 1fr;
-      }
-
-      #adminCanvas, #clientCanvas {
-        width: 100%;
-        height: auto;
-        aspect-ratio: 210/297;
-      }
-    }
-
-    .section {
-      margin-bottom: 20px;
-    }
-
-    .section label {
-      display: block;
-      font-size: 14px;
-      font-weight: 600;
-      color: #374151;
-      margin-bottom: 8px;
-    }
-
-    .section input[type="range"] {
-      width: 100%;
-      margin-top: 8px;
-    }
-
-    .size-controls {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-top: 8px;
-    }
-
-    .size-controls span {
-      font-weight: 600;
-      color: #374151;
-      min-width: 50px;
-      text-align: center;
-    }
-
-    input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
-      background: #e5e7eb;
-      border-radius: 4px;
-      height: 6px;
-      outline: none;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #007f9f;
-      cursor: pointer;
-    }
-
-    input[type="range"]::-moz-range-thumb {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #007f9f;
-      cursor: pointer;
-      border: none;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .form-group label {
-      font-size: 14px;
-      font-weight: 600;
-      color: #374151;
-    }
-
-    .form-group input {
-      padding: 12px 16px;
-      border: 2px solid #e5e7eb;
-      border-radius: 8px;
-      font-size: 14px;
-      font-family: inherit;
-    }
-
-    .form-group input:focus {
-      outline: none;
-      border-color: #007f9f;
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
   <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
-  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
-  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
  </head>
- <body><!-- ========== TOP MENU ========== -->
-  <div class="top-menu" id="topMenu">
-   <div class="menu-content">
-    <div class="menu-logo">
-     🎉 Sistema de Convites
-    </div>
-    <div class="menu-actions"><button class="btn-menu outline" onclick="showAdminLogin()">🔐 Login Admin</button>
-    </div>
-   </div>
-  </div><!-- ========== HOME SCREEN ========== -->
-  <div id="homeScreen">
-   <div class="home-container">
-    <h1>🎊 Bem-vindo!</h1>
-    <p>Digite seu token de acesso para visualizar e baixar seus convites personalizados</p>
-    <div class="home-form"><input type="text" id="homeClientToken" placeholder="Digite seu token único" onkeypress="if(event.key==='Enter') loginClientFromHome()"> <button onclick="loginClientFromHome()" id="clientLoginBtn">Acessar Meus Convites</button>
-    </div>
-   </div>
-  </div><!-- ========== LOGIN SCREEN (Admin) ========== -->
-  <div id="loginScreen">
-   <div class="login-container">
-    <h1>🔐 Login do Admin</h1>
-    <p>Acesse o painel administrativo</p>
-    <div class="login-form">
-     <div class="form-group"><label for="adminUsername">Username</label> <input type="text" id="adminUsername" placeholder="Digite seu username" onkeypress="if(event.key==='Enter') document.getElementById('adminPassword').focus()">
-     </div>
-     <div class="form-group"><label for="adminPassword">Senha</label> <input type="password" id="adminPassword" placeholder="Digite sua senha" onkeypress="if(event.key==='Enter') loginAdmin()">
-     </div><button class="btn-login" onclick="loginAdmin()" id="adminLoginBtn">Entrar como Admin</button> <button class="btn-secondary" onclick="backToHome()" style="width: 100%; margin-top: 8px;">← Voltar</button>
-    </div>
-   </div>
-  </div><!-- ========== ADMIN SCREEN ========== -->
-  <div id="adminScreen">
-   <div class="admin-header">
-    <h1>🎯 Painel do Administrador</h1>
-    <div style="display: flex; align-items: center; gap: 16px;">
-     <div style="text-align: right;">
-      <p style="margin: 0; font-size: 12px; color: #6b7280;">Logado como:</p>
-      <p style="margin: 0; font-size: 14px; font-weight: 600; color: #667eea;" id="adminUsernameDisplay">Admin</p>
-     </div><button class="btn-logout" onclick="logout()">Sair</button>
-    </div>
-   </div>
-   <div class="admin-grid"><!-- Left Panel: Token Generator & Client List -->
-    <div class="admin-panel">
-     <h2>Gerenciar Clientes</h2>
-     <div class="token-generator">
-      <div class="token-input-group"><input type="text" id="clientNameInput" placeholder="Nome do Cliente"> <button class="btn-action" onclick="createClient()" id="createClientBtn">+ Criar Cliente</button>
-      </div>
-     </div>
-     <div id="clientsList" class="clients-list" style="margin-top: 24px;">
-      <div class="empty-state">
-       <h3>Carregando...</h3>
-      </div>
-     </div>
-    </div><!-- Right Panel: Client Editor -->
-    <div class="admin-panel">
-     <h2>Editor de Convite</h2>
-     <div id="clientEditorEmpty" class="empty-state">
-      <h3>Nenhum cliente selecionado</h3>
-      <p>Selecione um cliente na lista ao lado para editar seu convite</p>
-     </div>
-     <div id="clientEditor" class="client-editor" style="display: none;">
-      <h3 id="editingClientName">Cliente</h3>
-      <div class="upload-section"><label class="upload-box"> <input type="file" id="adminPdfInput" accept="application/pdf" onchange="handleAdminPdfUpload(event)">
-        <div class="upload-label">
-         📄 Upload do PDF Base
-        </div></label>
-       <div id="pdfPreview" class="pdf-preview" style="display: none;">
-        <p>✅ PDF carregado com sucesso!</p>
-       </div>
-      </div>
-      <div class="canvas-editor" id="canvasEditor" style="display: none;">
-       <h4>Posicione o nome do convidado</h4>
-       <div class="section"><label>Tamanho da Fonte</label>
-        <div class="size-controls"><button class="btn-secondary" onclick="decreaseFontSize()">A-</button> <span id="fontSizeDisplay">24px</span> <button class="btn-secondary" onclick="increaseFontSize()">A+</button>
-        </div><input type="range" id="fontSizeSlider" min="12" max="72" value="24" oninput="changeFontSize(this.value)">
-       </div>
-       <div class="section"><label>Cor do Texto</label>
-        <div style="display: flex; gap: 12px; align-items: center;"><input type="color" id="textColorPicker" value="#1a1a2e" onchange="changeTextColor(this.value)" style="width: 60px; height: 40px; border: 2px solid #d1d5db; border-radius: 8px; cursor: pointer;"> <span id="textColorDisplay" style="font-weight: 600; color: #374151;">#1a1a2e</span>
-        </div>
-       </div>
-       <div id="adminCanvas"></div>
-       <div style="margin-top: 20px; display: flex; gap: 12px;"><button class="btn-action" onclick="saveClientConfig()" style="flex: 1;" id="saveConfigBtn">💾 Salvar Configuração</button> <button class="btn-secondary" onclick="testPreview()">👁️ Testar Preview</button>
-       </div>
-      </div>
-     </div>
-    </div>
-   </div>
-  </div><!-- ========== CLIENT SCREEN ========== -->
-  <div id="clientScreen">
-   <div class="client-header">
-    <h1>🎊 Meu Convite Personalizado</h1>
-    <div class="client-info">
-     <div class="client-welcome">
-      <p>Bem-vindo(a),</p>
-      <h2 id="clientNameDisplay">Cliente</h2>
-     </div><button class="btn-logout" onclick="logout()">Sair</button>
-    </div>
-   </div>
-   <div class="client-content"><!-- Left Panel: Download Form -->
-    <div class="client-panel">
-     <h3>Baixar Convite</h3>
-     <div id="clientStatsContainer"></div>
-     <div class="download-form"><input type="text" id="guestNameInput" placeholder="Nome do Convidado" onkeypress="if(event.key==='Enter') downloadInvite()"> <button class="btn-download" onclick="downloadInvite()" id="downloadBtn"> 📥 Baixar Convite em PDF </button>
-     </div>
-    </div><!-- Right Panel: Preview -->
-    <div class="client-panel">
-     <h3>Preview do Convite</h3>
-     <div class="client-canvas-area">
-      <div id="clientCanvas">
-       <div class="empty-state">
-        <h3>Carregando...</h3>
-       </div>
-      </div>
-     </div>
-    </div>
+ <body class="h-full" style="background-color: #0a1929;">
+  <div id="app" class="h-full w-full overflow-auto">
+   <div class="flex items-center justify-center h-full">
+    <div class="loading-spinner"></div>
    </div>
   </div>
   <script>
-    // ========== SUPABASE CONFIG (PRÉ-CONFIGURADO) ==========
     const SUPABASE_URL = 'https://sekkrboqttxpathyxcun.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNla2tyYm9xdHR4cGF0aHl4Y3VuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNjY0OTYsImV4cCI6MjA3OTc0MjQ5Nn0.JqrLUWHs3-jyUNT-0s2DwiyeDjK0uv6uIh0ip1qPWBA';
-    
-    let supabase = null;
-    let allClients = [];
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const config = {
+      primary_color: "#007f9f",
+      background_color: "#0a1929",
+      card_color: "#132f4c",
+      text_color: "#ffffff",
+      success_color: "#10b981",
+      app_title: "AdKira Check-In"
+    };
+
+    let clients = [];
+    let guests = [];
+    let checkins = [];
+    let currentView = 'login';
     let currentUser = null;
-    let selectedClientId = null;
-    
-    const ADMIN_USERNAME = "Adkira2025";
-    const ADMIN_PASSWORD = "2026adkira@!!";
+    let currentTab = 'home';
+    let html5QrCode = null;
+    let offlineQueue = [];
+    let isOnline = navigator.onLine;
 
-    // Initialize Supabase
-    function initSupabase() {
-      try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        console.log('✅ Supabase conectado!');
-      } catch (error) {
-        console.error('❌ Erro ao conectar Supabase:', error);
-        showToast('❌ Erro ao conectar com banco de dados');
-      }
-    }
+    const STORAGE_KEYS = {
+      ADMIN_SESSION: 'adkira_admin_session',
+      CLIENT_SESSION: 'adkira_client_session',
+      OFFLINE_QUEUE: 'adkira_offline_queue'
+    };
 
-    // Configure PDF.js worker
-    if (typeof pdfjsLib !== 'undefined') {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
+    // =============== SUPABASE FUNCTIONS ===============
 
-    // ========== SUPABASE OPERATIONS ==========
     async function loadClients() {
-      if (!supabase) return;
-
       try {
         const { data, error } = await supabase
           .from('clients')
           .select('*')
+          .eq('deleted', false)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-
-        allClients = data || [];
-        
-        if (currentUser && currentUser.role === 'admin') {
-          renderClientsList();
-        }
+        clients = data || [];
+        return true;
       } catch (error) {
         console.error('Erro ao carregar clientes:', error);
-        showToast('❌ Erro ao carregar clientes');
+        return false;
       }
     }
 
-    async function createClientInDB(clientData) {
-      if (!supabase) return null;
+    async function loadGuests() {
+      try {
+        const { data, error } = await supabase
+          .from('guests')
+          .select('*')
+          .eq('deleted', false)
+          .order('created_at', { ascending: false });
 
+        if (error) throw error;
+        guests = data || [];
+        return true;
+      } catch (error) {
+        console.error('Erro ao carregar convidados:', error);
+        return false;
+      }
+    }
+
+    async function loadCheckins() {
+      try {
+        const { data, error } = await supabase
+          .from('checkins')
+          .select('*')
+          .order('checked_in_at', { ascending: false });
+
+        if (error) throw error;
+        checkins = data || [];
+        return true;
+      } catch (error) {
+        console.error('Erro ao carregar check-ins:', error);
+        return false;
+      }
+    }
+
+    async function loadAllData() {
+      const results = await Promise.all([
+        loadClients(),
+        loadGuests(),
+        loadCheckins()
+      ]);
+      return results.every(r => r === true);
+    }
+
+    async function validateAdminCredentials(username, password) {
+      try {
+        const { data, error } = await supabase
+          .from('admin_credentials')
+          .select('*')
+          .eq('username', username)
+          .eq('password', password)
+          .eq('active', true)
+          .single();
+
+        if (error || !data) return false;
+        return true;
+      } catch (error) {
+        console.error('Erro ao validar admin:', error);
+        return false;
+      }
+    }
+
+    async function createClient(clientData) {
       try {
         const { data, error } = await supabase
           .from('clients')
           .insert([clientData])
-          .select()
-          .single();
+          .select();
 
         if (error) throw error;
-
-        return data;
+        await loadClients();
+        return { success: true, data };
       } catch (error) {
         console.error('Erro ao criar cliente:', error);
-        throw error;
+        return { success: false, error };
       }
     }
 
-    async function updateClientInDB(clientId, updates) {
-      if (!supabase) return null;
-
+    async function updateClient(clientId, updates) {
       try {
         const { data, error } = await supabase
           .from('clients')
           .update(updates)
           .eq('id', clientId)
-          .select()
-          .single();
+          .select();
 
         if (error) throw error;
-
-        return data;
+        await loadClients();
+        return { success: true, data };
       } catch (error) {
         console.error('Erro ao atualizar cliente:', error);
-        throw error;
+        return { success: false, error };
       }
     }
 
-    async function deleteClientInDB(clientId) {
-      if (!supabase) return false;
-
+    async function deleteClient(clientId) {
       try {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('clients')
-          .delete()
-          .eq('id', clientId);
+          .update({ deleted: true, deleted_at: new Date().toISOString() })
+          .eq('id', clientId)
+          .select();
 
         if (error) throw error;
-
-        return true;
+        await loadClients();
+        return { success: true, data };
       } catch (error) {
         console.error('Erro ao deletar cliente:', error);
-        throw error;
+        return { success: false, error };
       }
     }
 
-    // ========== NAVIGATION FUNCTIONS ==========
-    function showAdminLogin() {
-      document.getElementById('homeScreen').style.display = 'none';
-      document.getElementById('loginScreen').style.display = 'flex';
-      document.getElementById('clientScreen').style.display = 'none';
-      document.getElementById('adminScreen').style.display = 'none';
-    }
+    async function restoreClient(clientId) {
+      try {
+        const { data, error } = await supabase
+          .from('clients')
+          .update({ deleted: false, deleted_at: null })
+          .eq('id', clientId)
+          .select();
 
-    function backToHome() {
-      document.getElementById('homeScreen').style.display = 'flex';
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('clientScreen').style.display = 'none';
-      document.getElementById('adminScreen').style.display = 'none';
-      
-      document.getElementById('adminUsername').value = '';
-      document.getElementById('adminPassword').value = '';
-    }
-
-    async function loginClientFromHome() {
-      const token = document.getElementById('homeClientToken').value.trim();
-      const btn = document.getElementById('clientLoginBtn');
-      
-      if (!token) {
-        showToast('⚠️ Por favor, digite um token');
-        return;
+        if (error) throw error;
+        await loadClients();
+        return { success: true, data };
+      } catch (error) {
+        console.error('Erro ao restaurar cliente:', error);
+        return { success: false, error };
       }
+    }
 
-      btn.disabled = true;
-      btn.innerHTML = '<span class="loading-spinner"></span> Verificando...';
-
+    async function loadDeletedClients() {
       try {
         const { data, error } = await supabase
           .from('clients')
           .select('*')
-          .eq('token', token)
-          .single();
+          .eq('deleted', true)
+          .order('deleted_at', { ascending: false });
 
-        if (error || !data) {
-          showToast('❌ Token inválido!');
-          btn.disabled = false;
-          btn.textContent = 'Acessar Meus Convites';
-          return;
-        }
-
-        currentUser = { role: 'client', clientId: data.id };
-        selectedClientId = data.id;
-        
-        document.getElementById('homeScreen').style.display = 'none';
-        document.getElementById('clientScreen').style.display = 'block';
-        document.getElementById('clientNameDisplay').textContent = data.name;
-        document.getElementById('topMenu').style.display = 'none';
-        
-        await updateClientStats();
-        await updateClientPreview();
-        showToast(`✅ Bem-vindo, ${data.name}!`);
+        if (error) throw error;
+        return data || [];
       } catch (error) {
-        console.error('Erro no login:', error);
-        showToast('❌ Erro ao fazer login');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Acessar Meus Convites';
+        console.error('Erro ao carregar clientes deletados:', error);
+        return [];
       }
     }
 
-    async function loginAdmin() {
-      const username = document.getElementById('adminUsername').value.trim();
-      const password = document.getElementById('adminPassword').value;
-      const btn = document.getElementById('adminLoginBtn');
+    async function createGuest(guestData) {
+      try {
+        const { data, error } = await supabase
+          .from('guests')
+          .insert([guestData])
+          .select();
+
+        if (error) throw error;
+        await loadGuests();
+        return { success: true, data };
+      } catch (error) {
+        console.error('Erro ao criar convidado:', error);
+        return { success: false, error };
+      }
+    }
+
+    async function deleteGuest(guestId) {
+      try {
+        const { data, error } = await supabase
+          .from('guests')
+          .update({ deleted: true, deleted_at: new Date().toISOString() })
+          .eq('id', guestId)
+          .select();
+
+        if (error) throw error;
+        await loadGuests();
+        return { success: true, data };
+      } catch (error) {
+        console.error('Erro ao deletar convidado:', error);
+        return { success: false, error };
+      }
+    }
+
+    async function restoreGuest(guestId) {
+      try {
+        const { data, error } = await supabase
+          .from('guests')
+          .update({ deleted: false, deleted_at: null })
+          .eq('id', guestId)
+          .select();
+
+        if (error) throw error;
+        await loadGuests();
+        return { success: true, data };
+      } catch (error) {
+        console.error('Erro ao restaurar convidado:', error);
+        return { success: false, error };
+      }
+    }
+
+    async function loadDeletedGuests() {
+      try {
+        const { data, error } = await supabase
+          .from('guests')
+          .select('*')
+          .eq('deleted', true)
+          .order('deleted_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+      } catch (error) {
+        console.error('Erro ao carregar convidados deletados:', error);
+        return [];
+      }
+    }
+
+    async function createCheckin(checkinData) {
+      try {
+        const { data, error } = await supabase
+          .from('checkins')
+          .insert([checkinData])
+          .select();
+
+        if (error) throw error;
+        await loadCheckins();
+        return { success: true, data };
+      } catch (error) {
+        console.error('Erro ao criar check-in:', error);
+        return { success: false, error };
+      }
+    }
+
+    async function deleteCheckin(checkinId) {
+      try {
+        const { error } = await supabase
+          .from('checkins')
+          .delete()
+          .eq('id', checkinId);
+
+        if (error) throw error;
+        await loadCheckins();
+        return { success: true };
+      } catch (error) {
+        console.error('Erro ao deletar check-in:', error);
+        return { success: false, error };
+      }
+    }
+
+    // =============== OFFLINE QUEUE ===============
+
+    function loadOfflineQueue() {
+      const saved = localStorage.getItem(STORAGE_KEYS.OFFLINE_QUEUE);
+      if (saved) {
+        offlineQueue = JSON.parse(saved);
+      }
+    }
+
+    function saveOfflineQueue() {
+      localStorage.setItem(STORAGE_KEYS.OFFLINE_QUEUE, JSON.stringify(offlineQueue));
+    }
+
+    async function syncOfflineQueue() {
+      if (offlineQueue.length === 0) return;
       
-      if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-        btn.disabled = true;
-        btn.innerHTML = '<span class="loading-spinner"></span> Entrando...';
-
-        currentUser = { role: 'admin', username: username };
-        
-        document.getElementById('homeScreen').style.display = 'none';
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('adminScreen').style.display = 'block';
-        document.getElementById('topMenu').style.display = 'none';
-        document.getElementById('adminUsernameDisplay').textContent = username;
-        
-        await loadClients();
-        showToast('✅ Login como Admin realizado!');
-
-        btn.disabled = false;
-        btn.textContent = 'Entrar como Admin';
+      showToast('🔄 Sincronizando ' + offlineQueue.length + ' check-ins offline...', 'info');
+      
+      const successfulSyncs = [];
+      
+      for (const checkinData of offlineQueue) {
+        const result = await createCheckin(checkinData);
+        if (result.success) {
+          successfulSyncs.push(checkinData.id);
+        }
+      }
+      
+      offlineQueue = offlineQueue.filter(item => !successfulSyncs.includes(item.id));
+      saveOfflineQueue();
+      
+      if (offlineQueue.length === 0) {
+        showToast('✅ Todos os check-ins foram sincronizados!', 'success');
       } else {
-        showToast('❌ Username ou senha incorretos!');
+        showToast('⚠️ ' + offlineQueue.length + ' check-ins ainda pendentes', 'warning');
       }
     }
 
-    function logout() {
-      currentUser = null;
-      selectedClientId = null;
-      
-      document.getElementById('adminScreen').style.display = 'none';
-      document.getElementById('clientScreen').style.display = 'none';
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('homeScreen').style.display = 'flex';
-      document.getElementById('topMenu').style.display = 'block';
-      
-      document.getElementById('adminUsername').value = '';
-      document.getElementById('adminPassword').value = '';
-      document.getElementById('homeClientToken').value = '';
-      
-      showToast('👋 Você saiu do sistema');
+    window.addEventListener('online', () => {
+      isOnline = true;
+      showToast('🌐 Conexão restaurada!', 'success');
+      syncOfflineQueue();
+    });
+
+    window.addEventListener('offline', () => {
+      isOnline = false;
+      showToast('📴 Modo offline ativado', 'warning');
+    });
+
+    // =============== UI HELPERS ===============
+
+    function showToast(message, type = 'success') {
+      const existingToast = document.querySelector('.toast');
+      if (existingToast) {
+        existingToast.remove();
+      }
+
+      const colors = {
+        success: '#10b981',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#3b82f6'
+      };
+
+      const toast = document.createElement('div');
+      toast.className = 'toast text-white font-semibold';
+      toast.style.backgroundColor = colors[type] || colors.info;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.remove();
+      }, 4000);
     }
 
-    // ========== ADMIN FUNCTIONS ==========
+    function generateId(prefix) {
+      return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    }
+
     function generateToken() {
       return 'TKN-' + Math.random().toString(36).substr(2, 9).toUpperCase();
     }
 
-    async function createClient() {
-      const name = document.getElementById('clientNameInput').value.trim();
-      const btn = document.getElementById('createClientBtn');
-      
-      if (!name) {
-        showToast('⚠️ Por favor, digite um nome');
-        return;
+    function saveSession(type, data) {
+      const key = type === 'admin' ? STORAGE_KEYS.ADMIN_SESSION : STORAGE_KEYS.CLIENT_SESSION;
+      localStorage.setItem(key, JSON.stringify(data));
+    }
+
+    function loadSession(type) {
+      const key = type === 'admin' ? STORAGE_KEYS.ADMIN_SESSION : STORAGE_KEYS.CLIENT_SESSION;
+      const data = localStorage.getItem(key);
+      return data ? JSON.parse(data) : null;
+    }
+
+    function clearSession(type) {
+      const key = type === 'admin' ? STORAGE_KEYS.ADMIN_SESSION : STORAGE_KEYS.CLIENT_SESSION;
+      localStorage.removeItem(key);
+    }
+
+    function clearAllSessions() {
+      clearSession('admin');
+      clearSession('client');
+    }
+
+    async function checkExistingSession() {
+      const adminSession = loadSession('admin');
+      if (adminSession) {
+        if (adminSession.username) {
+          try {
+            const { data, error } = await supabase
+              .from('admin_credentials')
+              .select('active')
+              .eq('username', adminSession.username)
+              .single();
+            
+            if (error || !data || !data.active) {
+              clearSession('admin');
+              showToast('⚠️ Sessão administrativa inválida. Faça login novamente.', 'warning');
+              return false;
+            }
+          } catch (e) {
+            console.log('Erro ao validar admin (modo offline)');
+          }
+        }
+        
+        currentUser = { type: 'admin', id: 'admin', name: 'Administrador' };
+        currentView = 'admin-dashboard';
+        await renderAdminDashboard();
+        return true;
       }
 
-      btn.disabled = true;
-      btn.innerHTML = '<span class="loading-spinner"></span>';
-
-      const token = generateToken();
-      
-      const newClient = {
-        name: name,
-        token: token,
-        pdf_data: '',
-        name_position: JSON.stringify({ x: 297, y: 400 }),
-        font_size: 24,
-        text_color: '#1a1a2e',
-        invites_limit: 50,
-        invites_generated: 0,
-        token_active: true
-      };
-
-      try {
-        await createClientInDB(newClient);
+      const clientSession = loadSession('client');
+      if (clientSession) {
         await loadClients();
         
-        document.getElementById('clientNameInput').value = '';
-        showToast(`✅ Cliente "${name}" criado!\nToken: ${token}`);
-      } catch (error) {
-        showToast('❌ Erro ao criar cliente');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '+ Criar Cliente';
+        const client = clients.find(c => c.id === clientSession.clientId);
+        
+        if (!client) {
+          clearSession('client');
+          showToast('⚠️ Sessão inválida. Faça login novamente.', 'warning');
+          return false;
+        }
+        
+        if (client.deleted) {
+          clearSession('client');
+          showToast('❌ Token desativado pelo administrador.', 'error');
+          return false;
+        }
+        
+        if (parseInt(client.expiry) < Date.now()) {
+          clearSession('client');
+          showToast('❌ Token expirado. Entre em contato com o administrador.', 'error');
+          return false;
+        }
+        
+        if (clientSession.token !== client.token) {
+          clearSession('client');
+          showToast('❌ Token alterado. Faça login novamente.', 'warning');
+          return false;
+        }
+
+        currentUser = { type: 'client', id: client.id, name: client.client_name };
+        currentView = 'client-dashboard';
+        await renderClientDashboard();
+        return true;
+      }
+
+      return false;
+    }
+
+    // =============== LOGIN ===============
+
+    function renderLogin() {
+      document.getElementById('app').innerHTML = `
+        <div class="min-h-full flex flex-col items-center justify-center p-4" style="background: linear-gradient(135deg, ${config.background_color} 0%, ${config.card_color} 100%);">
+          <div class="w-full max-w-md animate-slide-in">
+            <div class="text-center mb-8">
+              <div class="w-24 h-24 mx-auto mb-6 rounded-3xl flex items-center justify-center" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); box-shadow: 0 20px 60px rgba(0, 127, 159, 0.4);">
+                <svg class="w-12 h-12" style="color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <h1 class="font-bold mb-2" style="font-size: 40px; color: ${config.text_color};">
+                ${config.app_title}
+              </h1>
+              <p class="opacity-70" style="font-size: 18px; color: ${config.text_color};">
+                Sistema Profissional de Check-In
+              </p>
+            </div>
+
+            <div class="rounded-3xl p-8 backdrop-blur-lg" style="background-color: ${config.card_color}cc; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+              <div class="flex gap-2 mb-6">
+                <button onclick="switchLoginType('client')" id="client-tab" class="flex-1 py-3 rounded-xl font-semibold transition-all" style="background-color: ${config.primary_color}; color: white;">
+                  Cliente
+                </button>
+                <button onclick="switchLoginType('admin')" id="admin-tab" class="flex-1 py-3 rounded-xl font-semibold transition-all" style="background-color: ${config.background_color}; color: ${config.text_color};">
+                  Administrador
+                </button>
+              </div>
+
+              <div id="login-form-container"></div>
+            </div>
+
+            <div class="text-center mt-6">
+              <p class="opacity-40" style="font-size: 12px; color: ${config.text_color};">
+                Created By AdKira 2025
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      switchLoginType('client');
+    }
+
+    function switchLoginType(type) {
+      document.getElementById('admin-tab').style.backgroundColor = type === 'admin' ? config.primary_color : config.background_color;
+      document.getElementById('client-tab').style.backgroundColor = type === 'client' ? config.primary_color : config.background_color;
+
+      const container = document.getElementById('login-form-container');
+      
+      if (type === 'admin') {
+        container.innerHTML = `
+          <form onsubmit="loginAdmin(event); return false;">
+            <div class="mb-4">
+              <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
+                Nome de Usuário
+              </label>
+              <input 
+                type="text" 
+                name="username" 
+                required 
+                class="w-full px-4 py-3 rounded-xl outline-none transition-all"
+                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px; border: 2px solid transparent;"
+                placeholder="Digite o usuário"
+              >
+            </div>
+            <div class="mb-6">
+              <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
+                Senha do Administrador
+              </label>
+              <input 
+                type="password" 
+                name="password" 
+                required 
+                class="w-full px-4 py-3 rounded-xl outline-none transition-all"
+                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px; border: 2px solid transparent;"
+                placeholder="Digite a senha"
+              >
+            </div>
+            <button 
+              type="submit" 
+              class="w-full py-4 rounded-xl font-bold transition-all transform active:scale-95"
+              style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 18px; box-shadow: 0 10px 30px rgba(0, 127, 159, 0.3);"
+            >
+              Entrar como Admin
+            </button>
+          </form>
+        `;
+      } else {
+        container.innerHTML = `
+          <form onsubmit="loginClient(event); return false;">
+            <div class="mb-6">
+              <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
+                Token de Acesso
+              </label>
+              <input 
+                type="text" 
+                name="token" 
+                required 
+                class="w-full px-4 py-3 rounded-xl outline-none transition-all font-mono"
+                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px; border: 2px solid transparent;"
+                placeholder="TKN-XXXXXXXXX"
+              >
+            </div>
+            <button 
+              type="submit" 
+              class="w-full py-4 rounded-xl font-bold transition-all transform active:scale-95"
+              style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 18px; box-shadow: 0 10px 30px rgba(0, 127, 159, 0.3);"
+            >
+              Entrar como Cliente
+            </button>
+          </form>
+        `;
       }
     }
 
-    function renderClientsList() {
-      const container = document.getElementById('clientsList');
+    async function loginAdmin(event) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const username = formData.get('username');
+      const password = formData.get('password');
+
+      const isValid = await validateAdminCredentials(username, password);
+
+      if (isValid) {
+        currentUser = { type: 'admin', id: 'admin', name: 'Administrador' };
+        saveSession('admin', { loggedIn: true, username: username });
+        currentView = 'admin-dashboard';
+        currentTab = 'home';
+        showToast('Login realizado com sucesso!', 'success');
+        await renderAdminDashboard();
+      } else {
+        showToast('Usuário ou senha incorretos!', 'error');
+      }
+    }
+
+    async function loginClient(event) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const token = formData.get('token').trim();
+
+      await loadClients();
       
-      if (allClients.length === 0) {
-        container.innerHTML = '<div class="empty-state"><h3>Nenhum cliente ainda</h3><p>Crie seu primeiro cliente acima</p></div>';
+      const client = clients.find(c => c.token === token);
+
+      if (!client) {
+        showToast('❌ Token inválido!', 'error');
+        clearSession('client');
         return;
       }
 
-      container.innerHTML = '';
+      if (client.deleted) {
+        showToast('❌ Token desativado! Entre em contato com o administrador.', 'error');
+        clearSession('client');
+        return;
+      }
+
+      if (parseInt(client.expiry) < Date.now()) {
+        showToast('❌ Token expirado! Entre em contato com o administrador.', 'error');
+        clearSession('client');
+        return;
+      }
+
+      currentUser = { type: 'client', id: client.id, name: client.client_name };
+      saveSession('client', { clientId: client.id, token: token, expiry: client.expiry });
+      currentView = 'client-dashboard';
+      currentTab = 'home';
+      showToast('✅ Bem-vindo, ' + client.client_name + '!', 'success');
+      await renderClientDashboard();
+    }
+
+    function logout() {
+      clearAllSessions();
+      currentUser = null;
+      currentView = 'login';
+      currentTab = 'home';
+      if (html5QrCode) {
+        html5QrCode.stop().catch(() => {});
+        html5QrCode = null;
+      }
+      showToast('Logout realizado com sucesso!', 'info');
+      renderLogin();
+    }
+
+    // =============== ADMIN DASHBOARD ===============
+
+    async function renderAdminDashboard() {
+      const activeClients = clients.filter(c => parseInt(c.expiry) > Date.now());
+      const totalGuests = guests.length;
+      const totalCheckins = checkins.length;
+
+      document.getElementById('app').innerHTML = `
+        <div class="min-h-full flex flex-col" style="background-color: ${config.background_color};">
+          <div class="p-4" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <div class="flex items-center justify-between">
+              <div>
+                <h1 class="font-bold mb-1" style="font-size: 28px; color: white;">
+                  ${config.app_title}
+                </h1>
+                <p style="font-size: 14px; color: rgba(255,255,255,0.8);">
+                  Painel do Administrador
+                </p>
+              </div>
+              <button onclick="logout()" class="px-4 py-2 rounded-lg font-semibold transition-all" style="background-color: rgba(255,255,255,0.2); color: white; font-size: 14px;">
+                Sair
+              </button>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-auto p-4">
+            <div class="max-w-6xl mx-auto">
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
+                    Total Clientes
+                  </p>
+                  <p class="font-bold" style="font-size: 40px; color: ${config.primary_color};">
+                    ${clients.length}
+                  </p>
+                </div>
+                <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
+                    Clientes Ativos
+                  </p>
+                  <p class="font-bold" style="font-size: 40px; color: ${config.success_color};">
+                    ${activeClients.length}
+                  </p>
+                </div>
+                <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
+                    Total Convidados
+                  </p>
+                  <p class="font-bold" style="font-size: 40px; color: ${config.text_color};">
+                    ${totalGuests}
+                  </p>
+                </div>
+                <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
+                    Total Check-ins
+                  </p>
+                  <p class="font-bold" style="font-size: 40px; color: ${config.success_color};">
+                    ${totalCheckins}
+                  </p>
+                </div>
+              </div>
+
+              <div class="mb-6 p-6 rounded-2xl" style="background-color: ${config.card_color}; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                <h2 class="font-bold mb-4" style="font-size: 20px; color: ${config.text_color};">
+                  📋 Check-ins Recentes (últimos 10)
+                </h2>
+                <div class="space-y-2">
+                  ${checkins
+                    .slice(0, 10)
+                    .map(checkin => {
+                      const client = clients.find(c => c.id === checkin.client_id);
+                      return `
+                        <div class="flex items-center justify-between p-3 rounded-lg" style="background-color: ${config.background_color};">
+                          <div class="flex-1">
+                            <p class="font-bold" style="font-size: 14px; color: ${config.text_color};">
+                              ${checkin.guest_name}
+                            </p>
+                            <p class="opacity-70" style="font-size: 12px; color: ${config.text_color};">
+                              ${client ? client.client_name : 'Cliente'} • ${new Date(checkin.checked_in_at).toLocaleString('pt-BR')}
+                            </p>
+                          </div>
+                          <button 
+                            onclick="undoCheckin('${checkin.id}')"
+                            class="px-3 py-2 rounded-lg font-semibold transition-all"
+                            style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 12px;"
+                          >
+                            ↩️ Desfazer
+                          </button>
+                        </div>
+                      `;
+                    }).join('') || `
+                      <p class="text-center opacity-70 py-4" style="font-size: 14px; color: ${config.text_color};">
+                        Nenhum check-in realizado ainda
+                      </p>
+                    `}
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4 mb-6">
+                <button onclick="showAddClientModal()" class="p-6 rounded-2xl font-bold transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 18px; box-shadow: 0 10px 40px rgba(0, 127, 159, 0.3);">
+                  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                  </svg>
+                  Novo Cliente
+                </button>
+                <button onclick="showTrashModal()" class="p-6 rounded-2xl font-bold transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; font-size: 18px; box-shadow: 0 10px 40px rgba(239, 68, 68, 0.3);">
+                  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  </svg>
+                  🗑️ Lixeira
+                </button>
+              </div>
+
+              <h2 class="font-bold mb-4" style="font-size: 28px; color: ${config.text_color};">
+                Lista de Clientes
+              </h2>
+              
+              <div class="space-y-3 mb-6">
+                ${clients.length === 0 ? `
+                  <div class="p-8 rounded-2xl text-center" style="background-color: ${config.card_color};">
+                    <p class="opacity-70" style="font-size: 16px; color: ${config.text_color};">
+                      Nenhum cliente cadastrado ainda
+                    </p>
+                  </div>
+                ` : clients.map(client => {
+                  const isExpired = parseInt(client.expiry) < Date.now();
+                  const timeRemaining = parseInt(client.expiry) - Date.now();
+                  const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
+                  const daysRemaining = Math.floor(hoursRemaining / 24);
+                  const clientGuests = guests.filter(g => g.client_id === client.id);
+                  const clientCheckins = checkins.filter(c => c.client_id === client.id);
+
+                  return `
+                    <div class="p-6 rounded-2xl" style="background-color: ${config.card_color}; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                      <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                          <h3 class="font-bold mb-2 flex items-center" style="font-size: 20px; color: ${config.text_color};">
+                            ${client.client_name}
+                            ${isExpired ? `
+                              <span class="ml-3 px-3 py-1 rounded-full text-xs" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
+                                🔒 Expirado
+                              </span>
+                            ` : `
+                              <span class="ml-3 px-3 py-1 rounded-full text-xs" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">
+                                ✓ Ativo
+                              </span>
+                            `}
+                          </h3>
+                          <div class="flex flex-wrap gap-4 mb-3">
+                            <p class="opacity-70" style="font-size: 14px; color: ${config.text_color};">
+                              🎫 Token: <span class="font-mono font-bold" style="color: ${config.primary_color};">${client.token}</span>
+                            </p>
+                          </div>
+                          <p class="opacity-70 mb-3" style="font-size: 14px; color: ${config.text_color};">
+                            ⏰ ${isExpired ? 'Expirou em' : 'Expira em'}: ${new Date(parseInt(client.expiry)).toLocaleString('pt-BR')}
+                            ${!isExpired ? `<span style="color: ${config.primary_color}; font-weight: 600;"> (${daysRemaining}d ${hoursRemaining % 24}h restantes)</span>` : ''}
+                          </p>
+                          <div class="flex gap-4">
+                            <span class="px-3 py-1 rounded-lg text-sm font-semibold" style="background-color: rgba(59, 130, 246, 0.2); color: #3b82f6;">
+                              👥 ${clientGuests.length} convidados
+                            </span>
+                            <span class="px-3 py-1 rounded-lg text-sm font-semibold" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">
+                              ✓ ${clientCheckins.length} check-ins
+                            </span>
+                          </div>
+                        </div>
+                        <div class="flex gap-2 ml-4">
+                          <button onclick="extendClientToken('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all" style="background-color: ${config.primary_color}; color: white; font-size: 14px;">
+                            ⏰ Estender
+                          </button>
+                          <button onclick="showDeleteClientConfirmation('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 14px;">
+                            🗑️ Deletar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div class="text-center py-6" style="background-color: ${config.card_color};">
+            <p class="opacity-40" style="font-size: 12px; color: ${config.text_color};">
+              Created By AdKira 2025
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
+    // =============== CLIENT DASHBOARD ===============
+
+    async function renderClientDashboard() {
+      await loadClients();
+      const client = clients.find(c => c.id === currentUser.id);
       
-      allClients.forEach(client => {
-        const hasPdf = client.pdf_data && client.pdf_data !== '';
-        const generated = client.invites_generated || 0;
-        const limit = client.invites_limit || 50;
-        const isActive = client.token_active !== false;
-        
-        const card = document.createElement('div');
-        card.className = 'client-card';
-        if (selectedClientId === client.id) {
-          card.className += ' selected';
-        }
-        
-        card.innerHTML = `
-          <div class="client-card-header">
-            <div class="client-name">${client.name}</div>
-            <div class="client-token">${client.token}</div>
+      if (!client || client.deleted || parseInt(client.expiry) < Date.now()) {
+        clearSession('client');
+        currentUser = null;
+        currentView = 'login';
+        showToast('❌ Sessão expirada ou desativada. Faça login novamente.', 'error');
+        renderLogin();
+        return;
+      }
+      
+      if (currentTab === 'home') {
+        await renderClientHome();
+      } else if (currentTab === 'scanner') {
+        await renderClientScanner();
+      }
+    }
+
+    async function renderClientHome() {
+      const client = clients.find(c => c.id === currentUser.id);
+      if (!client) {
+        logout();
+        return;
+      }
+
+      const clientGuests = guests.filter(g => g.client_id === currentUser.id);
+      const clientCheckins = checkins.filter(c => c.client_id === currentUser.id);
+
+      const timeRemaining = parseInt(client.expiry) - Date.now();
+      const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
+      const daysRemaining = Math.floor(hoursRemaining / 24);
+
+      const uniqueCheckins = clientCheckins.filter(c => !c.is_companion_only).length;
+
+      document.getElementById('app').innerHTML = `
+        <div class="min-h-full flex flex-col" style="background-color: ${config.background_color};">
+          <div class="p-4" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h1 class="font-bold mb-1" style="font-size: 28px; color: white;">
+                  ${config.app_title}
+                </h1>
+                <p style="font-size: 14px; color: rgba(255,255,255,0.9);">
+                  ${currentUser.name}
+                </p>
+              </div>
+              <button onclick="logout()" class="px-4 py-2 rounded-lg font-semibold transition-all" style="background-color: rgba(255,255,255,0.2); color: white; font-size: 14px;">
+                Sair
+              </button>
+            </div>
+            <div class="px-3 py-2 rounded-lg" style="background-color: rgba(255,255,255,0.15);">
+              <p style="font-size: 14px; color: white;">
+                ⏰ Token expira em: <span class="font-bold">${daysRemaining}d ${hoursRemaining % 24}h</span>
+              </p>
+            </div>
           </div>
-          <div class="client-stats">
-            <span>${hasPdf ? '✅ PDF configurado' : '⚠️ Sem PDF'}</span>
-            <span>📊 ${generated} / ${limit} convites</span>
-            <span>${isActive ? '✅ Ativo' : '❌ Expirado'}</span>
+
+          <div class="flex border-b" style="background-color: ${config.card_color}; border-color: ${config.background_color};">
+            <button onclick="switchClientTab('home')" class="tab-button flex-1 py-4 font-semibold active" style="color: ${config.text_color}; font-size: 14px;">
+              🏠 Início
+            </button>
+            <button onclick="switchClientTab('scanner')" class="tab-button flex-1 py-4 font-semibold" style="color: ${config.text_color}; font-size: 14px;">
+              📷 Scanner
+            </button>
           </div>
-          <div class="client-actions">
-            <button class="btn-small btn-edit" onclick="editClient('${client.id}')">✏️ Editar PDF</button>
-            <button class="btn-small" style="background: #8b5cf6; color: white;" onclick="configureClient('${client.id}')">⚙️ Configurar</button>
-            <button class="btn-small btn-copy" onclick="copyToken('${client.token}')">📋 Token</button>
-            <button class="btn-small btn-delete" onclick="deleteClient('${client.id}')">🗑️</button>
+
+          <div class="flex-1 overflow-auto p-4">
+            <div class="max-w-4xl mx-auto">
+              <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="p-6 rounded-2xl text-center" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
+                    Convidados
+                  </p>
+                  <p class="font-bold" style="font-size: 32px; color: ${config.primary_color};">
+                    ${clientGuests.length}
+                  </p>
+                </div>
+                <div class="p-6 rounded-2xl text-center" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
+                    Check-ins
+                  </p>
+                  <p class="font-bold" style="font-size: 32px; color: ${config.success_color};">
+                    ${uniqueCheckins}
+                  </p>
+                </div>
+              </div>
+
+              <h2 class="font-bold mb-4" style="font-size: 24px; color: ${config.text_color};">
+                Lista de Convidados
+              </h2>
+
+              <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+                <button onclick="filterGuests('all')" id="filter-all" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all" style="background-color: ${config.primary_color}; color: white; font-size: 14px;">
+                  Todos (${clientGuests.length})
+                </button>
+                <button onclick="filterGuests('checked-in')" id="filter-checked-in" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all" style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;">
+                  Entraram (${uniqueCheckins})
+                </button>
+                <button onclick="filterGuests('pending')" id="filter-pending" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all" style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;">
+                  Pendentes (${clientGuests.length - uniqueCheckins})
+                </button>
+                <button onclick="filterGuests('companion')" id="filter-companion" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all" style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;">
+                  Com Acompanhante (${clientGuests.filter(g => g.has_companion).length})
+                </button>
+              </div>
+              
+              <div id="guests-list" class="space-y-3 mb-6">
+                ${renderGuestsList(clientGuests, clientCheckins, 'all')}
+              </div>
+            </div>
+          </div>
+
+          <div class="text-center py-6" style="background-color: ${config.card_color};">
+            <p class="opacity-40" style="font-size: 12px; color: ${config.text_color};">
+              Created By AdKira 2025
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderGuestsList(clientGuests, clientCheckins, filter) {
+      let filteredGuests = clientGuests;
+      
+      if (filter === 'checked-in') {
+        filteredGuests = clientGuests.filter(g => clientCheckins.some(c => c.guest_qr === g.qr_code && !c.is_companion_only));
+      } else if (filter === 'pending') {
+        filteredGuests = clientGuests.filter(g => !clientCheckins.some(c => c.guest_qr === g.qr_code && !c.is_companion_only));
+      } else if (filter === 'companion') {
+        filteredGuests = clientGuests.filter(g => g.has_companion);
+      }
+
+      if (filteredGuests.length === 0) {
+        return `
+          <div class="p-8 rounded-2xl text-center" style="background-color: ${config.card_color};">
+            <p class="opacity-70" style="font-size: 16px; color: ${config.text_color};">
+              Nenhum convidado nesta categoria
+            </p>
           </div>
         `;
-        
-        container.appendChild(card);
+      }
+
+      return filteredGuests.map(guest => {
+        const guestCheckins = clientCheckins.filter(c => c.guest_qr === guest.qr_code);
+        const hasCheckedIn = guestCheckins.length > 0;
+        const mainCheckin = guestCheckins.find(c => !c.is_companion_only);
+        const companionCheckin = guestCheckins.find(c => c.is_companion_only);
+
+        return `
+          <div class="p-4 rounded-xl" style="background-color: ${config.card_color}; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <h3 class="font-bold mb-1" style="font-size: 18px; color: ${config.text_color};">
+                  ${guest.name} ${guest.has_companion ? '👥' : ''}
+                </h3>
+                <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
+                  🎫 Código: ${guest.qr_code}
+                </p>
+                ${mainCheckin ? `
+                  <p class="font-semibold mb-1" style="font-size: 12px; color: ${config.success_color};">
+                    ✅ Check-in: ${new Date(mainCheckin.checked_in_at).toLocaleString('pt-BR')}
+                    ${mainCheckin.with_companion ? ' (Com acompanhante)' : guest.has_companion ? ' (Sem acompanhante)' : ''}
+                  </p>
+                ` : ''}
+                ${companionCheckin ? `
+                  <p class="font-semibold" style="font-size: 12px; color: ${config.success_color};">
+                    ✅ Acompanhante: ${new Date(companionCheckin.checked_in_at).toLocaleString('pt-BR')}
+                  </p>
+                ` : ''}
+              </div>
+              ${hasCheckedIn ? `
+                <span class="px-4 py-2 rounded-lg font-bold" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">
+                  ✓
+                </span>
+              ` : `
+                <span class="px-4 py-2 rounded-lg font-semibold opacity-50" style="background-color: ${config.background_color}; color: ${config.text_color};">
+                  Pendente
+                </span>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function filterGuests(filterType) {
+      const clientGuests = guests.filter(g => g.client_id === currentUser.id);
+      const clientCheckins = checkins.filter(c => c.client_id === currentUser.id);
+      
+      document.querySelectorAll('[id^="filter-"]').forEach(btn => {
+        btn.style.backgroundColor = config.background_color;
+        btn.style.color = config.text_color;
+      });
+      
+      const activeBtn = document.getElementById('filter-' + filterType);
+      if (activeBtn) {
+        activeBtn.style.backgroundColor = config.primary_color;
+        activeBtn.style.color = 'white';
+      }
+      
+      const guestsList = document.getElementById('guests-list');
+      if (guestsList) {
+        guestsList.innerHTML = renderGuestsList(clientGuests, clientCheckins, filterType);
+      }
+    }
+
+    // =============== SCANNER ===============
+
+    async function renderClientScanner() {
+      document.getElementById('app').innerHTML = `
+        <div class="h-full flex flex-col" style="background-color: ${config.background_color};">
+          <div class="p-3 flex items-center justify-between" style="background-color: ${config.card_color};">
+            <button onclick="switchClientTab('home')" class="px-3 py-2 rounded-lg font-semibold" style="background-color: ${config.primary_color}; color: white; font-size: 14px;">
+              ← Voltar
+            </button>
+            <h1 class="font-bold" style="font-size: 20px; color: ${config.text_color};">
+              Scanner QR Code
+            </h1>
+            <button onclick="logout()" class="px-3 py-2 rounded-lg font-semibold" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 14px;">
+              Sair
+            </button>
+          </div>
+
+          <div class="flex-1 flex flex-col" style="background-color: #000;">
+            <div id="qr-reader" class="flex-1"></div>
+            
+            <div class="p-4 space-y-3" style="background-color: ${config.card_color};">
+              <p class="text-center opacity-70" style="font-size: 14px; color: ${config.text_color};">
+                📷 Aponte a câmera para o QR Code do convidado
+              </p>
+              <button onclick="showManualSearchModal()" class="w-full py-3 rounded-xl font-semibold transition-all" style="background-color: ${config.primary_color}; color: white; font-size: 16px;">
+                🔍 Busca Manual
+              </button>
+              <p class="text-center opacity-40" style="font-size: 11px; color: ${config.text_color};">
+                Created By AdKira 2025
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      setTimeout(() => {
+        startQrScanner();
+      }, 100);
+    }
+
+    function startQrScanner() {
+      if (html5QrCode) {
+        html5QrCode.stop().catch(() => {});
+      }
+
+      html5QrCode = new Html5Qrcode("qr-reader");
+
+      html5QrCode.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 }
+        },
+        (decodedText, decodedResult) => {
+          processQrCode(decodedText);
+        }
+      ).catch(err => {
+        showToast('Erro ao acessar câmera', 'error');
+        console.error(err);
       });
     }
 
-    function editClient(clientId) {
-      selectedClientId = clientId;
-      const client = allClients.find(c => c.id === clientId);
-      
-      if (!client) return;
+    function showManualSearchModal() {
+      const clientGuests = guests.filter(g => g.client_id === currentUser.id);
+      const clientCheckins = checkins.filter(c => c.client_id === currentUser.id);
 
-      document.getElementById('clientEditorEmpty').style.display = 'none';
-      document.getElementById('clientEditor').style.display = 'block';
-      document.getElementById('editingClientName').textContent = `Editando: ${client.name}`;
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+      };
+
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-6" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5); max-height: 80%; overflow-y: auto;">
+          <h2 class="font-bold mb-4" style="font-size: 24px; color: ${config.text_color};">
+            🔍 Busca Manual de Convidado
+          </h2>
+          <input 
+            type="text" 
+            id="manual-search-input"
+            placeholder="Digite o nome ou código..."
+            class="w-full px-4 py-3 rounded-xl outline-none mb-4"
+            style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+            oninput="filterManualSearch(this.value)"
+          >
+          <div id="manual-search-results" class="space-y-2 max-h-96 overflow-y-auto">
+            ${clientGuests.map(guest => {
+              const hasCheckedIn = clientCheckins.some(c => c.guest_qr === guest.qr_code && !c.is_companion_only);
+              return `
+                <button 
+                  onclick="selectGuestManually('${guest.qr_code}')" 
+                  class="w-full p-4 rounded-xl text-left transition-all ${hasCheckedIn ? 'opacity-50' : ''}"
+                  style="background-color: ${config.background_color}; color: ${config.text_color};"
+                  ${hasCheckedIn ? 'disabled' : ''}
+                >
+                  <div class="font-bold mb-1" style="font-size: 16px;">
+                    ${guest.name} ${hasCheckedIn ? '✅' : ''}
+                  </div>
+                  <div class="opacity-70" style="font-size: 12px;">
+                    Código: ${guest.qr_code} ${guest.has_companion ? '| 👥 Com acompanhante' : ''}
+                  </div>
+                </button>
+              `;
+            }).join('')}
+          </div>
+          <button 
+            onclick="this.closest('.modal-overlay').remove()"
+            class="w-full mt-4 py-3 rounded-xl font-semibold"
+            style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+          >
+            Cancelar
+          </button>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+      setTimeout(() => {
+        document.getElementById('manual-search-input').focus();
+      }, 100);
+    }
+
+    function filterManualSearch(query) {
+      const clientGuests = guests.filter(g => g.client_id === currentUser.id);
+      const clientCheckins = checkins.filter(c => c.client_id === currentUser.id);
       
-      if (client.pdf_data && client.pdf_data !== '') {
-        document.getElementById('pdfPreview').style.display = 'block';
-        document.getElementById('canvasEditor').style.display = 'block';
-        loadAdminCanvas(client);
+      const filtered = clientGuests.filter(g => 
+        g.name.toLowerCase().includes(query.toLowerCase()) ||
+        g.qr_code.toLowerCase().includes(query.toLowerCase())
+      );
+
+      const resultsDiv = document.getElementById('manual-search-results');
+      resultsDiv.innerHTML = filtered.map(guest => {
+        const hasCheckedIn = clientCheckins.some(c => c.guest_qr === guest.qr_code && !c.is_companion_only);
+        return `
+          <button 
+            onclick="selectGuestManually('${guest.qr_code}')" 
+            class="w-full p-4 rounded-xl text-left transition-all ${hasCheckedIn ? 'opacity-50' : ''}"
+            style="background-color: ${config.background_color}; color: ${config.text_color};"
+            ${hasCheckedIn ? 'disabled' : ''}
+          >
+            <div class="font-bold mb-1" style="font-size: 16px;">
+              ${guest.name} ${hasCheckedIn ? '✅' : ''}
+            </div>
+            <div class="opacity-70" style="font-size: 12px;">
+              Código: ${guest.qr_code} ${guest.has_companion ? '| 👥 Com acompanhante' : ''}
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectGuestManually(qrCode) {
+      document.querySelector('.modal-overlay').remove();
+      processQrCode(qrCode);
+    }
+
+    async function processQrCode(qrCode) {
+      if (!qrCode) return;
+
+      if (html5QrCode) {
+        html5QrCode.pause(true);
+      }
+
+      await loadClients();
+      const client = clients.find(c => c.id === currentUser.id);
+      
+      if (!client || client.deleted || parseInt(client.expiry) < Date.now()) {
+        showToast('❌ ACESSO NEGADO - Token expirado ou desativado', 'error');
+        playErrorSound();
+        setTimeout(() => {
+          logout();
+        }, 2000);
+        return;
+      }
+
+      const cleanCode = qrCode.includes(',') ? qrCode.split(',')[0].trim() : qrCode.trim();
+
+      const clientGuests = guests.filter(g => g.client_id === currentUser.id);
+      const guest = clientGuests.find(g => g.qr_code === cleanCode);
+
+      if (!guest) {
+        showToast('❌ ENTRADA NEGADA - Convidado não encontrado', 'error');
+        playErrorSound();
+        setTimeout(() => {
+          if (html5QrCode) html5QrCode.resume();
+        }, 2000);
+        return;
+      }
+
+      const clientCheckins = checkins.filter(c => c.client_id === currentUser.id);
+      const existingCheckins = clientCheckins.filter(c => c.guest_qr === cleanCode);
+
+      if (guest.has_companion && existingCheckins.length === 1) {
+        showCompanionConfirmation(guest, cleanCode);
+        return;
+      }
+
+      if (existingCheckins.length > 0 && (!guest.has_companion || existingCheckins.length >= 2)) {
+        showToast('❌ ENTRADA NEGADA - Check-in já realizado', 'error');
+        playErrorSound();
+        setTimeout(() => {
+          if (html5QrCode) html5QrCode.resume();
+        }, 2000);
+        return;
+      }
+
+      if (guest.has_companion && existingCheckins.length === 0) {
+        showCompanionEntryConfirmation(guest, cleanCode);
       } else {
-        document.getElementById('pdfPreview').style.display = 'none';
-        document.getElementById('canvasEditor').style.display = 'none';
+        await performCheckin(guest, cleanCode, false, false);
       }
-      
-      renderClientsList();
     }
 
-    async function deleteClient(clientId) {
-      const client = allClients.find(c => c.id === clientId);
-      
-      if (!client) return;
-
+    function showCompanionEntryConfirmation(guest, cleanCode) {
       const modal = document.createElement('div');
-      modal.className = 'modal';
+      modal.className = 'modal-overlay';
+      
       modal.innerHTML = `
-        <div class="modal-content">
-          <h3>⚠️ Confirmar Exclusão</h3>
-          <p>Tem certeza que deseja deletar o cliente "${client.name}"?<br>Esta ação não pode ser desfeita.</p>
-          <div class="modal-actions">
-            <button class="btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
-            <button class="btn-action" style="background: #ef4444;" onclick="confirmDeleteClient('${clientId}')">Deletar</button>
+        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+          <div class="text-6xl mb-4">👥</div>
+          <h2 class="font-bold mb-2" style="font-size: 24px; color: ${config.text_color};">
+            ${guest.name}
+          </h2>
+          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
+            Este convidado tem direito a acompanhante.<br>Entrou com acompanhante?
+          </p>
+          <div class="flex gap-3">
+            <button 
+              onclick="confirmCompanionEntry('${cleanCode}', false)"
+              class="flex-1 py-4 rounded-xl font-bold"
+              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 18px;"
+            >
+              NÃO<br><span style="font-size: 12px; opacity: 0.7;">(Só o convidado)</span>
+            </button>
+            <button 
+              onclick="confirmCompanionEntry('${cleanCode}', true)"
+              class="flex-1 py-4 rounded-xl font-bold"
+              style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white; font-size: 18px;"
+            >
+              SIM<br><span style="font-size: 12px; opacity: 0.9;">(Convidado + Acompanhante)</span>
+            </button>
           </div>
         </div>
       `;
-      
+
       document.body.appendChild(modal);
-      modal.onclick = (e) => {
-        if (e.target === modal) modal.remove();
-      };
     }
 
-    async function confirmDeleteClient(clientId) {
-      const client = allClients.find(c => c.id === clientId);
-      
-      if (!client) return;
-
-      try {
-        await deleteClientInDB(clientId);
-        await loadClients();
-        
-        if (selectedClientId === clientId) {
-          selectedClientId = null;
-          document.getElementById('clientEditorEmpty').style.display = 'block';
-          document.getElementById('clientEditor').style.display = 'none';
-        }
-        
-        showToast(`✅ Cliente "${client.name}" deletado`);
-      } catch (error) {
-        showToast('❌ Erro ao deletar cliente');
-      }
-      
-      document.querySelector('.modal')?.remove();
-    }
-
-    function copyToken(token) {
-      navigator.clipboard.writeText(token).then(() => {
-        showToast(`📋 Token copiado: ${token}`);
-      });
-    }
-
-    function configureClient(clientId) {
-      const client = allClients.find(c => c.id === clientId);
-      if (!client) return;
-
-      const generated = client.invites_generated || 0;
-      const limit = client.invites_limit || 50;
-      const isActive = client.token_active !== false;
-
+    function showCompanionConfirmation(guest, cleanCode) {
       const modal = document.createElement('div');
-      modal.className = 'modal';
+      modal.className = 'modal-overlay';
+      
       modal.innerHTML = `
-        <div class="modal-content">
-          <h3>⚙️ Configurar Cliente</h3>
-          <p style="margin-bottom: 20px;">Ajuste as configurações de "${client.name}"</p>
-          
-          <div class="form-group" style="margin-bottom: 16px;">
-            <label>Nome do Cliente</label>
-            <input type="text" id="configClientName" value="${client.name}" style="padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; width: 100%; font-family: inherit; font-size: 14px;">
-          </div>
-
-          <div class="form-group" style="margin-bottom: 16px;">
-            <label>Limite de Convites</label>
-            <input type="number" id="configInvitesLimit" value="${limit}" min="1" max="999999" style="padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; width: 100%; font-family: inherit; font-size: 14px;">
-          </div>
-
-          <div class="form-group" style="margin-bottom: 16px;">
-            <label>Convites Gerados</label>
-            <input type="number" id="configInvitesGenerated" value="${generated}" min="0" max="999999" style="padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; width: 100%; font-family: inherit; font-size: 14px;">
-            <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Ajuste se necessário corrigir o contador</p>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 24px;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="checkbox" id="configTokenActive" ${isActive ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer;">
-              <span>Token Ativo</span>
-            </label>
-            <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Desmarque para desativar manualmente</p>
-          </div>
-
-          <div class="modal-actions">
-            <button class="btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
-            <button class="btn-action" onclick="saveClientConfiguration('${clientId}')">💾 Salvar</button>
+        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+          <div class="text-6xl mb-4">👤</div>
+          <h2 class="font-bold mb-2" style="font-size: 24px; color: ${config.text_color};">
+            Acompanhante de ${guest.name}
+          </h2>
+          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
+            O convidado principal já entrou.<br>Esta é a entrada do acompanhante?
+          </p>
+          <div class="flex gap-3">
+            <button 
+              onclick="cancelCompanionEntry()"
+              class="flex-1 py-4 rounded-xl font-bold"
+              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 18px;"
+            >
+              Cancelar
+            </button>
+            <button 
+              onclick="confirmCompanionEntry('${cleanCode}', true, true)"
+              class="flex-1 py-4 rounded-xl font-bold"
+              style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white; font-size: 18px;"
+            >
+              SIM, Confirmar
+            </button>
           </div>
         </div>
       `;
-      
+
       document.body.appendChild(modal);
-      modal.onclick = (e) => {
-        if (e.target === modal) modal.remove();
+    }
+
+    async function confirmCompanionEntry(cleanCode, withCompanion, isCompanionOnly = false) {
+      document.querySelector('.modal-overlay').remove();
+      
+      const clientGuests = guests.filter(g => g.client_id === currentUser.id);
+      const guest = clientGuests.find(g => g.qr_code === cleanCode);
+      
+      await performCheckin(guest, cleanCode, withCompanion, isCompanionOnly);
+    }
+
+    function cancelCompanionEntry() {
+      document.querySelector('.modal-overlay').remove();
+      setTimeout(() => {
+        if (html5QrCode) html5QrCode.resume();
+      }, 500);
+    }
+
+    async function performCheckin(guest, cleanCode, withCompanion, isCompanionOnly) {
+      const checkinData = {
+        id: generateId('checkin'),
+        client_id: currentUser.id,
+        guest_id: guest.id,
+        guest_qr: cleanCode,
+        guest_name: guest.name,
+        with_companion: withCompanion,
+        is_companion_only: isCompanionOnly,
+        status: 'confirmed',
+        checked_in_at: new Date().toISOString(),
+        synced: isOnline
       };
-    }
 
-    async function saveClientConfiguration(clientId) {
-      const newName = document.getElementById('configClientName').value.trim();
-      const newLimit = parseInt(document.getElementById('configInvitesLimit').value);
-      const newGenerated = parseInt(document.getElementById('configInvitesGenerated').value);
-      const newActive = document.getElementById('configTokenActive').checked;
+      let success = false;
 
-      if (!newName) {
-        showToast('⚠️ Nome não pode estar vazio');
-        return;
-      }
-
-      if (newLimit < 1) {
-        showToast('⚠️ Limite deve ser maior que 0');
-        return;
-      }
-
-      if (newGenerated < 0) {
-        showToast('⚠️ Convites gerados não pode ser negativo');
-        return;
-      }
-
-      try {
-        await updateClientInDB(clientId, {
-          name: newName,
-          invites_limit: newLimit,
-          invites_generated: newGenerated,
-          token_active: newActive
-        });
-
-        await loadClients();
-        showToast('✅ Configuração atualizada!');
-        document.querySelector('.modal').remove();
-      } catch (error) {
-        showToast('❌ Erro ao atualizar configuração');
-      }
-    }
-
-    // ========== ADMIN PDF & CANVAS ==========
-    let adminPdfData = null;
-    let adminNameElement = null;
-    let draggedElement = null;
-    let offsetX = 0;
-    let offsetY = 0;
-    let currentFontSize = 24;
-    let currentTextColor = '#1a1a2e';
-
-    async function handleAdminPdfUpload(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = async function(ev) {
-        try {
-          const arrayBuffer = ev.target.result;
-          adminPdfData = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-          
-          document.getElementById('pdfPreview').style.display = 'block';
-          document.getElementById('canvasEditor').style.display = 'block';
-          
-          await renderAdminPdf();
-          createNameElement();
-          
-          showToast('✅ PDF carregado com sucesso!');
-        } catch (error) {
-          console.error('Erro ao carregar PDF:', error);
-          showToast('❌ Erro ao carregar PDF');
+      if (isOnline) {
+        const result = await createCheckin(checkinData);
+        success = result.success;
+        
+        if (!success) {
+          isOnline = false;
+          offlineQueue.push(checkinData);
+          saveOfflineQueue();
+          success = true;
         }
-      };
-      reader.readAsArrayBuffer(file);
-    }
+      } else {
+        offlineQueue.push(checkinData);
+        saveOfflineQueue();
+        success = true;
+      }
 
-    async function renderAdminPdf() {
-      const canvas = document.getElementById('adminCanvas');
-      canvas.innerHTML = '';
-      
-      if (!adminPdfData) return;
-
-      try {
-        const pdfBytes = Uint8Array.from(atob(adminPdfData), c => c.charCodeAt(0));
+      if (success) {
+        let message = '';
+        if (isCompanionOnly) {
+          message = '✅ ENTRADA APROVADA - Acompanhante de ' + guest.name;
+        } else if (withCompanion) {
+          message = '✅ ENTRADA APROVADA - ' + guest.name + ' + Acompanhante (2 pessoas)';
+        } else {
+          message = '✅ ENTRADA APROVADA - ' + guest.name + (guest.has_companion ? ' (1 pessoa)' : '');
+        }
         
-        const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
-        const pdf = await loadingTask.promise;
-        const page = await pdf.getPage(1);
+        if (!isOnline) {
+          message += ' [OFFLINE]';
+        }
         
-        const scale = 1.5;
-        const viewport = page.getViewport({scale: scale});
-        
-        const renderCanvas = document.createElement('canvas');
-        const context = renderCanvas.getContext('2d');
-        renderCanvas.width = viewport.width;
-        renderCanvas.height = viewport.height;
-        
-        const renderContext = {
-          canvasContext: context,
-          viewport: viewport
-        };
-        
-        await page.render(renderContext).promise;
-        
-        const img = document.createElement('img');
-        img.className = 'canvas-bg';
-        img.src = renderCanvas.toDataURL('image/png');
-        canvas.appendChild(img);
-      } catch (error) {
-        console.error('Erro ao renderizar PDF:', error);
-        canvas.innerHTML = '<div class="empty-state"><h3>Erro ao carregar PDF</h3><p>Tente fazer upload novamente</p></div>';
-      }
-    }
-
-    function createNameElement() {
-      const canvas = document.getElementById('adminCanvas');
-      
-      if (adminNameElement) {
-        adminNameElement.remove();
-      }
-
-      adminNameElement = document.createElement('div');
-      adminNameElement.className = 'text-element selected';
-      adminNameElement.textContent = '{NOME DO CONVIDADO}';
-      adminNameElement.style.position = 'absolute';
-      adminNameElement.style.left = '50%';
-      adminNameElement.style.top = '50%';
-      adminNameElement.style.transform = 'translate(-50%, -50%)';
-      adminNameElement.style.fontSize = currentFontSize + 'px';
-      adminNameElement.style.color = currentTextColor;
-      adminNameElement.style.zIndex = '10';
-      
-      canvas.appendChild(adminNameElement);
-      
-      adminNameElement.addEventListener('mousedown', handleAdminMouseDown);
-    }
-
-    function handleAdminMouseDown(e) {
-      draggedElement = adminNameElement;
-      const rect = draggedElement.getBoundingClientRect();
-      const canvasRect = document.getElementById('adminCanvas').getBoundingClientRect();
-      offsetX = e.clientX - rect.left;
-      offsetY = e.clientY - rect.top;
-      draggedElement.style.cursor = 'grabbing';
-    }
-
-    document.addEventListener('mousemove', (e) => {
-      if (draggedElement && draggedElement === adminNameElement) {
-        const canvasRect = document.getElementById('adminCanvas').getBoundingClientRect();
-        let newX = e.clientX - canvasRect.left - offsetX;
-        let newY = e.clientY - canvasRect.top - offsetY;
-
-        newX = Math.max(0, Math.min(newX, canvasRect.width - draggedElement.offsetWidth));
-        newY = Math.max(0, Math.min(newY, canvasRect.height - draggedElement.offsetHeight));
-
-        draggedElement.style.left = newX + 'px';
-        draggedElement.style.top = newY + 'px';
-        draggedElement.style.transform = 'none';
-      }
-    });
-
-    document.addEventListener('mouseup', () => {
-      if (draggedElement) {
-        draggedElement.style.cursor = 'move';
-        draggedElement = null;
-      }
-    });
-
-    function changeFontSize(size) {
-      currentFontSize = parseInt(size);
-      document.getElementById('fontSizeDisplay').textContent = currentFontSize + 'px';
-      if (adminNameElement) {
-        adminNameElement.style.fontSize = currentFontSize + 'px';
-      }
-    }
-
-    function increaseFontSize() {
-      changeFontSize(Math.min(72, currentFontSize + 2));
-      document.getElementById('fontSizeSlider').value = currentFontSize;
-    }
-
-    function decreaseFontSize() {
-      changeFontSize(Math.max(12, currentFontSize - 2));
-      document.getElementById('fontSizeSlider').value = currentFontSize;
-    }
-
-    function changeTextColor(color) {
-      currentTextColor = color;
-      document.getElementById('textColorDisplay').textContent = color;
-      if (adminNameElement) {
-        adminNameElement.style.color = color;
-      }
-    }
-
-    async function saveClientConfig() {
-      if (!selectedClientId || !adminPdfData || !adminNameElement) {
-        showToast('⚠️ Configure o PDF e posicione o nome primeiro');
-        return;
-      }
-
-      const btn = document.getElementById('saveConfigBtn');
-      btn.disabled = true;
-      btn.innerHTML = '<span class="loading-spinner"></span> Salvando...';
-
-      const canvasRect = document.getElementById('adminCanvas').getBoundingClientRect();
-      const elementRect = adminNameElement.getBoundingClientRect();
-      
-      const position = {
-        x: elementRect.left - canvasRect.left,
-        y: elementRect.top - canvasRect.top
-      };
-
-      try {
-        await updateClientInDB(selectedClientId, {
-          pdf_data: adminPdfData,
-          name_position: JSON.stringify(position),
-          font_size: currentFontSize,
-          text_color: currentTextColor
-        });
-
-        await loadClients();
-        showToast('✅ Configuração salva com sucesso!');
-      } catch (error) {
-        showToast('❌ Erro ao salvar configuração');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '💾 Salvar Configuração';
-      }
-    }
-
-    function testPreview() {
-      if (adminNameElement) {
-        const originalText = adminNameElement.textContent;
-        adminNameElement.textContent = 'João da Silva';
+        showSuccessAnimation(message);
+        playSuccessSound();
+        vibrateDevice();
         
         setTimeout(() => {
-          adminNameElement.textContent = originalText;
+          if (html5QrCode) html5QrCode.resume();
+        }, 3000);
+      } else {
+        showToast('❌ ENTRADA NEGADA - Erro do sistema', 'error');
+        playErrorSound();
+        setTimeout(() => {
+          if (html5QrCode) html5QrCode.resume();
         }, 2000);
       }
     }
 
-    async function loadAdminCanvas(client) {
-      adminPdfData = client.pdf_data;
-      currentFontSize = client.font_size || 24;
-      currentTextColor = client.text_color || '#1a1a2e';
+    function showSuccessAnimation(message) {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.style.zIndex = '10000';
       
-      document.getElementById('fontSizeSlider').value = currentFontSize;
-      document.getElementById('fontSizeDisplay').textContent = currentFontSize + 'px';
-      document.getElementById('textColorPicker').value = currentTextColor;
-      document.getElementById('textColorDisplay').textContent = currentTextColor;
+      overlay.innerHTML = `
+        <div class="text-center animate-slide-in">
+          <div class="text-8xl mb-4">✅</div>
+          <div class="font-bold mb-2" style="font-size: 28px; color: white;">
+            ${message.replace('✅ ', '')}
+          </div>
+          <div id="confetti-container"></div>
+        </div>
+      `;
       
-      await renderAdminPdf();
-      createNameElement();
+      document.body.appendChild(overlay);
       
-      const position = JSON.parse(client.name_position || '{"x": 297, "y": 400}');
-      adminNameElement.style.left = position.x + 'px';
-      adminNameElement.style.top = position.y + 'px';
-      adminNameElement.style.transform = 'none';
+      const container = overlay.querySelector('#confetti-container');
+      for (let i = 0; i < 50; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.textContent = ['🎉', '🎊', '✨', '⭐', '🌟'][Math.floor(Math.random() * 5)];
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.fontSize = (Math.random() * 20 + 20) + 'px';
+        confetti.style.animationDelay = (Math.random() * 0.5) + 's';
+        container.appendChild(confetti);
+      }
+      
+      setTimeout(() => {
+        overlay.remove();
+      }, 3000);
     }
 
-    // ========== CLIENT FUNCTIONS ==========
-    let isDownloading = false;
-
-    async function updateClientStats() {
+    function playSuccessSound() {
       try {
-        const { data, error } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', selectedClientId)
-          .single();
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+      } catch (e) {
+        console.log('Audio not supported');
+      }
+    }
 
-        if (error || !data) return;
+    function playErrorSound() {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 200;
+        oscillator.type = 'sawtooth';
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+      } catch (e) {
+        console.log('Audio not supported');
+      }
+    }
 
-        const generated = data.invites_generated || 0;
-        const limit = data.invites_limit || 50;
-        const remaining = Math.max(0, limit - generated);
-        const isActive = data.token_active !== false;
-        const progress = Math.min(100, (generated / limit) * 100);
+    function vibrateDevice() {
+      if ('vibrate' in navigator) {
+        navigator.vibrate(200);
+      }
+    }
 
-        const statsHTML = `
-          <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px;">
-              <div style="text-align: center;">
-                <p style="margin: 0; font-size: 12px; color: #6b7280;">Gerados</p>
-                <p style="margin: 4px 0 0 0; font-size: 24px; font-weight: 700; color: #007f9f;">${generated}</p>
+    // =============== ADMIN FUNCTIONS ===============
+
+    function showAddClientModal() {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+      };
+
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+          <h2 class="font-bold mb-6" style="font-size: 28px; color: ${config.text_color};">
+            ➕ Adicionar Novo Cliente
+          </h2>
+          <form onsubmit="addClient(event); return false;">
+            <div class="space-y-4">
+              <div>
+                <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
+                  Nome do Cliente
+                </label>
+                <input 
+                  type="text" 
+                  name="client_name" 
+                  required 
+                  class="w-full px-4 py-3 rounded-xl outline-none"
+                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+                  placeholder="Ex: João Silva - Casamento"
+                >
               </div>
-              <div style="text-align: center;">
-                <p style="margin: 0; font-size: 12px; color: #6b7280;">Limite</p>
-                <p style="margin: 4px 0 0 0; font-size: 24px; font-weight: 700; color: #1a1a2e;">${limit}</p>
+              <div>
+                <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
+                  Validade (dias)
+                </label>
+                <input 
+                  type="number" 
+                  name="validity_days" 
+                  required 
+                  min="1"
+                  max="365"
+                  value="7"
+                  class="w-full px-4 py-3 rounded-xl outline-none"
+                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+                >
               </div>
-              <div style="text-align: center;">
-                <p style="margin: 0; font-size: 12px; color: #6b7280;">Restantes</p>
-                <p style="margin: 4px 0 0 0; font-size: 24px; font-weight: 700; color: ${remaining > 0 ? '#10b981' : '#ef4444'};">${remaining}</p>
+              <div>
+                <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
+                  Upload Lista de Convidados (TXT)
+                </label>
+                <input 
+                  type="file" 
+                  name="guest_file" 
+                  accept=".txt"
+                  class="w-full px-4 py-3 rounded-xl outline-none"
+                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;"
+                >
+                <p class="mt-2 opacity-70" style="font-size: 12px; color: ${config.text_color};">
+                  Formato: CODIGO,Nome do Convidado,Acompanhante (uma linha por convidado)<br>
+                  Acompanhante: SIM ou NÃO
+                </p>
+              </div>
+              <div class="flex gap-3 pt-4">
+                <button 
+                  type="button" 
+                  onclick="this.closest('.modal-overlay').remove()"
+                  class="flex-1 py-3 rounded-xl font-semibold transition-all"
+                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  class="flex-1 py-3 rounded-xl font-semibold transition-all"
+                  style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 16px;"
+                >
+                  Criar Cliente
+                </button>
               </div>
             </div>
-            <div style="background: #e5e7eb; height: 12px; border-radius: 6px; overflow: hidden;">
-              <div style="background: ${remaining > 0 ? 'linear-gradient(90deg, #007f9f 0%, #10b981 100%)' : '#ef4444'}; height: 100%; width: ${progress}%; transition: width 0.3s ease;"></div>
-            </div>
-            ${!isActive ? '<div style="margin-top: 12px; padding: 12px; background: #fee2e2; border-radius: 8px; text-align: center;"><p style="margin: 0; color: #dc2626; font-weight: 600;">⚠️ Token expirado - limite atingido</p></div>' : ''}
+          </form>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+    }
+
+    async function addClient(event) {
+      event.preventDefault();
+      
+      const formData = new FormData(event.target);
+      const clientName = formData.get('client_name');
+      const validityDays = parseInt(formData.get('validity_days'));
+      const guestFile = formData.get('guest_file');
+
+      const token = generateToken();
+      const expiry = Date.now() + (validityDays * 24 * 60 * 60 * 1000);
+
+      const clientData = {
+        id: generateId('client'),
+        client_name: clientName,
+        token: token,
+        expiry: expiry,
+        created_at: new Date().toISOString(),
+        deleted: false
+      };
+
+      const result = await createClient(clientData);
+
+      if (result.success) {
+        showToast('Cliente criado! Token: ' + token, 'success');
+        
+        if (guestFile && guestFile.size > 0) {
+          await processGuestFile(guestFile, clientData.id);
+        }
+
+        document.querySelector('.modal-overlay').remove();
+        await renderAdminDashboard();
+      } else {
+        showToast('Erro ao criar cliente', 'error');
+      }
+    }
+
+    async function processGuestFile(file, clientId) {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+
+      for (const line of lines) {
+        const parts = line.split(',').map(p => p.trim());
+        if (parts.length >= 2) {
+          const hasCompanion = parts.length >= 3 && 
+                               (parts[2].toUpperCase() === 'SIM' || 
+                                parts[2].toUpperCase() === 'TRUE' || 
+                                parts[2] === '1');
+
+          const guestData = {
+            id: generateId('guest'),
+            client_id: clientId,
+            qr_code: parts[0],
+            name: parts[1],
+            has_companion: hasCompanion,
+            created_at: new Date().toISOString(),
+            deleted: false
+          };
+
+          await createGuest(guestData);
+        }
+      }
+
+      showToast(lines.length + ' convidados importados!', 'success');
+    }
+
+    async function extendClientToken(clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+
+      const currentExpiry = parseInt(client.expiry);
+      const newExpiry = currentExpiry + (7 * 24 * 60 * 60 * 1000);
+
+      const result = await updateClient(clientId, { expiry: newExpiry });
+
+      if (result.success) {
+        showToast('Token estendido por 7 dias!', 'success');
+        await renderAdminDashboard();
+      } else {
+        showToast('Erro ao estender token', 'error');
+      }
+    }
+
+    function showDeleteClientConfirmation(clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+          <div class="text-6xl mb-4">🗑️</div>
+          <h2 class="font-bold mb-2" style="font-size: 24px; color: ${config.text_color};">
+            Mover para Lixeira?
+          </h2>
+          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
+            Tem certeza que deseja deletar o cliente:<br>
+            <strong>${client.client_name}</strong><br><br>
+            O cliente poderá ser recuperado da lixeira depois.
+          </p>
+          <div class="flex gap-3">
+            <button 
+              onclick="this.closest('.modal-overlay').remove()"
+              class="flex-1 py-3 rounded-xl font-semibold"
+              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+            >
+              Cancelar
+            </button>
+            <button 
+              onclick="confirmDeleteClient('${clientId}')"
+              class="flex-1 py-3 rounded-xl font-semibold"
+              style="background-color: #ef4444; color: white; font-size: 16px;"
+            >
+              Sim, Deletar
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+    }
+
+    async function confirmDeleteClient(clientId) {
+      const result = await deleteClient(clientId);
+
+      if (result.success) {
+        showToast('✅ Cliente movido para lixeira!', 'success');
+        document.querySelector('.modal-overlay').remove();
+        await renderAdminDashboard();
+      } else {
+        showToast('❌ Erro ao deletar cliente', 'error');
+      }
+    }
+
+    async function showTrashModal() {
+      const deletedClients = await loadDeletedClients();
+      const deletedGuests = await loadDeletedGuests();
+
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+      };
+
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-6" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5); max-width: 800px;">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="font-bold" style="font-size: 28px; color: ${config.text_color};">
+              🗑️ Lixeira
+            </h2>
+            <button onclick="this.closest('.modal-overlay').remove()" class="px-4 py-2 rounded-lg" style="background-color: ${config.background_color}; color: ${config.text_color};">
+              ✕
+            </button>
+          </div>
+
+          <div class="flex gap-2 mb-4">
+            <button onclick="switchTrashTab('clients')" id="trash-tab-clients" class="flex-1 py-3 rounded-xl font-semibold transition-all" style="background-color: ${config.primary_color}; color: white; font-size: 14px;">
+              Clientes (${deletedClients.length})
+            </button>
+            <button onclick="switchTrashTab('guests')" id="trash-tab-guests" class="flex-1 py-3 rounded-xl font-semibold transition-all" style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;">
+              Convidados (${deletedGuests.length})
+            </button>
+          </div>
+
+          <div id="trash-content" class="space-y-3 max-h-96 overflow-y-auto">
+            ${renderTrashClients(deletedClients)}
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+    }
+
+    function renderTrashClients(deletedClients) {
+      if (deletedClients.length === 0) {
+        return `
+          <div class="p-8 text-center rounded-xl" style="background-color: ${config.background_color};">
+            <p class="opacity-70" style="font-size: 16px; color: ${config.text_color};">
+              Nenhum cliente na lixeira
+            </p>
           </div>
         `;
+      }
 
-        document.getElementById('clientStatsContainer').innerHTML = statsHTML;
+      return deletedClients.map(client => {
+        const clientGuests = guests.filter(g => g.client_id === client.id && !g.deleted);
+        const clientCheckins = checkins.filter(c => c.client_id === client.id);
+        const deletedTime = new Date(client.deleted_at).toLocaleString('pt-BR');
 
-        const input = document.getElementById('guestNameInput');
-        const button = document.getElementById('downloadBtn');
-        
-        if (!isActive || remaining <= 0) {
-          input.disabled = true;
-          input.placeholder = 'Limite de convites atingido';
-          button.disabled = true;
-        } else {
-          input.disabled = false;
-          input.placeholder = 'Nome do Convidado';
-          button.disabled = false;
-        }
-      } catch (error) {
-        console.error('Erro ao atualizar stats:', error);
+        return `
+          <div class="p-4 rounded-xl" style="background-color: ${config.background_color};">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <h3 class="font-bold mb-1" style="font-size: 18px; color: ${config.text_color};">
+                  ${client.client_name}
+                </h3>
+                <p class="opacity-70 mb-2" style="font-size: 12px; color: ${config.text_color};">
+                  🗑️ Deletado em: ${deletedTime}
+                </p>
+                <div class="flex gap-2">
+                  <span class="px-2 py-1 rounded text-xs" style="background-color: rgba(59, 130, 246, 0.2); color: #3b82f6;">
+                    👥 ${clientGuests.length} convidados
+                  </span>
+                  <span class="px-2 py-1 rounded text-xs" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">
+                    ✓ ${clientCheckins.length} check-ins
+                  </span>
+                </div>
+              </div>
+              <button 
+                onclick="confirmRestoreClient('${client.id}')"
+                class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap ml-2"
+                style="background-color: ${config.success_color}; color: white; font-size: 14px;"
+              >
+                ↩️ Restaurar
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderTrashGuests(deletedGuests) {
+      if (deletedGuests.length === 0) {
+        return `
+          <div class="p-8 text-center rounded-xl" style="background-color: ${config.background_color};">
+            <p class="opacity-70" style="font-size: 16px; color: ${config.text_color};">
+              Nenhum convidado na lixeira
+            </p>
+          </div>
+        `;
+      }
+
+      return deletedGuests.map(guest => {
+        const client = clients.find(c => c.id === guest.client_id);
+        const deletedTime = new Date(guest.deleted_at).toLocaleString('pt-BR');
+
+        return `
+          <div class="p-4 rounded-xl" style="background-color: ${config.background_color};">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <h3 class="font-bold mb-1" style="font-size: 18px; color: ${config.text_color};">
+                  ${guest.name} ${guest.has_companion ? '👥' : ''}
+                </h3>
+                <p class="opacity-70 mb-1" style="font-size: 12px; color: ${config.text_color};">
+                  Cliente: ${client ? client.client_name : 'Desconhecido'}
+                </p>
+                <p class="opacity-70" style="font-size: 12px; color: ${config.text_color};">
+                  🗑️ Deletado em: ${deletedTime}
+                </p>
+              </div>
+              <button 
+                onclick="confirmRestoreGuest('${guest.id}')"
+                class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap ml-2"
+                style="background-color: ${config.success_color}; color: white; font-size: 14px;"
+              >
+                ↩️ Restaurar
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function switchTrashTab(tab) {
+      const clientsTab = document.getElementById('trash-tab-clients');
+      const guestsTab = document.getElementById('trash-tab-guests');
+      const content = document.getElementById('trash-content');
+
+      if (tab === 'clients') {
+        clientsTab.style.backgroundColor = config.primary_color;
+        clientsTab.style.color = 'white';
+        guestsTab.style.backgroundColor = config.background_color;
+        guestsTab.style.color = config.text_color;
+
+        const deletedClients = await loadDeletedClients();
+        content.innerHTML = renderTrashClients(deletedClients);
+      } else {
+        guestsTab.style.backgroundColor = config.primary_color;
+        guestsTab.style.color = 'white';
+        clientsTab.style.backgroundColor = config.background_color;
+        clientsTab.style.color = config.text_color;
+
+        const deletedGuests = await loadDeletedGuests();
+        content.innerHTML = renderTrashGuests(deletedGuests);
       }
     }
 
-    async function updateClientPreview() {
-      try {
-        const { data, error } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', selectedClientId)
-          .single();
+    async function confirmRestoreClient(clientId) {
+      const result = await restoreClient(clientId);
 
-        if (error || !data) return;
-
-        const canvas = document.getElementById('clientCanvas');
-        canvas.innerHTML = '';
-        
-        if (!data.pdf_data || data.pdf_data === '') {
-          canvas.innerHTML = '<div class="empty-state"><h3>Aguardando configuração</h3><p>O administrador ainda não configurou seu convite</p></div>';
-          return;
-        }
-
-        const pdfBytes = Uint8Array.from(atob(data.pdf_data), c => c.charCodeAt(0));
-        
-        const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
-        const pdf = await loadingTask.promise;
-        const page = await pdf.getPage(1);
-        
-        const scale = 1.5;
-        const viewport = page.getViewport({scale: scale});
-        
-        const renderCanvas = document.createElement('canvas');
-        const context = renderCanvas.getContext('2d');
-        renderCanvas.width = viewport.width;
-        renderCanvas.height = viewport.height;
-        
-        const renderContext = {
-          canvasContext: context,
-          viewport: viewport
-        };
-        
-        await page.render(renderContext).promise;
-        
-        const img = document.createElement('img');
-        img.className = 'canvas-bg';
-        img.src = renderCanvas.toDataURL('image/png');
-        canvas.appendChild(img);
-        
-        const position = JSON.parse(data.name_position || '{"x": 297, "y": 400}');
-        
-        const nameEl = document.createElement('div');
-        nameEl.className = 'text-element';
-        nameEl.textContent = '{NOME DO CONVIDADO}';
-        nameEl.style.position = 'absolute';
-        nameEl.style.left = position.x + 'px';
-        nameEl.style.top = position.y + 'px';
-        nameEl.style.fontSize = (data.font_size || 24) + 'px';
-        nameEl.style.color = data.text_color || '#1a1a2e';
-        nameEl.style.zIndex = '10';
-        nameEl.style.pointerEvents = 'none';
-        
-        canvas.appendChild(nameEl);
-      } catch (error) {
-        console.error('Erro ao renderizar preview:', error);
-        const canvas = document.getElementById('clientCanvas');
-        canvas.innerHTML = '<div class="empty-state"><h3>Erro ao carregar preview</h3></div>';
+      if (result.success) {
+        showToast('✅ Cliente restaurado com sucesso!', 'success');
+        await showTrashModal();
+        setTimeout(() => renderAdminDashboard(), 500);
+      } else {
+        showToast('❌ Erro ao restaurar cliente', 'error');
       }
     }
 
-    async function downloadInvite() {
-      const guestName = document.getElementById('guestNameInput').value.trim();
-      const btn = document.getElementById('downloadBtn');
+    async function confirmRestoreGuest(guestId) {
+      const result = await restoreGuest(guestId);
+
+      if (result.success) {
+        showToast('✅ Convidado restaurado com sucesso!', 'success');
+        await showTrashModal();
+      } else {
+        showToast('❌ Erro ao restaurar convidado', 'error');
+      }
+    }
+
+    function showUndoConfirmation(checkinId) {
+      const checkin = checkins.find(c => c.id === checkinId);
+      if (!checkin) return;
+
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
       
-      if (!guestName) {
-        showToast('⚠️ Digite um nome');
-        return;
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+          <div class="text-6xl mb-4">⚠️</div>
+          <h2 class="font-bold mb-2" style="font-size: 24px; color: ${config.text_color};">
+            Desfazer Check-in?
+          </h2>
+          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
+            Tem certeza que deseja desfazer o check-in de:<br>
+            <strong>${checkin.guest_name}</strong>
+          </p>
+          <div class="flex gap-3">
+            <button 
+              onclick="this.closest('.modal-overlay').remove()"
+              class="flex-1 py-3 rounded-xl font-semibold"
+              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+            >
+              Cancelar
+            </button>
+            <button 
+              onclick="confirmUndoCheckin('${checkinId}')"
+              class="flex-1 py-3 rounded-xl font-semibold"
+              style="background-color: #ef4444; color: white; font-size: 16px;"
+            >
+              Sim, Desfazer
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+    }
+
+    async function confirmUndoCheckin(checkinId) {
+      const result = await deleteCheckin(checkinId);
+
+      if (result.success) {
+        showToast('✅ Check-in desfeito com sucesso!', 'success');
+        document.querySelector('.modal-overlay').remove();
+        await renderAdminDashboard();
+      } else {
+        showToast('❌ Erro ao desfazer check-in', 'error');
+      }
+    }
+
+    function undoCheckin(checkinId) {
+      showUndoConfirmation(checkinId);
+    }
+
+    async function switchClientTab(tab) {
+      if (html5QrCode && tab !== 'scanner') {
+        html5QrCode.stop().catch(() => {});
+        html5QrCode = null;
       }
 
-      if (isDownloading) return;
-      isDownloading = true;
+      currentTab = tab;
+      await renderClientDashboard();
 
-      btn.disabled = true;
-      btn.innerHTML = '<span class="loading-spinner"></span> Gerando PDF...';
-
-      try {
-        const { data: client, error } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', selectedClientId)
-          .single();
-
-        if (error || !client) {
-          showToast('❌ Erro ao buscar dados');
-          return;
-        }
-
-        const generated = client.invites_generated || 0;
-        const limit = client.invites_limit || 50;
-        const isActive = client.token_active !== false;
-
-        if (!isActive || generated >= limit) {
-          showToast('❌ Limite de convites atingido!');
-          return;
-        }
-
-        await generatePdfWithName(client, guestName);
-
-        const newGenerated = generated + 1;
-        const shouldExpire = newGenerated >= limit;
-
-        await updateClientInDB(selectedClientId, {
-          invites_generated: newGenerated,
-          token_active: !shouldExpire
+      setTimeout(() => {
+        const tabs = document.querySelectorAll('.tab-button');
+        tabs.forEach(t => t.classList.remove('active'));
+        
+        const activeTab = Array.from(tabs).find(t => {
+          if (tab === 'home') return t.textContent.includes('Início');
+          if (tab === 'scanner') return t.textContent.includes('Scanner');
+          return false;
         });
+        
+        if (activeTab) activeTab.classList.add('active');
+      }, 50);
+    }
 
-        document.getElementById('guestNameInput').value = '';
-        await updateClientStats();
+    // =============== GLOBAL FUNCTIONS ===============
+
+    window.switchLoginType = switchLoginType;
+    window.loginAdmin = loginAdmin;
+    window.loginClient = loginClient;
+    window.logout = logout;
+    window.showAddClientModal = showAddClientModal;
+    window.addClient = addClient;
+    window.extendClientToken = extendClientToken;
+    window.showDeleteClientConfirmation = showDeleteClientConfirmation;
+    window.confirmDeleteClient = confirmDeleteClient;
+    window.showTrashModal = showTrashModal;
+    window.switchTrashTab = switchTrashTab;
+    window.confirmRestoreClient = confirmRestoreClient;
+    window.confirmRestoreGuest = confirmRestoreGuest;
+    window.switchClientTab = switchClientTab;
+    window.showManualSearchModal = showManualSearchModal;
+    window.filterManualSearch = filterManualSearch;
+    window.selectGuestManually = selectGuestManually;
+    window.confirmCompanionEntry = confirmCompanionEntry;
+    window.cancelCompanionEntry = cancelCompanionEntry;
+    window.filterGuests = filterGuests;
+    window.undoCheckin = undoCheckin;
+    window.confirmUndoCheckin = confirmUndoCheckin;
+
+    // =============== VALIDAÇÃO PERIÓDICA ===============
+    
+    setInterval(async () => {
+      if (currentUser && currentUser.type === 'client' && isOnline) {
+        try {
+          await loadClients();
+          const client = clients.find(c => c.id === currentUser.id);
+          
+          if (!client || client.deleted || parseInt(client.expiry) < Date.now()) {
+            clearSession('client');
+            currentUser = null;
+            currentView = 'login';
+            
+            if (html5QrCode) {
+              html5QrCode.stop().catch(() => {});
+              html5QrCode = null;
+            }
+            
+            showToast('❌ Sessão encerrada - Token expirado ou desativado', 'error');
+            renderLogin();
+          }
+        } catch (error) {
+          console.log('Erro na validação periódica (modo offline)');
+        }
+      }
+    }, 30000);
+
+    // =============== INITIALIZATION ===============
+
+    async function init() {
+      try {
+        loadOfflineQueue();
         
-        showToast(`✅ Convite baixado! (${newGenerated}/${limit})`);
+        const loaded = await loadAllData();
         
-        if (shouldExpire) {
-          showToast('⚠️ Limite atingido - token expirado');
+        if (!loaded) {
+          showToast('⚠️ Erro ao carregar dados', 'error');
+        }
+        
+        if (offlineQueue.length > 0 && isOnline) {
+          setTimeout(() => syncOfflineQueue(), 2000);
+        }
+
+        const hasSession = await checkExistingSession();
+        
+        if (!hasSession) {
+          renderLogin();
         }
       } catch (error) {
-        console.error('Erro ao baixar:', error);
-        showToast('❌ Erro ao gerar convite');
-      } finally {
-        isDownloading = false;
-        btn.disabled = false;
-        btn.textContent = '📥 Baixar Convite em PDF';
+        console.error('Erro na inicialização:', error);
+        showToast('❌ Erro ao inicializar aplicação', 'error');
+        renderLogin();
       }
     }
 
-    async function generatePdfWithName(client, guestName) {
-      if (!client.pdf_data) {
-        throw new Error('PDF não configurado');
-      }
-
-      const pdfBytes = Uint8Array.from(atob(client.pdf_data), c => c.charCodeAt(0));
-      const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
-      
-      const pages = pdfDoc.getPages();
-      const firstPage = pages[0];
-      
-      const position = JSON.parse(client.name_position || '{"x": 297, "y": 400}');
-      const fontSize = client.font_size || 24;
-      const textColor = client.text_color || '#1a1a2e';
-      
-      const r = parseInt(textColor.slice(1, 3), 16) / 255;
-      const g = parseInt(textColor.slice(3, 5), 16) / 255;
-      const b = parseInt(textColor.slice(5, 7), 16) / 255;
-      
-      const { height } = firstPage.getSize();
-      const yPos = height - position.y - fontSize;
-      
-      firstPage.drawText(guestName, {
-        x: position.x,
-        y: yPos,
-        size: fontSize,
-        color: PDFLib.rgb(r, g, b)
-      });
-      
-      const modifiedPdfBytes = await pdfDoc.save();
-      const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `convite_${guestName.replace(/\s+/g, '_')}.pdf`;
-      link.click();
-      
-      URL.revokeObjectURL(url);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
     }
-
-    // ========== UTILITY FUNCTIONS ==========
-    function showToast(message) {
-      const toast = document.createElement('div');
-      toast.className = 'toast';
-      toast.textContent = message;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 4000);
-    }
-
-    // Initialize on load
-    window.addEventListener('load', () => {
-      initSupabase();
-    });
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ac3375da125c13d',t:'MTc2NTQzNzU5My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ac7be22d159c13d',t:'MTc2NTQ4NTA1Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
