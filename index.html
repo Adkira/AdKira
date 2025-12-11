@@ -7,6 +7,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="/_sdk/element_sdk.js"></script>
   <style>
     body {
@@ -134,6 +135,7 @@
       card_color: "#132f4c",
       text_color: "#ffffff",
       success_color: "#10b981",
+      error_color: "#ef4444",
       app_title: "AdKira Check-In"
     };
 
@@ -152,6 +154,15 @@
       CLIENT_SESSION: 'adkira_client_session',
       OFFLINE_QUEUE: 'adkira_offline_queue'
     };
+
+    // =============== HELPER: DETECTAR ACOMPANHANTE ===============
+    
+    function hasCompanionInName(name) {
+      if (!name) return false;
+      const lowerName = name.toLowerCase();
+      // Verifica se tem " e " no meio do nome (indicando acompanhante)
+      return lowerName.includes(' e ');
+    }
 
     // =============== SUPABASE FUNCTIONS ===============
 
@@ -413,6 +424,67 @@
       }
     }
 
+    // =============== PDF EXPORT ===============
+
+    async function exportClientPDF(clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+
+      const clientGuests = guests.filter(g => g.client_id === clientId);
+      const clientCheckins = checkins.filter(c => c.client_id === clientId);
+
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // Título
+        doc.setFontSize(20);
+        doc.text('Relatório de Check-In', 105, 20, { align: 'center' });
+
+        // Info do Cliente
+        doc.setFontSize(12);
+        doc.text(`Cliente: ${client.client_name}`, 20, 40);
+        doc.text(`Token: ${client.token}`, 20, 50);
+        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 20, 60);
+
+        // Estatísticas
+        doc.setFontSize(14);
+        doc.text('Estatísticas:', 20, 75);
+        doc.setFontSize(11);
+        doc.text(`Total de Convidados: ${clientGuests.length}`, 20, 85);
+        doc.text(`Total de Check-ins: ${clientCheckins.length}`, 20, 93);
+        doc.text(`Pendentes: ${clientGuests.length - clientCheckins.length}`, 20, 101);
+
+        // Lista de Check-ins
+        doc.setFontSize(14);
+        doc.text('Check-ins Realizados:', 20, 116);
+        
+        let yPos = 126;
+        doc.setFontSize(10);
+        
+        clientCheckins.forEach((checkin, index) => {
+          if (yPos > 270) {
+            doc.addPage();
+            yPos = 20;
+          }
+          
+          const checkinTime = new Date(checkin.checked_in_at).toLocaleString('pt-BR');
+          const companionText = checkin.with_companion ? ' (Com acompanhante)' : '';
+          
+          doc.text(`${index + 1}. ${checkin.guest_name}${companionText}`, 20, yPos);
+          doc.text(`   ${checkinTime}`, 20, yPos + 7);
+          yPos += 15;
+        });
+
+        // Salvar PDF
+        doc.save(`Relatorio_${client.client_name.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+        showToast('✅ PDF gerado com sucesso!', 'success');
+      } catch (error) {
+        console.error('Erro ao gerar PDF:', error);
+        showToast('❌ Erro ao gerar PDF', 'error');
+      }
+    }
+
     // =============== OFFLINE QUEUE ===============
 
     function loadOfflineQueue() {
@@ -529,7 +601,7 @@
             
             if (error || !data || !data.active) {
               clearSession('admin');
-              showToast('⚠️ Sessão administrativa inválida. Faça login novamente.', 'warning');
+              showToast('⚠️ Sess  o administrativa inválida. Fa  a login novamente.', 'warning');
               return false;
             }
           } catch (e) {
@@ -933,11 +1005,17 @@
                             </span>
                           </div>
                         </div>
-                        <div class="flex gap-2 ml-4">
-                          <button onclick="extendClientToken('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all" style="background-color: ${config.primary_color}; color: white; font-size: 14px;">
+                        <div class="flex flex-col gap-2 ml-4">
+                          <button onclick="showClientDetails('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 14px;">
+                            📋 Ver Detalhes
+                          </button>
+                          <button onclick="exportClientPDF('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: #3b82f6; color: white; font-size: 14px;">
+                            📄 Baixar PDF
+                          </button>
+                          <button onclick="extendClientToken('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: #10b981; color: white; font-size: 14px;">
                             ⏰ Estender
                           </button>
-                          <button onclick="showDeleteClientConfirmation('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 14px;">
+                          <button onclick="showDeleteClientConfirmation('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 14px;">
                             🗑️ Deletar
                           </button>
                         </div>
@@ -968,7 +1046,7 @@
         clearSession('client');
         currentUser = null;
         currentView = 'login';
-        showToast('❌ Sessão expirada ou desativada. Faça login novamente.', 'error');
+        showToast('❌ Sessão expirada ou desativada. Fa  a login novamente.', 'error');
         renderLogin();
         return;
       }
@@ -1114,12 +1192,9 @@
           <div class="p-4 rounded-xl" style="background-color: ${config.card_color}; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
             <div class="flex items-center justify-between">
               <div class="flex-1">
-                <h3 class="font-bold mb-1" style="font-size: 18px; color: ${config.text_color};">
-                  ${guest.name} ${guest.has_companion ? '👥' : ''}
+                <h3 class="font-bold mb-2" style="font-size: 18px; color: ${config.text_color};">
+                  ${guest.name}
                 </h3>
-                <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
-                  🎫 Código: ${guest.qr_code}
-                </p>
                 ${mainCheckin ? `
                   <p class="font-semibold mb-1" style="font-size: 12px; color: ${config.success_color};">
                     ✅ Check-in: ${new Date(mainCheckin.checked_in_at).toLocaleString('pt-BR')}
@@ -1263,11 +1338,8 @@
                   style="background-color: ${config.background_color}; color: ${config.text_color};"
                   ${hasCheckedIn ? 'disabled' : ''}
                 >
-                  <div class="font-bold mb-1" style="font-size: 16px;">
-                    ${guest.name} ${hasCheckedIn ? '✅' : ''}
-                  </div>
-                  <div class="opacity-70" style="font-size: 12px;">
-                    Código: ${guest.qr_code} ${guest.has_companion ? '| 👥 Com acompanhante' : ''}
+                  <div class="font-bold" style="font-size: 16px;">
+                    ${guest.name} ${hasCheckedIn ? '✅' : ''} ${guest.has_companion ? '| 👥 Com acompanhante' : ''}
                   </div>
                 </button>
               `;
@@ -1308,11 +1380,8 @@
             style="background-color: ${config.background_color}; color: ${config.text_color};"
             ${hasCheckedIn ? 'disabled' : ''}
           >
-            <div class="font-bold mb-1" style="font-size: 16px;">
-              ${guest.name} ${hasCheckedIn ? '✅' : ''}
-            </div>
-            <div class="opacity-70" style="font-size: 12px;">
-              Código: ${guest.qr_code} ${guest.has_companion ? '| 👥 Com acompanhante' : ''}
+            <div class="font-bold" style="font-size: 16px;">
+              ${guest.name} ${hasCheckedIn ? '✅' : ''} ${guest.has_companion ? '| 👥 Com acompanhante' : ''}
             </div>
           </button>
         `;
@@ -1335,7 +1404,7 @@
       const client = clients.find(c => c.id === currentUser.id);
       
       if (!client || client.deleted || parseInt(client.expiry) < Date.now()) {
-        showToast('❌ ACESSO NEGADO - Token expirado ou desativado', 'error');
+        showErrorAnimation('ACESSO NEGADO', 'Token expirado ou desativado');
         playErrorSound();
         setTimeout(() => {
           logout();
@@ -1349,28 +1418,29 @@
       const guest = clientGuests.find(g => g.qr_code === cleanCode);
 
       if (!guest) {
-        showToast('❌ ENTRADA NEGADA - Convidado não encontrado', 'error');
+        showErrorAnimation('ENTRADA NÃO PERMITIDA', 'Convidado não encontrado');
         playErrorSound();
         setTimeout(() => {
           if (html5QrCode) html5QrCode.resume();
-        }, 2000);
+        }, 2500);
         return;
       }
 
       const clientCheckins = checkins.filter(c => c.client_id === currentUser.id);
       const existingCheckins = clientCheckins.filter(c => c.guest_qr === cleanCode);
 
-      if (guest.has_companion && existingCheckins.length === 1) {
-        showCompanionConfirmation(guest, cleanCode);
-        return;
-      }
-
+      // Verifica se já usou o convite completamente
       if (existingCheckins.length > 0 && (!guest.has_companion || existingCheckins.length >= 2)) {
-        showToast('❌ ENTRADA NEGADA - Check-in já realizado', 'error');
+        showErrorAnimation('ENTRADA NÃO PERMITIDA', 'Este convite já foi usado');
         playErrorSound();
         setTimeout(() => {
           if (html5QrCode) html5QrCode.resume();
-        }, 2000);
+        }, 2500);
+        return;
+      }
+
+      if (guest.has_companion && existingCheckins.length === 1) {
+        showCompanionConfirmation(guest, cleanCode);
         return;
       }
 
@@ -1452,7 +1522,8 @@
     }
 
     async function confirmCompanionEntry(cleanCode, withCompanion, isCompanionOnly = false) {
-      document.querySelector('.modal-overlay').remove();
+      const modalEl = document.querySelector('.modal-overlay');
+      if (modalEl) modalEl.remove();
       
       const clientGuests = guests.filter(g => g.client_id === currentUser.id);
       const guest = clientGuests.find(g => g.qr_code === cleanCode);
@@ -1461,7 +1532,8 @@
     }
 
     function cancelCompanionEntry() {
-      document.querySelector('.modal-overlay').remove();
+      const modalEl = document.querySelector('.modal-overlay');
+      if (modalEl) modalEl.remove();
       setTimeout(() => {
         if (html5QrCode) html5QrCode.resume();
       }, 500);
@@ -1500,20 +1572,16 @@
       }
 
       if (success) {
-        let message = '';
+        let displayMessage = '';
         if (isCompanionOnly) {
-          message = '✅ ENTRADA APROVADA - Acompanhante de ' + guest.name;
+          displayMessage = 'Acompanhante de ' + guest.name;
         } else if (withCompanion) {
-          message = '✅ ENTRADA APROVADA - ' + guest.name + ' + Acompanhante (2 pessoas)';
+          displayMessage = guest.name + ' e Acompanhante';
         } else {
-          message = '✅ ENTRADA APROVADA - ' + guest.name + (guest.has_companion ? ' (1 pessoa)' : '');
+          displayMessage = guest.name;
         }
         
-        if (!isOnline) {
-          message += ' [OFFLINE]';
-        }
-        
-        showSuccessAnimation(message);
+        showSuccessAnimation('ENTRADA APROVADA', displayMessage, !isOnline);
         playSuccessSound();
         vibrateDevice();
         
@@ -1521,25 +1589,33 @@
           if (html5QrCode) html5QrCode.resume();
         }, 3000);
       } else {
-        showToast('❌ ENTRADA NEGADA - Erro do sistema', 'error');
+        showErrorAnimation('ENTRADA NÃO PERMITIDA', 'Erro do sistema');
         playErrorSound();
         setTimeout(() => {
           if (html5QrCode) html5QrCode.resume();
-        }, 2000);
+        }, 2500);
       }
     }
 
-    function showSuccessAnimation(message) {
+    function showSuccessAnimation(title, guestName, isOffline = false) {
       const overlay = document.createElement('div');
       overlay.className = 'modal-overlay';
       overlay.style.zIndex = '10000';
       
       overlay.innerHTML = `
         <div class="text-center animate-slide-in">
-          <div class="text-8xl mb-4">✅</div>
-          <div class="font-bold mb-2" style="font-size: 28px; color: white;">
-            ${message.replace('✅ ', '')}
+          <div class="text-8xl mb-6">✅</div>
+          <div class="font-bold mb-3" style="font-size: 32px; color: ${config.success_color}; text-shadow: 0 2px 10px rgba(16, 185, 129, 0.5);">
+            ${title}
           </div>
+          <div class="font-bold mb-2" style="font-size: 28px; color: white;">
+            ${guestName}
+          </div>
+          ${isOffline ? `
+            <div class="font-semibold" style="font-size: 14px; color: #f59e0b;">
+              [OFFLINE - Será sincronizado]
+            </div>
+          ` : ''}
           <div id="confetti-container"></div>
         </div>
       `;
@@ -1560,6 +1636,30 @@
       setTimeout(() => {
         overlay.remove();
       }, 3000);
+    }
+
+    function showErrorAnimation(title, message) {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.style.zIndex = '10000';
+      
+      overlay.innerHTML = `
+        <div class="text-center animate-slide-in">
+          <div class="text-8xl mb-6">❌</div>
+          <div class="font-bold mb-3" style="font-size: 32px; color: ${config.error_color}; text-shadow: 0 2px 10px rgba(239, 68, 68, 0.5);">
+            ${title}
+          </div>
+          <div class="font-semibold" style="font-size: 20px; color: white; opacity: 0.9;">
+            ${message}
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(overlay);
+      
+      setTimeout(() => {
+        overlay.remove();
+      }, 2500);
     }
 
     function playSuccessSound() {
@@ -1611,6 +1711,352 @@
     }
 
     // =============== ADMIN FUNCTIONS ===============
+
+    async function showClientDetails(clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+
+      const clientGuests = guests.filter(g => g.client_id === clientId);
+      const clientCheckins = checkins.filter(c => c.client_id === clientId);
+
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+      };
+
+      const timeRemaining = parseInt(client.expiry) - Date.now();
+      const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
+      const daysRemaining = Math.floor(hoursRemaining / 24);
+      const isExpired = parseInt(client.expiry) < Date.now();
+
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-6" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5); max-width: 900px; max-height: 90vh; overflow-y: auto;">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="font-bold" style="font-size: 28px; color: ${config.text_color};">
+              📋 Detalhes do Cliente
+            </h2>
+            <button onclick="this.closest('.modal-overlay').remove()" class="px-4 py-2 rounded-lg font-semibold" style="background-color: ${config.background_color}; color: ${config.text_color};">
+              ✕ Fechar
+            </button>
+          </div>
+
+          <div class="mb-6 p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.primary_color}20 0%, ${config.background_color} 100%);">
+            <h3 class="font-bold mb-3" style="font-size: 24px; color: ${config.text_color};">
+              ${client.client_name}
+            </h3>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <p class="opacity-70 mb-1" style="font-size: 14px; color: ${config.text_color};">
+                  🎫 Token de Acesso
+                </p>
+                <p class="font-mono font-bold" style="font-size: 18px; color: ${config.primary_color};">
+                  ${client.token}
+                </p>
+              </div>
+              <div>
+                <p class="opacity-70 mb-1" style="font-size: 14px; color: ${config.text_color};">
+                  ⏰ Status
+                </p>
+                <p class="font-bold" style="font-size: 16px; color: ${isExpired ? config.error_color : config.success_color};">
+                  ${isExpired ? '🔒 Expirado' : `✓ Ativo (${daysRemaining}d ${hoursRemaining % 24}h)`}
+                </p>
+              </div>
+            </div>
+            <div class="flex gap-4">
+              <div class="flex-1 p-4 rounded-xl text-center" style="background-color: ${config.background_color};">
+                <p class="opacity-70 mb-1" style="font-size: 12px; color: ${config.text_color};">
+                  Total Convidados
+                </p>
+                <p class="font-bold" style="font-size: 28px; color: ${config.primary_color};">
+                  ${clientGuests.length}
+                </p>
+              </div>
+              <div class="flex-1 p-4 rounded-xl text-center" style="background-color: ${config.background_color};">
+                <p class="opacity-70 mb-1" style="font-size: 12px; color: ${config.text_color};">
+                  Check-ins Realizados
+                </p>
+                <p class="font-bold" style="font-size: 28px; color: ${config.success_color};">
+                  ${clientCheckins.filter(c => !c.is_companion_only).length}
+                </p>
+              </div>
+              <div class="flex-1 p-4 rounded-xl text-center" style="background-color: ${config.background_color};">
+                <p class="opacity-70 mb-1" style="font-size: 12px; color: ${config.text_color};">
+                  Pendentes
+                </p>
+                <p class="font-bold" style="font-size: 28px; color: ${config.text_color};">
+                  ${clientGuests.length - clientCheckins.filter(c => !c.is_companion_only).length}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mb-6">
+            <button onclick="showAddGuestsToClient('${clientId}')" class="p-4 rounded-xl font-bold transition-all" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 16px;">
+              ➕ Adicionar Convidados
+            </button>
+            <button onclick="showUndoAllCheckinsConfirmation('${clientId}')" class="p-4 rounded-xl font-bold transition-all" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; font-size: 16px;">
+              ↩️ Desfazer Todos Check-ins
+            </button>
+          </div>
+
+          <h3 class="font-bold mb-4" style="font-size: 20px; color: ${config.text_color};">
+            📋 Lista de Convidados
+          </h3>
+
+          <div class="space-y-2 max-h-96 overflow-y-auto">
+            ${clientGuests.length === 0 ? `
+              <div class="p-8 rounded-xl text-center" style="background-color: ${config.background_color};">
+                <p class="opacity-70" style="font-size: 16px; color: ${config.text_color};">
+                  Nenhum convidado cadastrado ainda
+                </p>
+              </div>
+            ` : clientGuests.map(guest => {
+              const guestCheckins = clientCheckins.filter(c => c.guest_qr === guest.qr_code);
+              const mainCheckin = guestCheckins.find(c => !c.is_companion_only);
+              const companionCheckin = guestCheckins.find(c => c.is_companion_only);
+
+              return `
+                <div class="p-4 rounded-xl" style="background-color: ${config.background_color};">
+                  <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                      <h4 class="font-bold mb-1" style="font-size: 16px; color: ${config.text_color};">
+                        ${guest.name} ${guest.has_companion ? '👥' : ''}
+                      </h4>
+                      ${mainCheckin ? `
+                        <p class="font-semibold mb-1" style="font-size: 11px; color: ${config.success_color};">
+                          ✅ Check-in: ${new Date(mainCheckin.checked_in_at).toLocaleString('pt-BR')}
+                          ${mainCheckin.with_companion ? ' (Com acompanhante)' : guest.has_companion ? ' (Sem acompanhante)' : ''}
+                        </p>
+                      ` : `
+                        <p class="opacity-50" style="font-size: 11px; color: ${config.text_color};">
+                          Aguardando check-in
+                        </p>
+                      `}
+                      ${companionCheckin ? `
+                        <p class="font-semibold" style="font-size: 11px; color: ${config.success_color};">
+                          ✅ Acompanhante: ${new Date(companionCheckin.checked_in_at).toLocaleString('pt-BR')}
+                        </p>
+                      ` : ''}
+                    </div>
+                    <button 
+                      onclick="showDeleteGuestConfirmation('${guest.id}')"
+                      class="px-3 py-2 rounded-lg font-semibold transition-all"
+                      style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 12px;"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+    }
+
+    async function showAddGuestsToClient(clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+          <h2 class="font-bold mb-2" style="font-size: 24px; color: ${config.text_color};">
+            ➕ Adicionar Convidados
+          </h2>
+          <p class="mb-6 opacity-70" style="font-size: 14px; color: ${config.text_color};">
+            Cliente: <strong>${client.client_name}</strong>
+          </p>
+          <form onsubmit="addGuestsToClient(event, '${clientId}'); return false;">
+            <div class="mb-4">
+              <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
+                Upload Lista de Convidados (TXT)
+              </label>
+              <input 
+                type="file" 
+                name="guest_file" 
+                accept=".txt"
+                required
+                class="w-full px-4 py-3 rounded-xl outline-none"
+                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;"
+              >
+              <p class="mt-2 opacity-70" style="font-size: 12px; color: ${config.text_color};">
+                Formato: CODIGO,Nome do Convidado<br>
+                Exemplo: 001,João Silva<br>
+                Exemplo com acompanhante: 002,Maria e Esposo<br><br>
+                ⚠️ Os novos convidados serão ADICIONADOS    lista existente
+              </p>
+            </div>
+            <div class="flex gap-3">
+              <button 
+                type="button" 
+                onclick="this.closest('.modal-overlay').remove()"
+                class="flex-1 py-3 rounded-xl font-semibold"
+                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                class="flex-1 py-3 rounded-xl font-semibold"
+                style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 16px;"
+              >
+                ➕ Adicionar
+              </button>
+            </div>
+          </form>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+    }
+
+    async function addGuestsToClient(event, clientId) {
+      event.preventDefault();
+      
+      const formData = new FormData(event.target);
+      const guestFile = formData.get('guest_file');
+
+      if (guestFile && guestFile.size > 0) {
+        await processGuestFile(guestFile, clientId);
+        
+        const modalEl = document.querySelector('.modal-overlay');
+        if (modalEl) modalEl.remove();
+        
+        await showClientDetails(clientId);
+      }
+    }
+
+    function showDeleteGuestConfirmation(guestId) {
+      const guest = guests.find(g => g.id === guestId);
+      if (!guest) return;
+
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+          <div class="text-6xl mb-4">🗑️</div>
+          <h2 class="font-bold mb-2" style="font-size: 24px; color: ${config.text_color};">
+            Deletar Convidado?
+          </h2>
+          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
+            Tem certeza que deseja deletar:<br>
+            <strong>${guest.name}</strong>
+          </p>
+          <div class="flex gap-3">
+            <button 
+              onclick="this.closest('.modal-overlay').remove()"
+              class="flex-1 py-3 rounded-xl font-semibold"
+              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+            >
+              Cancelar
+            </button>
+            <button 
+              onclick="confirmDeleteGuest('${guestId}')"
+              class="flex-1 py-3 rounded-xl font-semibold"
+              style="background-color: #ef4444; color: white; font-size: 16px;"
+            >
+              Sim, Deletar
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+    }
+
+    async function confirmDeleteGuest(guestId) {
+      const guest = guests.find(g => g.id === guestId);
+      if (!guest) return;
+
+      const result = await deleteGuest(guestId);
+
+      if (result.success) {
+        showToast('✅ Convidado deletado com sucesso!', 'success');
+        
+        const modalEls = document.querySelectorAll('.modal-overlay');
+        modalEls.forEach(m => m.remove());
+        
+        await showClientDetails(guest.client_id);
+      } else {
+        showToast('❌ Erro ao deletar convidado', 'error');
+      }
+    }
+
+    function showUndoAllCheckinsConfirmation(clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+
+      const clientCheckins = checkins.filter(c => c.client_id === clientId);
+
+      if (clientCheckins.length === 0) {
+        showToast('⚠️ Não há check-ins para desfazer', 'warning');
+        return;
+      }
+
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+          <div class="text-6xl mb-4">⚠️</div>
+          <h2 class="font-bold mb-2" style="font-size: 24px; color: ${config.text_color};">
+            Desfazer TODOS os Check-ins?
+          </h2>
+          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
+            Tem certeza que deseja desfazer <strong>TODOS os ${clientCheckins.length} check-ins</strong><br>
+            do cliente <strong>${client.client_name}</strong>?<br><br>
+            ⚠️ Esta ação não pode ser desfeita!
+          </p>
+          <div class="flex gap-3">
+            <button 
+              onclick="this.closest('.modal-overlay').remove()"
+              class="flex-1 py-3 rounded-xl font-semibold"
+              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+            >
+              Cancelar
+            </button>
+            <button 
+              onclick="confirmUndoAllCheckins('${clientId}')"
+              class="flex-1 py-3 rounded-xl font-semibold"
+              style="background-color: #ef4444; color: white; font-size: 16px;"
+            >
+              Sim, Desfazer Todos
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+    }
+
+    async function confirmUndoAllCheckins(clientId) {
+      const clientCheckins = checkins.filter(c => c.client_id === clientId);
+      
+      let deletedCount = 0;
+      for (const checkin of clientCheckins) {
+        const result = await deleteCheckin(checkin.id);
+        if (result.success) deletedCount++;
+      }
+
+      if (deletedCount > 0) {
+        showToast(`✅ ${deletedCount} check-ins desfeitos com sucesso!`, 'success');
+        
+        const modalEls = document.querySelectorAll('.modal-overlay');
+        modalEls.forEach(m => m.remove());
+        
+        await loadCheckins();
+        await showClientDetails(clientId);
+      } else {
+        showToast('❌ Erro ao desfazer check-ins', 'error');
+      }
+    }
 
     function showAddClientModal() {
       const modal = document.createElement('div');
@@ -1666,8 +2112,9 @@
                   style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;"
                 >
                 <p class="mt-2 opacity-70" style="font-size: 12px; color: ${config.text_color};">
-                  Formato: CODIGO,Nome do Convidado,Acompanhante (uma linha por convidado)<br>
-                  Acompanhante: SIM ou NÃO
+                  Formato: CODIGO,Nome do Convidado<br>
+                  Exemplo: 001,João Silva<br>
+                  Exemplo com acompanhante: 002,Maria e Esposo
                 </p>
               </div>
               <div class="flex gap-3 pt-4">
@@ -1710,7 +2157,7 @@
         id: generateId('client'),
         client_name: clientName,
         token: token,
-        expiry: expiry,
+        expiry: expiry.toString(),
         created_at: new Date().toISOString(),
         deleted: false
       };
@@ -1718,16 +2165,18 @@
       const result = await createClient(clientData);
 
       if (result.success) {
-        showToast('Cliente criado! Token: ' + token, 'success');
+        showToast('✅ Cliente criado! Token: ' + token, 'success');
         
         if (guestFile && guestFile.size > 0) {
           await processGuestFile(guestFile, clientData.id);
         }
 
-        document.querySelector('.modal-overlay').remove();
+        const modalEl = document.querySelector('.modal-overlay');
+        if (modalEl) modalEl.remove();
+        
         await renderAdminDashboard();
       } else {
-        showToast('Erro ao criar cliente', 'error');
+        showToast('   Erro ao criar cliente', 'error');
       }
     }
 
@@ -1735,29 +2184,32 @@
       const text = await file.text();
       const lines = text.split('\n').filter(line => line.trim());
 
+      let imported = 0;
       for (const line of lines) {
         const parts = line.split(',').map(p => p.trim());
         if (parts.length >= 2) {
-          const hasCompanion = parts.length >= 3 && 
-                               (parts[2].toUpperCase() === 'SIM' || 
-                                parts[2].toUpperCase() === 'TRUE' || 
-                                parts[2] === '1');
+          const qrCode = parts[0];
+          const guestName = parts[1];
+          
+          // Detecta automaticamente se tem acompanhante pelo nome
+          const hasCompanion = hasCompanionInName(guestName);
 
           const guestData = {
             id: generateId('guest'),
             client_id: clientId,
-            qr_code: parts[0],
-            name: parts[1],
+            qr_code: qrCode,
+            name: guestName,
             has_companion: hasCompanion,
             created_at: new Date().toISOString(),
             deleted: false
           };
 
-          await createGuest(guestData);
+          const result = await createGuest(guestData);
+          if (result.success) imported++;
         }
       }
 
-      showToast(lines.length + ' convidados importados!', 'success');
+      showToast(`✅ ${imported} convidados importados!`, 'success');
     }
 
     async function extendClientToken(clientId) {
@@ -1767,13 +2219,13 @@
       const currentExpiry = parseInt(client.expiry);
       const newExpiry = currentExpiry + (7 * 24 * 60 * 60 * 1000);
 
-      const result = await updateClient(clientId, { expiry: newExpiry });
+      const result = await updateClient(clientId, { expiry: newExpiry.toString() });
 
       if (result.success) {
-        showToast('Token estendido por 7 dias!', 'success');
+        showToast('✅ Token estendido por 7 dias!', 'success');
         await renderAdminDashboard();
       } else {
-        showToast('Erro ao estender token', 'error');
+        showToast('❌ Erro ao estender token', 'error');
       }
     }
 
@@ -1822,7 +2274,8 @@
 
       if (result.success) {
         showToast('✅ Cliente movido para lixeira!', 'success');
-        document.querySelector('.modal-overlay').remove();
+        const modalEl = document.querySelector('.modal-overlay');
+        if (modalEl) modalEl.remove();
         await renderAdminDashboard();
       } else {
         showToast('❌ Erro ao deletar cliente', 'error');
@@ -2049,7 +2502,8 @@
 
       if (result.success) {
         showToast('✅ Check-in desfeito com sucesso!', 'success');
-        document.querySelector('.modal-overlay').remove();
+        const modalEl = document.querySelector('.modal-overlay');
+        if (modalEl) modalEl.remove();
         await renderAdminDashboard();
       } else {
         showToast('❌ Erro ao desfazer check-in', 'error');
@@ -2107,6 +2561,14 @@
     window.filterGuests = filterGuests;
     window.undoCheckin = undoCheckin;
     window.confirmUndoCheckin = confirmUndoCheckin;
+    window.exportClientPDF = exportClientPDF;
+    window.showClientDetails = showClientDetails;
+    window.showAddGuestsToClient = showAddGuestsToClient;
+    window.addGuestsToClient = addGuestsToClient;
+    window.showDeleteGuestConfirmation = showDeleteGuestConfirmation;
+    window.confirmDeleteGuest = confirmDeleteGuest;
+    window.showUndoAllCheckinsConfirmation = showUndoAllCheckinsConfirmation;
+    window.confirmUndoAllCheckins = confirmUndoAllCheckins;
 
     // =============== VALIDAÇÃO PERIÓDICA ===============
     
@@ -2169,5 +2631,5 @@
       init();
     }
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ac7be22d159c13d',t:'MTc2NTQ4NTA1Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ac7e1c2a593c13d',t:'MTc2NTQ4NjUxNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
