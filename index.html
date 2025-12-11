@@ -45,6 +45,21 @@
         opacity: 0.5;
       }
     }
+
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+
+    .vip-badge {
+      background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%);
+      background-size: 200% auto;
+      animation: shimmer 3s linear infinite;
+    }
     
     .animate-slide-in {
       animation: slideIn 0.4s ease-out;
@@ -149,6 +164,7 @@
       text_color: "#ffffff",
       success_color: "#10b981",
       error_color: "#ef4444",
+      vip_color: "#fbbf24",
       app_title: "AdKira Check-In"
     };
 
@@ -356,6 +372,23 @@
       }
     }
 
+    async function updateGuest(guestId, updates) {
+      try {
+        const { data, error } = await supabase
+          .from('guests')
+          .update(updates)
+          .eq('id', guestId)
+          .select();
+
+        if (error) throw error;
+        await loadGuests();
+        return { success: true, data };
+      } catch (error) {
+        console.error('Erro ao atualizar convidado:', error);
+        return { success: false, error };
+      }
+    }
+
     async function deleteGuest(guestId) {
       try {
         const { data, error } = await supabase
@@ -438,6 +471,22 @@
       }
     }
 
+    async function deleteAllClientCheckins(clientId) {
+      try {
+        const { error } = await supabase
+          .from('checkins')
+          .delete()
+          .eq('client_id', clientId);
+
+        if (error) throw error;
+        await loadCheckins();
+        return { success: true };
+      } catch (error) {
+        console.error('Erro ao deletar check-ins do cliente:', error);
+        return { success: false, error };
+      }
+    }
+
     // =============== PDF EXPORT - VERSÃO PROFISSIONAL ===============
 
     async function exportClientPDF(clientId) {
@@ -455,6 +504,7 @@
         const darkColor = [10, 25, 41];
         const successColor = [16, 185, 129];
         const grayColor = [148, 163, 184];
+        const vipColor = [251, 191, 36];
         
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
@@ -489,28 +539,53 @@
         let yPos = 55;
         
         doc.setFillColor(245, 247, 250);
-        doc.roundedRect(15, yPos, pageWidth - 30, 35, 3, 3, 'F');
+        doc.roundedRect(15, yPos, pageWidth - 30, 40, 3, 3, 'F');
         
         doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
         doc.setFontSize(16);
         doc.setFont(undefined, 'bold');
         doc.text(client.client_name, 20, yPos + 10);
         
+        // Badge VIP
+        if (client.is_vip) {
+          doc.setFillColor(vipColor[0], vipColor[1], vipColor[2]);
+          doc.roundedRect(20 + doc.getTextWidth(client.client_name) + 5, yPos + 3, 20, 8, 2, 2, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(8);
+          doc.setFont(undefined, 'bold');
+          doc.text('VIP', 30 + doc.getTextWidth(client.client_name), yPos + 9, { align: 'center' });
+        }
+        
         doc.setFontSize(10);
         doc.setFont(undefined, 'normal');
         doc.setTextColor(100, 100, 100);
         doc.text(`Token de Acesso: ${client.token}`, 20, yPos + 20);
         
-        const expiryDate = new Date(parseInt(client.expiry)).toLocaleString('pt-BR');
-        const isExpired = parseInt(client.expiry) < Date.now();
-        doc.text(`Validade: ${expiryDate} ${isExpired ? '(EXPIRADO)' : '(ATIVO)'}`, 20, yPos + 28);
+        if (client.event_date) {
+          const eventDate = new Date(parseInt(client.event_date)).toLocaleString('pt-BR');
+          const timeUntilEvent = parseInt(client.event_date) - Date.now();
+          const daysUntil = Math.floor(timeUntilEvent / (1000 * 60 * 60 * 24));
+          const hoursUntil = Math.floor((timeUntilEvent % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          
+          doc.text(`Data do Evento: ${eventDate}`, 20, yPos + 28);
+          if (timeUntilEvent > 0) {
+            doc.text(`Faltam: ${daysUntil} dias e ${hoursUntil} horas`, 20, yPos + 35);
+          } else {
+            doc.text(`Evento já ocorreu`, 20, yPos + 35);
+          }
+        } else {
+          const expiryDate = new Date(parseInt(client.expiry)).toLocaleString('pt-BR');
+          const isExpired = parseInt(client.expiry) < Date.now();
+          doc.text(`Validade: ${expiryDate} ${isExpired ? '(EXPIRADO)' : '(ATIVO)'}`, 20, yPos + 28);
+        }
 
         // ======== CARDS DE ESTATÍSTICAS ========
-        yPos = 100;
+        yPos = 105;
         
         const uniqueCheckins = clientCheckins.filter(c => !c.is_companion_only).length;
         const pendingGuests = clientGuests.length - uniqueCheckins;
         const companionCount = clientCheckins.filter(c => c.is_companion_only || c.with_companion).length;
+        const vipGuests = clientGuests.filter(g => g.is_vip).length;
         const attendanceRate = clientGuests.length > 0 ? ((uniqueCheckins / clientGuests.length) * 100).toFixed(1) : 0;
 
         const cardWidth = (pageWidth - 50) / 4;
@@ -540,16 +615,16 @@
         doc.setFont(undefined, 'bold');
         doc.text(uniqueCheckins.toString(), 15 + cardWidth + cardSpacing + cardWidth/2, yPos + 24, { align: 'center' });
 
-        // Card 3: Pendentes
-        doc.setFillColor(255, 152, 0);
+        // Card 3: VIPs
+        doc.setFillColor(vipColor[0], vipColor[1], vipColor[2]);
         doc.roundedRect(15 + (cardWidth + cardSpacing) * 2, yPos, cardWidth, cardHeight, 2, 2, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(9);
         doc.setFont(undefined, 'normal');
-        doc.text('PENDENTES', 15 + (cardWidth + cardSpacing) * 2 + cardWidth/2, yPos + 11, { align: 'center' });
+        doc.text('VIP', 15 + (cardWidth + cardSpacing) * 2 + cardWidth/2, yPos + 11, { align: 'center' });
         doc.setFontSize(18);
         doc.setFont(undefined, 'bold');
-        doc.text(pendingGuests.toString(), 15 + (cardWidth + cardSpacing) * 2 + cardWidth/2, yPos + 24, { align: 'center' });
+        doc.text(vipGuests.toString(), 15 + (cardWidth + cardSpacing) * 2 + cardWidth/2, yPos + 24, { align: 'center' });
 
         // Card 4: Taxa de Comparecimento
         doc.setFillColor(99, 102, 241);
@@ -564,7 +639,7 @@
         doc.text(`${attendanceRate}%`, 15 + (cardWidth + cardSpacing) * 3 + cardWidth/2, yPos + 24, { align: 'center' });
 
         // ======== TABELA DE CHECK-INS ========
-        yPos = 140;
+        yPos = 145;
         
         doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
         doc.setFontSize(14);
@@ -631,6 +706,12 @@
             
             // Nome do convidado
             let guestName = checkin.guest_name;
+            const guest = guests.find(g => g.qr_code === checkin.guest_qr);
+            
+            if (guest && guest.is_vip) {
+              guestName = `⭐ ${guestName}`;
+            }
+            
             if (checkin.is_companion_only) {
               guestName = `👤 Acompanhante de ${guestName}`;
             } else if (checkin.with_companion) {
@@ -672,7 +753,7 @@
         }
         
         doc.setFillColor(245, 247, 250);
-        doc.roundedRect(15, yPos, pageWidth - 30, 35, 3, 3, 'F');
+        doc.roundedRect(15, yPos, pageWidth - 30, 40, 3, 3, 'F');
         
         doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
         doc.setFontSize(12);
@@ -685,6 +766,7 @@
         doc.text(`• Total de convidados cadastrados: ${clientGuests.length}`, 20, yPos + 18);
         doc.text(`• Check-ins realizados (convidados principais): ${uniqueCheckins}`, 20, yPos + 24);
         doc.text(`• Acompanhantes registrados: ${companionCount}`, 20, yPos + 30);
+        doc.text(`• Convidados VIP: ${vipGuests}`, 20, yPos + 36);
 
         // ======== RODAPÉ ========
         const footerY = pageHeight - 15;
@@ -1081,6 +1163,7 @@
       const activeClients = clients.filter(c => parseInt(c.expiry) > Date.now());
       const totalGuests = guests.length;
       const totalCheckins = checkins.length;
+      const vipClients = clients.filter(c => c.is_vip);
 
       document.getElementById('app').innerHTML = `
         <div class="min-h-full flex flex-col" style="background-color: ${config.background_color};">
@@ -1103,7 +1186,7 @@
 
           <div class="flex-1 overflow-auto p-4">
             <div class="max-w-6xl mx-auto">
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" id="admin-stats-cards">
+              <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6" id="admin-stats-cards">
                 <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
                   <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
                     Total Clientes
@@ -1118,6 +1201,14 @@
                   </p>
                   <p class="font-bold" style="font-size: 40px; color: ${config.success_color};">
                     ${activeClients.length}
+                  </p>
+                </div>
+                <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
+                    Clientes VIP
+                  </p>
+                  <p class="font-bold" style="font-size: 40px; color: ${config.vip_color};">
+                    ${vipClients.length}
                   </p>
                 </div>
                 <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
@@ -1147,14 +1238,15 @@
                     .slice(0, 10)
                     .map(checkin => {
                       const client = clients.find(c => c.id === checkin.client_id);
+                      const guest = guests.find(g => g.qr_code === checkin.guest_qr);
                       return `
                         <div class="flex items-center justify-between p-3 rounded-lg" style="background-color: ${config.background_color};">
                           <div class="flex-1">
-                            <p class="font-bold" style="font-size: 14px; color: ${config.text_color};">
-                              ${checkin.guest_name}
+                            <p class="font-bold flex items-center" style="font-size: 14px; color: ${config.text_color};">
+                              ${guest && guest.is_vip ? '⭐ ' : ''}${checkin.guest_name}
                             </p>
                             <p class="opacity-70" style="font-size: 12px; color: ${config.text_color};">
-                              ${client ? client.client_name : 'Cliente'} • ${new Date(checkin.checked_in_at).toLocaleString('pt-BR')}
+                              ${client ? (client.is_vip ? '⭐ ' : '') + client.client_name : 'Cliente'} • ${new Date(checkin.checked_in_at).toLocaleString('pt-BR')}
                             </p>
                           </div>
                           <button 
@@ -1202,24 +1294,48 @@
                   </div>
                 ` : clients.map(client => {
                   const isExpired = parseInt(client.expiry) < Date.now();
-                  const timeRemaining = parseInt(client.expiry) - Date.now();
-                  const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
-                  const daysRemaining = Math.floor(hoursRemaining / 24);
                   const clientGuests = guests.filter(g => g.client_id === client.id);
                   const clientCheckins = checkins.filter(c => c.client_id === client.id);
+                  
+                  let timeInfo = '';
+                  if (client.event_date) {
+                    const eventDate = new Date(parseInt(client.event_date));
+                    const timeUntilEvent = parseInt(client.event_date) - Date.now();
+                    const daysUntil = Math.floor(timeUntilEvent / (1000 * 60 * 60 * 24));
+                    const hoursUntil = Math.floor((timeUntilEvent % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    
+                    if (timeUntilEvent > 0) {
+                      timeInfo = `🎯 Evento em: ${eventDate.toLocaleString('pt-BR')} <span style="color: ${config.primary_color}; font-weight: 600;"> (faltam ${daysUntil}d ${hoursUntil}h)</span>`;
+                    } else {
+                      timeInfo = `🎯 Evento ocorreu em: ${eventDate.toLocaleString('pt-BR')}`;
+                    }
+                  } else {
+                    const timeRemaining = parseInt(client.expiry) - Date.now();
+                    const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
+                    const daysRemaining = Math.floor(hoursRemaining / 24);
+                    timeInfo = `⏰ ${isExpired ? 'Expirou em' : 'Expira em'}: ${new Date(parseInt(client.expiry)).toLocaleString('pt-BR')}`;
+                    if (!isExpired) {
+                      timeInfo += ` <span style="color: ${config.primary_color}; font-weight: 600;"> (${daysRemaining}d ${hoursRemaining % 24}h restantes)</span>`;
+                    }
+                  }
 
                   return `
                     <div class="p-6 rounded-2xl" style="background-color: ${config.card_color}; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
                       <div class="flex items-start justify-between mb-4">
                         <div class="flex-1">
-                          <h3 class="font-bold mb-2 flex items-center" style="font-size: 20px; color: ${config.text_color};">
+                          <h3 class="font-bold mb-2 flex items-center gap-2" style="font-size: 20px; color: ${config.text_color};">
                             ${client.client_name}
+                            ${client.is_vip ? `
+                              <span class="px-3 py-1 rounded-full text-xs font-bold vip-badge" style="color: white;">
+                                ⭐ VIP
+                              </span>
+                            ` : ''}
                             ${isExpired ? `
-                              <span class="ml-3 px-3 py-1 rounded-full text-xs" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
+                              <span class="px-3 py-1 rounded-full text-xs" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
                                 🔒 Expirado
                               </span>
                             ` : `
-                              <span class="ml-3 px-3 py-1 rounded-full text-xs" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">
+                              <span class="px-3 py-1 rounded-full text-xs" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">
                                 ✓ Ativo
                               </span>
                             `}
@@ -1230,8 +1346,7 @@
                             </p>
                           </div>
                           <p class="opacity-70 mb-3" style="font-size: 14px; color: ${config.text_color};">
-                            ⏰ ${isExpired ? 'Expirou em' : 'Expira em'}: ${new Date(parseInt(client.expiry)).toLocaleString('pt-BR')}
-                            ${!isExpired ? `<span style="color: ${config.primary_color}; font-weight: 600;"> (${daysRemaining}d ${hoursRemaining % 24}h restantes)</span>` : ''}
+                            ${timeInfo}
                           </p>
                           <div class="flex gap-4">
                             <span class="px-3 py-1 rounded-lg text-sm font-semibold" style="background-color: rgba(59, 130, 246, 0.2); color: #3b82f6;">
@@ -1249,9 +1364,17 @@
                           <button onclick="exportClientPDF('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: #3b82f6; color: white; font-size: 14px;">
                             📄 Baixar PDF
                           </button>
-                          <button onclick="extendClientToken('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: #10b981; color: white; font-size: 14px;">
+                          <button onclick="showExtendTokenModal('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: #10b981; color: white; font-size: 14px;">
                             ⏰ Estender
                           </button>
+                          <button onclick="toggleClientVIP('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: ${client.is_vip ? 'rgba(251, 191, 36, 0.3)' : 'rgba(148, 163, 184, 0.2)'}; color: ${client.is_vip ? config.vip_color : config.text_color}; font-size: 14px;">
+                            ${client.is_vip ? '⭐ Remover VIP' : '⭐ Tornar VIP'}
+                          </button>
+                          ${clientCheckins.length > 0 ? `
+                            <button onclick="showClearCheckinsConfirmation('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: rgba(251, 191, 36, 0.2); color: #f59e0b; font-size: 14px;">
+                              🔄 Limpar Check-ins
+                            </button>
+                          ` : ''}
                           <button onclick="showDeleteClientConfirmation('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 14px;">
                             🗑️ Deletar
                           </button>
@@ -1305,9 +1428,24 @@
       const clientGuests = guests.filter(g => g.client_id === currentUser.id);
       const clientCheckins = checkins.filter(c => c.client_id === currentUser.id);
 
-      const timeRemaining = parseInt(client.expiry) - Date.now();
-      const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
-      const daysRemaining = Math.floor(hoursRemaining / 24);
+      let timeInfo = '';
+      if (client.event_date) {
+        const eventDate = new Date(parseInt(client.event_date));
+        const timeUntilEvent = parseInt(client.event_date) - Date.now();
+        const daysUntil = Math.floor(timeUntilEvent / (1000 * 60 * 60 * 24));
+        const hoursUntil = Math.floor((timeUntilEvent % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        
+        if (timeUntilEvent > 0) {
+          timeInfo = `🎯 Evento em: <span class="font-bold">${daysUntil}d ${hoursUntil}h</span>`;
+        } else {
+          timeInfo = `🎯 Evento ocorreu em: ${eventDate.toLocaleDateString('pt-BR')}`;
+        }
+      } else {
+        const timeRemaining = parseInt(client.expiry) - Date.now();
+        const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
+        const daysRemaining = Math.floor(hoursRemaining / 24);
+        timeInfo = `⏰ Token expira em: <span class="font-bold">${daysRemaining}d ${hoursRemaining % 24}h</span>`;
+      }
 
       const uniqueCheckins = clientCheckins.filter(c => !c.is_companion_only).length;
 
@@ -1316,9 +1454,10 @@
           <div class="p-4" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
             <div class="flex items-center justify-between mb-3">
               <div>
-                <h1 class="font-bold mb-1" style="font-size: 28px; color: white;">
+                <h1 class="font-bold mb-1 flex items-center gap-2" style="font-size: 28px; color: white;">
                   ${config.app_title}
-                  <span class="ml-2 inline-block w-3 h-3 rounded-full animate-pulse-slow" style="background-color: #10b981;"></span>
+                  ${client.is_vip ? `<span class="px-2 py-1 rounded-full text-sm font-bold vip-badge" style="color: white;">⭐ VIP</span>` : ''}
+                  <span class="inline-block w-3 h-3 rounded-full animate-pulse-slow" style="background-color: #10b981;"></span>
                 </h1>
                 <p style="font-size: 14px; color: rgba(255,255,255,0.9);">
                   ${currentUser.name}
@@ -1330,7 +1469,7 @@
             </div>
             <div class="px-3 py-2 rounded-lg" style="background-color: rgba(255,255,255,0.15);">
               <p style="font-size: 14px; color: white;">
-                ⏰ Token expira em: <span class="font-bold">${daysRemaining}d ${hoursRemaining % 24}h</span>
+                ${timeInfo}
               </p>
             </div>
           </div>
@@ -1390,6 +1529,9 @@
                 <button onclick="filterGuests('pending')" id="filter-pending" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all" style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;">
                   Pendentes (${clientGuests.length - uniqueCheckins})
                 </button>
+                <button onclick="filterGuests('vip')" id="filter-vip" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all" style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;">
+                  VIP (${clientGuests.filter(g => g.is_vip).length})
+                </button>
                 <button onclick="filterGuests('companion')" id="filter-companion" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all" style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;">
                   Com Acompanhante (${clientGuests.filter(g => g.has_companion).length})
                 </button>
@@ -1444,7 +1586,8 @@
           <div class="p-4 rounded-xl" style="background-color: ${config.card_color}; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
             <div class="flex items-center justify-between">
               <div class="flex-1">
-                <h3 class="font-bold mb-2" style="font-size: 18px; color: ${config.text_color};">
+                <h3 class="font-bold mb-2 flex items-center gap-2" style="font-size: 18px; color: ${config.text_color};">
+                  ${guest.is_vip ? `<span class="px-2 py-1 rounded text-xs font-bold vip-badge" style="color: white;">⭐</span>` : ''}
                   ${guest.name}
                 </h3>
                 ${mainCheckin ? `
@@ -1507,6 +1650,8 @@
         filteredGuests = filteredGuests.filter(g => clientCheckins.some(c => c.guest_qr === g.qr_code && !c.is_companion_only));
       } else if (currentFilter === 'pending') {
         filteredGuests = filteredGuests.filter(g => !clientCheckins.some(c => c.guest_qr === g.qr_code && !c.is_companion_only));
+      } else if (currentFilter === 'vip') {
+        filteredGuests = filteredGuests.filter(g => g.is_vip);
       } else if (currentFilter === 'companion') {
         filteredGuests = filteredGuests.filter(g => g.has_companion);
       }
@@ -1649,7 +1794,8 @@
       modal.innerHTML = `
         <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
           <div class="text-6xl mb-4">👥</div>
-          <h2 class="font-bold mb-2" style="font-size: 24px; color: ${config.text_color};">
+          <h2 class="font-bold mb-2 flex items-center justify-center gap-2" style="font-size: 24px; color: ${config.text_color};">
+            ${guest.is_vip ? `<span class="px-2 py-1 rounded text-sm font-bold vip-badge" style="color: white;">⭐</span>` : ''}
             ${guest.name}
           </h2>
           <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
@@ -1770,6 +1916,10 @@
           displayMessage = guest.name + ' e Acompanhante';
         } else {
           displayMessage = guest.name;
+        }
+        
+        if (guest.is_vip) {
+          displayMessage = '⭐ VIP - ' + displayMessage;
         }
         
         showSuccessAnimation('ENTRADA APROVADA', displayMessage, !isOnline);
@@ -1901,9 +2051,6 @@
       }
     }
 
-    // =============== ADMIN FUNCTIONS (continuação no próximo código devido ao tamanho) ===============
-    // ... (as outras funções do admin seguem exatamente iguais)
-
     // =============== ADMIN MODAL FUNCTIONS ===============
 
     async function showAddClientModal() {
@@ -1930,20 +2077,62 @@
                 placeholder="Digite o nome do cliente"
               >
             </div>
-            <div class="mb-6">
+            
+            <div class="mb-4">
               <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
-                Validade do Token (dias)
+                Tipo de Controle
               </label>
-              <input 
-                type="number" 
-                name="expiry_days" 
-                required 
-                min="1"
-                value="30"
+              <select 
+                name="control_type" 
+                id="control-type-select"
+                onchange="toggleControlType(this.value)"
                 class="w-full px-4 py-3 rounded-xl outline-none"
                 style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
               >
+                <option value="expiry">Token com Validade</option>
+                <option value="event">Data do Evento</option>
+              </select>
             </div>
+
+            <div id="expiry-fields">
+              <div class="mb-4">
+                <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
+                  Validade do Token (dias)
+                </label>
+                <input 
+                  type="number" 
+                  name="expiry_days" 
+                  min="1"
+                  value="30"
+                  class="w-full px-4 py-3 rounded-xl outline-none"
+                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+                >
+              </div>
+            </div>
+
+            <div id="event-fields" style="display: none;">
+              <div class="mb-4">
+                <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
+                  Data e Hora do Evento
+                </label>
+                <input 
+                  type="datetime-local" 
+                  name="event_datetime"
+                  class="w-full px-4 py-3 rounded-xl outline-none"
+                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+                >
+              </div>
+            </div>
+
+            <div class="mb-6">
+              <label class="flex items-center">
+                <input type="checkbox" name="is_vip" class="mr-2">
+                <span style="font-size: 14px; color: ${config.text_color};">
+                  ⭐ Marcar como Cliente VIP
+                </span>
+              </label>
+            </div>
+
             <div class="flex gap-3">
               <button 
                 type="button"
@@ -1968,21 +2157,50 @@
       document.body.appendChild(modal);
     }
 
+    function toggleControlType(type) {
+      const expiryFields = document.getElementById('expiry-fields');
+      const eventFields = document.getElementById('event-fields');
+      
+      if (type === 'expiry') {
+        expiryFields.style.display = 'block';
+        eventFields.style.display = 'none';
+        document.querySelector('[name="expiry_days"]').required = true;
+        document.querySelector('[name="event_datetime"]').required = false;
+      } else {
+        expiryFields.style.display = 'none';
+        eventFields.style.display = 'block';
+        document.querySelector('[name="expiry_days"]').required = false;
+        document.querySelector('[name="event_datetime"]').required = true;
+      }
+    }
+
     async function submitNewClient(event) {
       event.preventDefault();
       const formData = new FormData(event.target);
       const clientName = formData.get('client_name');
-      const expiryDays = parseInt(formData.get('expiry_days'));
+      const controlType = formData.get('control_type');
+      const isVIP = formData.get('is_vip') === 'on';
       
       const clientData = {
         id: generateId('client'),
         client_name: clientName,
         token: generateToken(),
-        expiry: (Date.now() + (expiryDays * 24 * 60 * 60 * 1000)).toString(),
+        is_vip: isVIP,
         deleted: false,
         deleted_at: null,
         created_at: new Date().toISOString()
       };
+
+      if (controlType === 'expiry') {
+        const expiryDays = parseInt(formData.get('expiry_days'));
+        clientData.expiry = (Date.now() + (expiryDays * 24 * 60 * 60 * 1000)).toString();
+        clientData.event_date = null;
+      } else {
+        const eventDatetime = formData.get('event_datetime');
+        const eventDate = new Date(eventDatetime);
+        clientData.event_date = eventDate.getTime().toString();
+        clientData.expiry = eventDate.getTime().toString();
+      }
       
       const result = await createClient(clientData);
       
@@ -2008,8 +2226,9 @@
       
       modal.innerHTML = `
         <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;">
-          <h2 class="font-bold mb-6" style="font-size: 28px; color: ${config.text_color};">
+          <h2 class="font-bold mb-6 flex items-center gap-2" style="font-size: 28px; color: ${config.text_color};">
             📋 ${client.client_name}
+            ${client.is_vip ? `<span class="px-3 py-1 rounded-full text-sm font-bold vip-badge" style="color: white;">⭐ VIP</span>` : ''}
           </h2>
           
           <div class="mb-6 space-y-3">
@@ -2017,7 +2236,7 @@
               <strong>Token:</strong> <span class="font-mono" style="color: ${config.primary_color};">${client.token}</span>
             </p>
             <p style="font-size: 14px; color: ${config.text_color};">
-              <strong>Total Convidados:</strong> ${clientGuests.length}
+              <strong>Total Convidados:</strong> ${clientGuests.length} ${clientGuests.filter(g => g.is_vip).length > 0 ? `(${clientGuests.filter(g => g.is_vip).length} VIP)` : ''}
             </p>
             <p style="font-size: 14px; color: ${config.text_color};">
               <strong>Total Check-ins:</strong> ${clientCheckins.length}
@@ -2045,7 +2264,8 @@
                 <div class="p-3 rounded-lg" style="background-color: ${config.background_color};">
                   <div class="flex items-center justify-between">
                     <div class="flex-1">
-                      <p class="font-bold" style="font-size: 14px; color: ${config.text_color};">
+                      <p class="font-bold flex items-center gap-2" style="font-size: 14px; color: ${config.text_color};">
+                        ${guest.is_vip ? `<span class="px-2 py-1 rounded text-xs font-bold vip-badge" style="color: white;">⭐</span>` : ''}
                         ${guest.name}
                       </p>
                       <p class="opacity-70 font-mono text-xs" style="color: ${config.text_color};">
@@ -2058,6 +2278,9 @@
                           ✓ Entrou
                         </span>
                       ` : ''}
+                      <button onclick="toggleGuestVIP('${guest.id}')" class="px-3 py-1 rounded-lg text-xs font-semibold" style="background-color: ${guest.is_vip ? 'rgba(251, 191, 36, 0.3)' : 'rgba(148, 163, 184, 0.2)'}; color: ${guest.is_vip ? config.vip_color : config.text_color};">
+                        ${guest.is_vip ? '⭐' : '☆'}
+                      </button>
                       <button onclick="showDeleteGuestConfirmation('${guest.id}')" class="px-3 py-1 rounded-lg text-xs font-semibold" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
                         🗑️
                       </button>
@@ -2105,11 +2328,19 @@
                 placeholder="Digite o nome do convidado"
               >
             </div>
-            <div class="mb-6">
+            <div class="mb-4">
               <label class="flex items-center">
                 <input type="checkbox" name="has_companion" class="mr-2">
                 <span style="font-size: 14px; color: ${config.text_color};">
                   Este convidado tem direito a acompanhante
+                </span>
+              </label>
+            </div>
+            <div class="mb-6">
+              <label class="flex items-center">
+                <input type="checkbox" name="is_vip" class="mr-2">
+                <span style="font-size: 14px; color: ${config.text_color};">
+                  ⭐ Marcar como Convidado VIP
                 </span>
               </label>
             </div>
@@ -2142,6 +2373,7 @@
       const formData = new FormData(event.target);
       const guestName = formData.get('guest_name');
       const hasCompanion = formData.get('has_companion') === 'on';
+      const isVIP = formData.get('is_vip') === 'on';
       
       const guestData = {
         id: generateId('guest'),
@@ -2149,6 +2381,7 @@
         name: guestName,
         qr_code: generateId('QR'),
         has_companion: hasCompanion,
+        is_vip: isVIP,
         deleted: false,
         deleted_at: null,
         created_at: new Date().toISOString()
@@ -2163,6 +2396,234 @@
         await showClientDetails(clientId);
       } else {
         showToast('❌ Erro ao adicionar convidado', 'error');
+      }
+    }
+
+    async function toggleClientVIP(clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+      
+      const result = await updateClient(clientId, { is_vip: !client.is_vip });
+      
+      if (result.success) {
+        showToast(client.is_vip ? '✅ Cliente removido do VIP' : '⭐ Cliente marcado como VIP', 'success');
+        await renderAdminDashboard();
+      } else {
+        showToast('❌ Erro ao atualizar status VIP', 'error');
+      }
+    }
+
+    async function toggleGuestVIP(guestId) {
+      const guest = guests.find(g => g.id === guestId);
+      if (!guest) return;
+      
+      const result = await updateGuest(guestId, { is_vip: !guest.is_vip });
+      
+      if (result.success) {
+        showToast(guest.is_vip ? '✅ Convidado removido do VIP' : '⭐ Convidado marcado como VIP', 'success');
+        closeModal('client-details-modal');
+        await showClientDetails(guest.client_id);
+      } else {
+        showToast('❌ Erro ao atualizar status VIP', 'error');
+      }
+    }
+
+    function showExtendTokenModal(clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+      
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'extend-token-modal';
+      
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+          <h2 class="font-bold mb-6" style="font-size: 28px; color: ${config.text_color};">
+            ⏰ Estender ${client.event_date ? 'Data do Evento' : 'Validade do Token'}
+          </h2>
+          
+          ${client.event_date ? `
+            <form onsubmit="submitExtendEvent(event, '${clientId}'); return false;">
+              <div class="mb-6">
+                <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
+                  Nova Data e Hora do Evento
+                </label>
+                <input 
+                  type="datetime-local" 
+                  name="new_event_datetime"
+                  required
+                  class="w-full px-4 py-3 rounded-xl outline-none"
+                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+                >
+              </div>
+              <div class="flex gap-3">
+                <button 
+                  type="button"
+                  onclick="closeModal('extend-token-modal')"
+                  class="flex-1 py-3 rounded-xl font-semibold"
+                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  class="flex-1 py-3 rounded-xl font-semibold"
+                  style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white; font-size: 16px;"
+                >
+                  Atualizar Data
+                </button>
+              </div>
+            </form>
+          ` : `
+            <form onsubmit="submitExtendToken(event, '${clientId}'); return false;">
+              <div class="mb-6">
+                <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
+                  Estender por quantos dias?
+                </label>
+                <div class="grid grid-cols-3 gap-3 mb-4">
+                  <button type="button" onclick="setExtendDays(7)" class="py-3 rounded-xl font-semibold transition-all" style="background-color: ${config.background_color}; color: ${config.text_color};">
+                    7 dias
+                  </button>
+                  <button type="button" onclick="setExtendDays(15)" class="py-3 rounded-xl font-semibold transition-all" style="background-color: ${config.background_color}; color: ${config.text_color};">
+                    15 dias
+                  </button>
+                  <button type="button" onclick="setExtendDays(30)" class="py-3 rounded-xl font-semibold transition-all" style="background-color: ${config.background_color}; color: ${config.text_color};">
+                    30 dias
+                  </button>
+                </div>
+                <input 
+                  type="number" 
+                  name="extend_days" 
+                  id="extend-days-input"
+                  required 
+                  min="1"
+                  value="30"
+                  class="w-full px-4 py-3 rounded-xl outline-none"
+                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+                  placeholder="Ou digite o número de dias"
+                >
+              </div>
+              <div class="flex gap-3">
+                <button 
+                  type="button"
+                  onclick="closeModal('extend-token-modal')"
+                  class="flex-1 py-3 rounded-xl font-semibold"
+                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  class="flex-1 py-3 rounded-xl font-semibold"
+                  style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white; font-size: 16px;"
+                >
+                  Estender Token
+                </button>
+              </div>
+            </form>
+          `}
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+    }
+
+    function setExtendDays(days) {
+      const input = document.getElementById('extend-days-input');
+      if (input) {
+        input.value = days;
+      }
+    }
+
+    async function submitExtendToken(event, clientId) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const extendDays = parseInt(formData.get('extend_days'));
+      
+      const newExpiry = (Date.now() + (extendDays * 24 * 60 * 60 * 1000)).toString();
+      
+      const result = await updateClient(clientId, { expiry: newExpiry });
+      
+      if (result.success) {
+        showToast(`✅ Token estendido por ${extendDays} dias!`, 'success');
+        closeModal('extend-token-modal');
+        await renderAdminDashboard();
+      } else {
+        showToast('❌ Erro ao estender token', 'error');
+      }
+    }
+
+    async function submitExtendEvent(event, clientId) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const newEventDatetime = formData.get('new_event_datetime');
+      const newEventDate = new Date(newEventDatetime);
+      
+      const result = await updateClient(clientId, { 
+        event_date: newEventDate.getTime().toString(),
+        expiry: newEventDate.getTime().toString()
+      });
+      
+      if (result.success) {
+        showToast(`✅ Data do evento atualizada!`, 'success');
+        closeModal('extend-token-modal');
+        await renderAdminDashboard();
+      } else {
+        showToast('❌ Erro ao atualizar data do evento', 'error');
+      }
+    }
+
+    function showClearCheckinsConfirmation(clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+      
+      const clientCheckins = checkins.filter(c => c.client_id === clientId);
+      
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'clear-checkins-modal';
+      
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+          <div class="text-6xl mb-4">⚠️</div>
+          <h2 class="font-bold mb-4" style="font-size: 24px; color: ${config.text_color};">
+            Limpar Check-ins de ${client.client_name}
+          </h2>
+          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
+            Tem certeza que deseja desfazer todos os ${clientCheckins.length} check-ins deste cliente?<br>
+            <strong>Esta ação não pode ser desfeita!</strong>
+          </p>
+          <div class="flex gap-3">
+            <button 
+              onclick="closeModal('clear-checkins-modal')"
+              class="flex-1 py-3 rounded-xl font-semibold"
+              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+            >
+              Cancelar
+            </button>
+            <button 
+              onclick="confirmClearCheckins('${clientId}')"
+              class="flex-1 py-3 rounded-xl font-semibold"
+              style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; font-size: 16px;"
+            >
+              Sim, Limpar Tudo
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+    }
+
+    async function confirmClearCheckins(clientId) {
+      const result = await deleteAllClientCheckins(clientId);
+      
+      if (result.success) {
+        showToast('✅ Todos os check-ins foram removidos!', 'success');
+        closeModal('clear-checkins-modal');
+        await renderAdminDashboard();
+      } else {
+        showToast('❌ Erro ao limpar check-ins', 'error');
       }
     }
 
@@ -2266,22 +2727,6 @@
       }
     }
 
-    async function extendClientToken(clientId) {
-      const client = clients.find(c => c.id === clientId);
-      if (!client) return;
-      
-      const newExpiry = (Date.now() + (30 * 24 * 60 * 60 * 1000)).toString();
-      
-      const result = await updateClient(clientId, { expiry: newExpiry });
-      
-      if (result.success) {
-        showToast('✅ Token estendido por mais 30 dias!', 'success');
-        await renderAdminDashboard();
-      } else {
-        showToast('❌ Erro ao estender token', 'error');
-      }
-    }
-
     async function showTrashModal() {
       const deletedClients = await loadDeletedClients();
       const deletedGuests = await loadDeletedGuests();
@@ -2310,8 +2755,8 @@
               ${deletedClients.map(client => `
                 <div class="p-3 rounded-lg flex items-center justify-between" style="background-color: ${config.background_color};">
                   <div>
-                    <p class="font-bold" style="font-size: 14px; color: ${config.text_color};">
-                      ${client.client_name}
+                    <p class="font-bold flex items-center gap-2" style="font-size: 14px; color: ${config.text_color};">
+                      ${client.is_vip ? '⭐ ' : ''}${client.client_name}
                     </p>
                     <p class="opacity-70 text-xs" style="color: ${config.text_color};">
                       Deletado em: ${new Date(client.deleted_at).toLocaleString('pt-BR')}
@@ -2335,8 +2780,8 @@
                 return `
                   <div class="p-3 rounded-lg flex items-center justify-between" style="background-color: ${config.background_color};">
                     <div>
-                      <p class="font-bold" style="font-size: 14px; color: ${config.text_color};">
-                        ${guest.name}
+                      <p class="font-bold flex items-center gap-2" style="font-size: 14px; color: ${config.text_color};">
+                        ${guest.is_vip ? '⭐ ' : ''}${guest.name}
                       </p>
                       <p class="opacity-70 text-xs" style="color: ${config.text_color};">
                         Cliente: ${client ? client.client_name : 'N/A'} • Deletado em: ${new Date(guest.deleted_at).toLocaleString('pt-BR')}
@@ -2432,15 +2877,23 @@
     window.searchGuests = searchGuests;
     window.exportClientPDF = exportClientPDF;
     window.showAddClientModal = showAddClientModal;
+    window.toggleControlType = toggleControlType;
     window.submitNewClient = submitNewClient;
     window.showClientDetails = showClientDetails;
     window.showAddGuestModal = showAddGuestModal;
     window.submitNewGuest = submitNewGuest;
+    window.toggleClientVIP = toggleClientVIP;
+    window.toggleGuestVIP = toggleGuestVIP;
+    window.showExtendTokenModal = showExtendTokenModal;
+    window.setExtendDays = setExtendDays;
+    window.submitExtendToken = submitExtendToken;
+    window.submitExtendEvent = submitExtendEvent;
+    window.showClearCheckinsConfirmation = showClearCheckinsConfirmation;
+    window.confirmClearCheckins = confirmClearCheckins;
     window.showDeleteClientConfirmation = showDeleteClientConfirmation;
     window.confirmDeleteClient = confirmDeleteClient;
     window.showDeleteGuestConfirmation = showDeleteGuestConfirmation;
     window.confirmDeleteGuest = confirmDeleteGuest;
-    window.extendClientToken = extendClientToken;
     window.showTrashModal = showTrashModal;
     window.restoreClientFromTrash = restoreClientFromTrash;
     window.restoreGuestFromTrash = restoreGuestFromTrash;
@@ -2490,12 +2943,14 @@
             if (currentView === 'admin-dashboard') {
               // Atualizar cards de estatísticas
               const activeClients = clients.filter(c => parseInt(c.expiry) > Date.now());
+              const vipClients = clients.filter(c => c.is_vip);
               const statsTexts = document.querySelectorAll('#admin-stats-cards p.font-bold');
-              if (statsTexts.length >= 4) {
+              if (statsTexts.length >= 5) {
                 statsTexts[0].textContent = clients.length;
                 statsTexts[1].textContent = activeClients.length;
-                statsTexts[2].textContent = guests.length;
-                statsTexts[3].textContent = checkins.length;
+                statsTexts[2].textContent = vipClients.length;
+                statsTexts[3].textContent = guests.length;
+                statsTexts[4].textContent = checkins.length;
               }
               
               // Se houver novos check-ins, atualizar a lista
@@ -2506,14 +2961,15 @@
                     .slice(0, 10)
                     .map(checkin => {
                       const client = clients.find(c => c.id === checkin.client_id);
+                      const guest = guests.find(g => g.qr_code === checkin.guest_qr);
                       return `
                         <div class="flex items-center justify-between p-3 rounded-lg" style="background-color: ${config.background_color};">
                           <div class="flex-1">
-                            <p class="font-bold" style="font-size: 14px; color: ${config.text_color};">
-                              ${checkin.guest_name}
+                            <p class="font-bold flex items-center" style="font-size: 14px; color: ${config.text_color};">
+                              ${guest && guest.is_vip ? '⭐ ' : ''}${checkin.guest_name}
                             </p>
                             <p class="opacity-70" style="font-size: 12px; color: ${config.text_color};">
-                              ${client ? client.client_name : 'Cliente'} • ${new Date(checkin.checked_in_at).toLocaleString('pt-BR')}
+                              ${client ? (client.is_vip ? '⭐ ' : '') + client.client_name : 'Cliente'} • ${new Date(checkin.checked_in_at).toLocaleString('pt-BR')}
                             </p>
                           </div>
                           <button 
@@ -2574,5 +3030,5 @@
       init();
     }
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ac802c6d59ac13d',t:'MTc2NTQ4Nzg2OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ac820cbe1e4c13d',t:'MTc2NTQ4OTA5Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
