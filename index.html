@@ -195,12 +195,13 @@
       const parsedGuests = [];
       
       lines.forEach((line, index) => {
-        // Remover código no início (formato: "número," ou "número.")
-        let cleanLine = line.replace(/^\d+[\.,]\s*/, '').trim();
+        // Remover código no início (vários formatos possíveis):
+        // "1, Nome" ou "1. Nome" ou "ABC123, Nome" ou "ABC123,Nome"
+        let cleanLine = line.replace(/^[A-Z0-9]+[\.,]\s*/, '').trim();
         
         if (!cleanLine) return;
         
-        // Detectar se tem acompanhante pelo padrão " e "
+        // Detectar se tem acompanhante pelo padrão " e " (case insensitive)
         const hasCompanion = cleanLine.toLowerCase().includes(' e ');
         
         parsedGuests.push({
@@ -1482,7 +1483,7 @@
         clearSession('client');
         currentUser = null;
         currentView = 'login';
-        showToast('❌ Sessão expirada ou desativada. Faça login novamente.', 'error');
+        showToast('     Sessão expirada ou desativada. Faça login novamente.', 'error');
         renderLogin();
         return;
       }
@@ -1552,7 +1553,7 @@
 
           <div class="flex border-b" style="background-color: ${config.card_color}; border-color: ${config.background_color};">
             <button onclick="switchClientTab('home')" class="tab-button flex-1 py-4 font-semibold active" style="color: ${config.text_color}; font-size: 14px;">
-              🏠 In  cio
+              🏠 Início
             </button>
             <button onclick="switchClientTab('scanner')" class="tab-button flex-1 py-4 font-semibold" style="color: ${config.text_color}; font-size: 14px;">
               📷 Scanner
@@ -1618,6 +1619,10 @@
               <div id="guests-list" class="space-y-3 mb-6">
                 ${renderGuestsList(clientGuests, clientCheckins)}
               </div>
+              
+              <p class="text-center opacity-40 mt-6" style="font-size: 11px; color: ${config.text_color};">
+                💡 Os códigos QR dos convidados são apenas para o sistema interno
+              </p>
             </div>
           </div>
 
@@ -1909,7 +1914,7 @@
             Acompanhante de ${guest.name}
           </h2>
           <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
-            O convidado principal já entrou.<br>Esta é a entrada do acompanhante?
+            O convidado principal já entrou.<br>Esta    a entrada do acompanhante?
           </p>
           <div class="flex gap-3">
             <button 
@@ -2358,7 +2363,7 @@
           if (resultGuests.success) {
             showToast(`✅ Cliente criado com ${resultGuests.count} convidados!`, 'success');
           } else {
-            showToast('⚠️ Cliente criado, mas houve erro ao adicionar convidados', 'warning');
+            showToast('   ️ Cliente criado, mas houve erro ao adicionar convidados', 'warning');
           }
         } else {
           showToast('✅ Cliente criado com sucesso!', 'success');
@@ -2431,9 +2436,6 @@
                         ${guest.is_vip ? `<span class="px-2 py-1 rounded text-xs font-bold vip-badge" style="color: white;">⭐</span>` : ''}
                         ${guest.name}
                         ${guest.has_companion ? `<span class="opacity-70 text-xs">👥</span>` : ''}
-                      </p>
-                      <p class="opacity-70 font-mono text-xs" style="color: ${config.text_color};">
-                        ${guest.qr_code}
                       </p>
                     </div>
                     <div class="flex gap-2">
@@ -3430,5 +3432,5 @@
 
     init();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9acae17697e7c13d',t:'MTc2NTUxNzk2MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9acaf166753bc13d',t:'MTc2NTUxODYxNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
