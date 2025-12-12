@@ -186,12 +186,95 @@
       OFFLINE_QUEUE: 'adkira_offline_queue'
     };
 
-    // =============== HELPER: DETECTAR ACOMPANHANTE ===============
+    // =============== HELPER: PROCESSAR LISTA DE CONVIDADOS ===============
     
-    function hasCompanionInName(name) {
-      if (!name) return false;
-      const lowerName = name.toLowerCase();
-      return lowerName.includes(' e ');
+    function parseGuestList(rawText) {
+      if (!rawText || !rawText.trim()) return [];
+      
+      const lines = rawText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+      const parsedGuests = [];
+      
+      lines.forEach((line, index) => {
+        // Remover código no início (formato: "número," ou "número.")
+        let cleanLine = line.replace(/^\d+[\.,]\s*/, '').trim();
+        
+        if (!cleanLine) return;
+        
+        // Detectar se tem acompanhante pelo padrão " e "
+        const hasCompanion = cleanLine.toLowerCase().includes(' e ');
+        
+        parsedGuests.push({
+          originalLine: line,
+          name: cleanLine,
+          has_companion: hasCompanion,
+          lineNumber: index + 1
+        });
+      });
+      
+      return parsedGuests;
+    }
+
+    // =============== FILE UPLOAD HANDLER ===============
+    
+    function handleGuestListFile(event) {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+      
+      // Verificar se todos os arquivos são .txt
+      const invalidFiles = Array.from(files).filter(file => !file.name.endsWith('.txt'));
+      if (invalidFiles.length > 0) {
+        showToast('❌ Por favor, selecione apenas arquivos .txt', 'error');
+        event.target.value = '';
+        return;
+      }
+      
+      const textarea = document.getElementById('guest-list-textarea');
+      if (!textarea) return;
+      
+      let combinedContent = '';
+      let filesProcessed = 0;
+      let totalLines = 0;
+      
+      // Processar cada arquivo
+      Array.from(files).forEach((file, index) => {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+          const content = e.target.result;
+          
+          // Adicionar separador visual entre arquivos (se houver mais de 1)
+          if (files.length > 1 && index > 0 && combinedContent.length > 0) {
+            combinedContent += '\n';
+          }
+          
+          combinedContent += content;
+          
+          const lineCount = content.split('\n').filter(line => line.trim().length > 0).length;
+          totalLines += lineCount;
+          
+          filesProcessed++;
+          
+          // Quando todos os arquivos forem processados
+          if (filesProcessed === files.length) {
+            textarea.value = combinedContent;
+            
+            if (files.length === 1) {
+              showToast(`✅ Arquivo carregado! ${totalLines} linhas detectadas`, 'success');
+            } else {
+              showToast(`✅ ${files.length} arquivos carregados! Total: ${totalLines} linhas`, 'success');
+            }
+          }
+        };
+        
+        reader.onerror = function() {
+          showToast(`❌ Erro ao ler o arquivo: ${file.name}`, 'error');
+          filesProcessed++;
+        };
+        
+        reader.readAsText(file);
+      });
+      
+      event.target.value = '';
     }
 
     // =============== SUPABASE FUNCTIONS ===============
@@ -372,6 +455,22 @@
       }
     }
 
+    async function createMultipleGuests(guestsArray) {
+      try {
+        const { data, error } = await supabase
+          .from('guests')
+          .insert(guestsArray)
+          .select();
+
+        if (error) throw error;
+        await loadGuests();
+        return { success: true, data, count: data.length };
+      } catch (error) {
+        console.error('Erro ao criar múltiplos convidados:', error);
+        return { success: false, error };
+      }
+    }
+
     async function updateGuest(guestId, updates) {
       try {
         const { data, error } = await supabase
@@ -487,7 +586,7 @@
       }
     }
 
-    // =============== PDF EXPORT - VERSÃO PROFISSIONAL ===============
+    // =============== PDF EXPORT ===============
 
     async function exportClientPDF(clientId) {
       const client = clients.find(c => c.id === clientId);
@@ -509,11 +608,10 @@
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
 
-        // ======== CABEÇALHO COM DESIGN MODERNO ========
+        // CABEÇALHO
         doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.rect(0, 0, pageWidth, 45, 'F');
         
-        // Logo (círculo branco com checkmark)
         doc.setFillColor(255, 255, 255);
         doc.circle(20, 22, 8, 'F');
         doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -521,7 +619,6 @@
         doc.setFont(undefined, 'bold');
         doc.text('✓', 20, 25, { align: 'center' });
 
-        // Título Principal
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(24);
         doc.setFont(undefined, 'bold');
@@ -535,7 +632,6 @@
         doc.setTextColor(240, 240, 240);
         doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageWidth / 2, 36, { align: 'center' });
 
-        // ======== INFORMAÇÕES DO CLIENTE (CARD) ========
         let yPos = 55;
         
         doc.setFillColor(245, 247, 250);
@@ -546,7 +642,6 @@
         doc.setFont(undefined, 'bold');
         doc.text(client.client_name, 20, yPos + 10);
         
-        // Badge VIP
         if (client.is_vip) {
           doc.setFillColor(vipColor[0], vipColor[1], vipColor[2]);
           doc.roundedRect(20 + doc.getTextWidth(client.client_name) + 5, yPos + 3, 20, 8, 2, 2, 'F');
@@ -562,12 +657,12 @@
         doc.text(`Token de Acesso: ${client.token}`, 20, yPos + 20);
         
         if (client.event_date) {
-          const eventDate = new Date(parseInt(client.event_date)).toLocaleString('pt-BR');
+          const eventDate = new Date(parseInt(client.event_date));
           const timeUntilEvent = parseInt(client.event_date) - Date.now();
           const daysUntil = Math.floor(timeUntilEvent / (1000 * 60 * 60 * 24));
           const hoursUntil = Math.floor((timeUntilEvent % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
           
-          doc.text(`Data do Evento: ${eventDate}`, 20, yPos + 28);
+          doc.text(`Data do Evento: ${eventDate.toLocaleString('pt-BR')}`, 20, yPos + 28);
           if (timeUntilEvent > 0) {
             doc.text(`Faltam: ${daysUntil} dias e ${hoursUntil} horas`, 20, yPos + 35);
           } else {
@@ -579,11 +674,9 @@
           doc.text(`Validade: ${expiryDate} ${isExpired ? '(EXPIRADO)' : '(ATIVO)'}`, 20, yPos + 28);
         }
 
-        // ======== CARDS DE ESTATÍSTICAS ========
         yPos = 105;
         
         const uniqueCheckins = clientCheckins.filter(c => !c.is_companion_only).length;
-        const pendingGuests = clientGuests.length - uniqueCheckins;
         const companionCount = clientCheckins.filter(c => c.is_companion_only || c.with_companion).length;
         const vipGuests = clientGuests.filter(g => g.is_vip).length;
         const attendanceRate = clientGuests.length > 0 ? ((uniqueCheckins / clientGuests.length) * 100).toFixed(1) : 0;
@@ -592,7 +685,6 @@
         const cardHeight = 28;
         const cardSpacing = 5;
 
-        // Card 1: Total Convidados
         doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.roundedRect(15, yPos, cardWidth, cardHeight, 2, 2, 'F');
         doc.setTextColor(255, 255, 255);
@@ -604,7 +696,6 @@
         doc.setFont(undefined, 'bold');
         doc.text(clientGuests.length.toString(), 15 + cardWidth/2, yPos + 24, { align: 'center' });
 
-        // Card 2: Check-ins
         doc.setFillColor(successColor[0], successColor[1], successColor[2]);
         doc.roundedRect(15 + cardWidth + cardSpacing, yPos, cardWidth, cardHeight, 2, 2, 'F');
         doc.setTextColor(255, 255, 255);
@@ -615,7 +706,6 @@
         doc.setFont(undefined, 'bold');
         doc.text(uniqueCheckins.toString(), 15 + cardWidth + cardSpacing + cardWidth/2, yPos + 24, { align: 'center' });
 
-        // Card 3: VIPs
         doc.setFillColor(vipColor[0], vipColor[1], vipColor[2]);
         doc.roundedRect(15 + (cardWidth + cardSpacing) * 2, yPos, cardWidth, cardHeight, 2, 2, 'F');
         doc.setTextColor(255, 255, 255);
@@ -626,7 +716,6 @@
         doc.setFont(undefined, 'bold');
         doc.text(vipGuests.toString(), 15 + (cardWidth + cardSpacing) * 2 + cardWidth/2, yPos + 24, { align: 'center' });
 
-        // Card 4: Taxa de Comparecimento
         doc.setFillColor(99, 102, 241);
         doc.roundedRect(15 + (cardWidth + cardSpacing) * 3, yPos, cardWidth, cardHeight, 2, 2, 'F');
         doc.setTextColor(255, 255, 255);
@@ -638,17 +727,15 @@
         doc.setFont(undefined, 'bold');
         doc.text(`${attendanceRate}%`, 15 + (cardWidth + cardSpacing) * 3 + cardWidth/2, yPos + 24, { align: 'center' });
 
-        // ======== TABELA DE CHECK-INS ========
         yPos = 145;
         
         doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
         doc.setFontSize(14);
         doc.setFont(undefined, 'bold');
-        doc.text('📋 Check-ins Realizados', 15, yPos);
+        doc.text('     Check-ins Realizados', 15, yPos);
         
         yPos += 8;
         
-        // Cabeçalho da Tabela
         doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.rect(15, yPos, pageWidth - 30, 10, 'F');
         
@@ -661,7 +748,6 @@
         
         yPos += 10;
         
-        // Linhas da Tabela
         doc.setFont(undefined, 'normal');
         doc.setFontSize(9);
         
@@ -671,7 +757,6 @@
         } else {
           let rowIndex = 0;
           
-          // Ordenar por data (mais recente primeiro)
           const sortedCheckins = [...clientCheckins].sort((a, b) => 
             new Date(b.checked_in_at) - new Date(a.checked_in_at)
           );
@@ -681,7 +766,6 @@
               doc.addPage();
               yPos = 20;
               
-              // Repetir cabeçalho na nova página
               doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
               doc.rect(15, yPos, pageWidth - 30, 10, 'F');
               doc.setTextColor(255, 255, 255);
@@ -695,7 +779,6 @@
               doc.setFontSize(9);
             }
             
-            // Alternar cor de fundo das linhas
             if (rowIndex % 2 === 0) {
               doc.setFillColor(249, 250, 251);
               doc.rect(15, yPos, pageWidth - 30, 12, 'F');
@@ -704,7 +787,6 @@
             doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
             doc.text((index + 1).toString(), 20, yPos + 8);
             
-            // Nome do convidado
             let guestName = checkin.guest_name;
             const guest = guests.find(g => g.qr_code === checkin.guest_qr);
             
@@ -718,7 +800,6 @@
               guestName = `${guestName} 👥`;
             }
             
-            // Limitar tamanho do nome
             const maxNameWidth = pageWidth - 100;
             if (doc.getTextWidth(guestName) > maxNameWidth) {
               while (doc.getTextWidth(guestName + '...') > maxNameWidth && guestName.length > 0) {
@@ -729,7 +810,6 @@
             
             doc.text(guestName, 35, yPos + 8);
             
-            // Data e hora formatada
             const checkinTime = new Date(checkin.checked_in_at).toLocaleString('pt-BR', {
               day: '2-digit',
               month: '2-digit',
@@ -744,7 +824,6 @@
           });
         }
 
-        // ======== RESUMO FINAL ========
         if (yPos > pageHeight - 50) {
           doc.addPage();
           yPos = 20;
@@ -768,7 +847,6 @@
         doc.text(`• Acompanhantes registrados: ${companionCount}`, 20, yPos + 30);
         doc.text(`• Convidados VIP: ${vipGuests}`, 20, yPos + 36);
 
-        // ======== RODAPÉ ========
         const footerY = pageHeight - 15;
         doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.setLineWidth(0.5);
@@ -780,7 +858,6 @@
         doc.text('Created By AdKira 2025 • Sistema Profissional de Check-In', pageWidth / 2, footerY, { align: 'center' });
         doc.text(`Página 1 de ${doc.internal.pages.length - 1}`, pageWidth - 20, footerY, { align: 'right' });
 
-        // Adicionar rodapé em todas as páginas
         const totalPages = doc.internal.pages.length - 1;
         for (let i = 2; i <= totalPages; i++) {
           doc.setPage(i);
@@ -793,7 +870,6 @@
           doc.text(`Página ${i} de ${totalPages}`, pageWidth - 20, footerY, { align: 'right' });
         }
 
-        // Salvar PDF
         const fileName = `Relatorio_${client.client_name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`;
         doc.save(fileName);
         showToast('✅ PDF profissional gerado com sucesso!', 'success');
@@ -1186,7 +1262,7 @@
 
           <div class="flex-1 overflow-auto p-4">
             <div class="max-w-6xl mx-auto">
-              <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6" id="admin-stats-cards">
+              <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                 <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
                   <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
                     Total Clientes
@@ -1233,7 +1309,7 @@
                 <h2 class="font-bold mb-4" style="font-size: 20px; color: ${config.text_color};">
                   📋 Check-ins Recentes (últimos 10)
                 </h2>
-                <div class="space-y-2" id="recent-checkins-list">
+                <div class="space-y-2">
                   ${checkins
                     .slice(0, 10)
                     .map(checkin => {
@@ -1353,7 +1429,7 @@
                               👥 ${clientGuests.length} convidados
                             </span>
                             <span class="px-3 py-1 rounded-lg text-sm font-semibold" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">
-                              ✓ ${clientCheckins.length} check-ins
+                                 ${clientCheckins.length} check-ins
                             </span>
                           </div>
                         </div>
@@ -1476,7 +1552,7 @@
 
           <div class="flex border-b" style="background-color: ${config.card_color}; border-color: ${config.background_color};">
             <button onclick="switchClientTab('home')" class="tab-button flex-1 py-4 font-semibold active" style="color: ${config.text_color}; font-size: 14px;">
-              🏠 Início
+              🏠 In  cio
             </button>
             <button onclick="switchClientTab('scanner')" class="tab-button flex-1 py-4 font-semibold" style="color: ${config.text_color}; font-size: 14px;">
               📷 Scanner
@@ -1504,9 +1580,11 @@
                 </div>
               </div>
 
-              <h2 class="font-bold mb-4" style="font-size: 24px; color: ${config.text_color};">
-                Lista de Convidados
-              </h2>
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="font-bold" style="font-size: 24px; color: ${config.text_color};">
+                  Lista de Convidados
+                </h2>
+              </div>
 
               <div class="mb-4">
                 <input 
@@ -1553,7 +1631,6 @@
     }
 
     function renderGuestsList(filteredGuests, clientCheckins) {
-      // Ordenar: check-ins mais recentes primeiro
       const sortedGuests = [...filteredGuests].sort((a, b) => {
         const aCheckin = clientCheckins.find(c => c.guest_qr === a.qr_code && !c.is_companion_only);
         const bCheckin = clientCheckins.find(c => c.guest_qr === b.qr_code && !c.is_companion_only);
@@ -1589,6 +1666,7 @@
                 <h3 class="font-bold mb-2 flex items-center gap-2" style="font-size: 18px; color: ${config.text_color};">
                   ${guest.is_vip ? `<span class="px-2 py-1 rounded text-xs font-bold vip-badge" style="color: white;">⭐</span>` : ''}
                   ${guest.name}
+                  ${guest.has_companion ? `<span class="opacity-70 text-xs">👥</span>` : ''}
                 </h3>
                 ${mainCheckin ? `
                   <p class="font-semibold mb-1" style="font-size: 12px; color: ${config.success_color};">
@@ -1645,7 +1723,6 @@
       
       let filteredGuests = clientGuests;
       
-      // Aplicar filtro por categoria
       if (currentFilter === 'checked-in') {
         filteredGuests = filteredGuests.filter(g => clientCheckins.some(c => c.guest_qr === g.qr_code && !c.is_companion_only));
       } else if (currentFilter === 'pending') {
@@ -1656,7 +1733,6 @@
         filteredGuests = filteredGuests.filter(g => g.has_companion);
       }
       
-      // Aplicar busca por nome
       if (currentSearchQuery) {
         filteredGuests = filteredGuests.filter(g => 
           g.name.toLowerCase().includes(currentSearchQuery) ||
@@ -1765,7 +1841,6 @@
       const clientCheckins = checkins.filter(c => c.client_id === currentUser.id);
       const existingCheckins = clientCheckins.filter(c => c.guest_qr === cleanCode);
 
-      // Verifica se já usou o convite completamente
       if (existingCheckins.length > 0 && (!guest.has_companion || existingCheckins.length >= 2)) {
         showErrorAnimation('ENTRADA NÃO PERMITIDA', 'Este convite já foi usado');
         playErrorSound();
@@ -1967,7 +2042,7 @@
       for (let i = 0; i < 50; i++) {
         const confetti = document.createElement('div');
         confetti.className = 'confetti';
-        confetti.textContent = ['🎉', '🎊', '✨', '⭐', '🌟'][Math.floor(Math.random() * 5)];
+        confetti.textContent = ['🎉', '🎊', '   ', '⭐', '🌟'][Math.floor(Math.random() * 5)];
         confetti.style.left = Math.random() * 100 + '%';
         confetti.style.fontSize = (Math.random() * 20 + 20) + 'px';
         confetti.style.animationDelay = (Math.random() * 0.5) + 's';
@@ -2059,7 +2134,7 @@
       modal.id = 'add-client-modal';
       
       modal.innerHTML = `
-        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;">
           <h2 class="font-bold mb-6" style="font-size: 28px; color: ${config.text_color};">
             ➕ Novo Cliente
           </h2>
@@ -2124,13 +2199,64 @@
               </div>
             </div>
 
-            <div class="mb-6">
+            <div class="mb-4">
               <label class="flex items-center">
                 <input type="checkbox" name="is_vip" class="mr-2">
                 <span style="font-size: 14px; color: ${config.text_color};">
                   ⭐ Marcar como Cliente VIP
                 </span>
               </label>
+            </div>
+
+            <div class="mb-4">
+              <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
+                📋 Lista de Convidados (1 por linha)
+              </label>
+              <div class="mb-2 p-3 rounded-lg" style="background-color: ${config.background_color};">
+                <p class="mb-1" style="font-size: 12px; color: ${config.text_color};">
+                  <strong>Como funciona:</strong>
+                </p>
+                <ul class="list-disc list-inside" style="font-size: 11px; color: ${config.text_color}; opacity: 0.8;">
+                  <li>O sistema ignora códigos no início</li>
+                  <li>Detecta automaticamente nomes com " e " (acompanhante)</li>
+                  <li>Exemplo: "1, João Silva e Esposa" → João tem acompanhante</li>
+                  <li><strong>Você pode fazer upload de MÚLTIPLOS arquivos de uma vez!</strong></li>
+                </ul>
+              </div>
+              
+              <div class="mb-3">
+                <input 
+                  type="file" 
+                  id="guest-list-file"
+                  accept=".txt"
+                  multiple
+                  class="hidden"
+                  onchange="handleGuestListFile(event)"
+                >
+                <button 
+                  type="button"
+                  onclick="document.getElementById('guest-list-file').click()"
+                  class="w-full py-3 rounded-xl font-semibold mb-2"
+                  style="background-color: ${config.primary_color}; color: white; font-size: 14px;"
+                >
+                  📤 Fazer Upload de Arquivo(s) .txt
+                </button>
+                <p class="text-center opacity-70 mb-2" style="font-size: 12px; color: ${config.text_color};">
+                  ou cole a lista abaixo:
+                </p>
+              </div>
+              
+              <textarea 
+                name="guest_list" 
+                id="guest-list-textarea"
+                rows="8"
+                class="w-full px-4 py-3 rounded-xl outline-none font-mono"
+                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 13px;"
+                placeholder="1, Edvandro Borges e Esposa&#10;2, Helena Fernandes e Acompanhante&#10;3, Hamilton e Mila&#10;4, Jéssica Leonarda&#10;..."
+              ></textarea>
+              <p class="mt-2 opacity-70" style="font-size: 12px; color: ${config.text_color};">
+                💡 Você pode adicionar mais convidados depois
+              </p>
             </div>
 
             <div class="flex gap-3">
@@ -2180,6 +2306,7 @@
       const clientName = formData.get('client_name');
       const controlType = formData.get('control_type');
       const isVIP = formData.get('is_vip') === 'on';
+      const guestListRaw = formData.get('guest_list');
       
       const clientData = {
         id: generateId('client'),
@@ -2202,15 +2329,46 @@
         clientData.expiry = eventDate.getTime().toString();
       }
       
-      const result = await createClient(clientData);
+      const resultClient = await createClient(clientData);
       
-      if (result.success) {
-        showToast('✅ Cliente criado com sucesso!', 'success');
-        closeModal('add-client-modal');
-        await renderAdminDashboard();
-      } else {
+      if (!resultClient.success) {
         showToast('❌ Erro ao criar cliente', 'error');
+        return;
       }
+
+      // Processar lista de convidados
+      if (guestListRaw && guestListRaw.trim()) {
+        const parsedGuests = parseGuestList(guestListRaw);
+        
+        if (parsedGuests.length > 0) {
+          const guestsToCreate = parsedGuests.map(pg => ({
+            id: generateId('guest'),
+            client_id: clientData.id,
+            name: pg.name,
+            qr_code: generateId('QR'),
+            has_companion: pg.has_companion,
+            is_vip: false,
+            deleted: false,
+            deleted_at: null,
+            created_at: new Date().toISOString()
+          }));
+          
+          const resultGuests = await createMultipleGuests(guestsToCreate);
+          
+          if (resultGuests.success) {
+            showToast(`✅ Cliente criado com ${resultGuests.count} convidados!`, 'success');
+          } else {
+            showToast('⚠️ Cliente criado, mas houve erro ao adicionar convidados', 'warning');
+          }
+        } else {
+          showToast('✅ Cliente criado com sucesso!', 'success');
+        }
+      } else {
+        showToast('✅ Cliente criado com sucesso!', 'success');
+      }
+      
+      closeModal('add-client-modal');
+      await renderAdminDashboard();
     }
 
     async function showClientDetails(clientId) {
@@ -2242,9 +2400,14 @@
               <strong>Total Check-ins:</strong> ${clientCheckins.length}
             </p>
             
-            <button onclick="showAddGuestModal('${clientId}')" class="w-full py-3 rounded-xl font-semibold" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 16px;">
-              ➕ Adicionar Convidado
-            </button>
+            <div class="grid grid-cols-2 gap-3">
+              <button onclick="showAddGuestModal('${clientId}')" class="py-3 rounded-xl font-semibold" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 16px;">
+                ➕ Adicionar Convidado
+              </button>
+              <button onclick="showUploadGuestListModal('${clientId}')" class="py-3 rounded-xl font-semibold" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-size: 16px;">
+                📤 Fazer Upload de Lista
+              </button>
+            </div>
           </div>
           
           <h3 class="font-bold mb-3" style="font-size: 20px; color: ${config.text_color};">
@@ -2267,6 +2430,7 @@
                       <p class="font-bold flex items-center gap-2" style="font-size: 14px; color: ${config.text_color};">
                         ${guest.is_vip ? `<span class="px-2 py-1 rounded text-xs font-bold vip-badge" style="color: white;">⭐</span>` : ''}
                         ${guest.name}
+                        ${guest.has_companion ? `<span class="opacity-70 text-xs">👥</span>` : ''}
                       </p>
                       <p class="opacity-70 font-mono text-xs" style="color: ${config.text_color};">
                         ${guest.qr_code}
@@ -2332,7 +2496,7 @@
               <label class="flex items-center">
                 <input type="checkbox" name="has_companion" class="mr-2">
                 <span style="font-size: 14px; color: ${config.text_color};">
-                  Este convidado tem direito a acompanhante
+                  👥 Este convidado tem direito a acompanhante
                 </span>
               </label>
             </div>
@@ -2396,6 +2560,307 @@
         await showClientDetails(clientId);
       } else {
         showToast('❌ Erro ao adicionar convidado', 'error');
+      }
+    }
+
+    function showUploadGuestListModal(clientId) {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'upload-guest-list-modal';
+      
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;">
+          <h2 class="font-bold mb-6" style="font-size: 28px; color: ${config.text_color};">
+            📤 Upload de Lista de Convidados
+          </h2>
+          
+          <form onsubmit="submitUploadGuestList(event, '${clientId}'); return false;">
+            <div class="mb-4">
+              <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
+                📋 Lista de Convidados (1 por linha)
+              </label>
+              <div class="mb-2 p-3 rounded-lg" style="background-color: ${config.background_color};">
+                <p class="mb-1" style="font-size: 12px; color: ${config.text_color};">
+                  <strong>Como funciona:</strong>
+                </p>
+                <ul class="list-disc list-inside" style="font-size: 11px; color: ${config.text_color}; opacity: 0.8;">
+                  <li>O sistema ignora códigos no início</li>
+                  <li>Detecta automaticamente nomes com " e " (acompanhante)</li>
+                  <li>Exemplo: "1, João Silva e Esposa" → João tem acompanhante</li>
+                  <li><strong>Se detectar lista duplicada, perguntará se deseja substituir</strong></li>
+                </ul>
+              </div>
+              
+              <div class="mb-3">
+                <input 
+                  type="file" 
+                  id="upload-guest-list-file"
+                  accept=".txt"
+                  multiple
+                  class="hidden"
+                  onchange="handleUploadGuestListFile(event)"
+                >
+                <button 
+                  type="button"
+                  onclick="document.getElementById('upload-guest-list-file').click()"
+                  class="w-full py-3 rounded-xl font-semibold mb-2"
+                  style="background-color: ${config.primary_color}; color: white; font-size: 14px;"
+                >
+                  📤 Fazer Upload de Arquivo(s) .txt
+                </button>
+                <p class="text-center opacity-70 mb-2" style="font-size: 12px; color: ${config.text_color};">
+                  ou cole a lista abaixo:
+                </p>
+              </div>
+              
+              <textarea 
+                name="guest_list" 
+                id="upload-guest-list-textarea"
+                rows="8"
+                required
+                class="w-full px-4 py-3 rounded-xl outline-none font-mono"
+                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 13px;"
+                placeholder="1, Edvandro Borges e Esposa&#10;2, Helena Fernandes e Acompanhante&#10;3, Hamilton e Mila&#10;4, Jéssica Leonarda&#10;..."
+              ></textarea>
+            </div>
+
+            <div class="flex gap-3">
+              <button 
+                type="button"
+                onclick="closeModal('upload-guest-list-modal')"
+                class="flex-1 py-3 rounded-xl font-semibold"
+                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit"
+                class="flex-1 py-3 rounded-xl font-semibold"
+                style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white; font-size: 16px;"
+              >
+                Processar Lista
+              </button>
+            </div>
+          </form>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+    }
+
+    function handleUploadGuestListFile(event) {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+      
+      // Verificar se todos os arquivos são .txt
+      const invalidFiles = Array.from(files).filter(file => !file.name.endsWith('.txt'));
+      if (invalidFiles.length > 0) {
+        showToast('❌ Por favor, selecione apenas arquivos .txt', 'error');
+        event.target.value = '';
+        return;
+      }
+      
+      const textarea = document.getElementById('upload-guest-list-textarea');
+      if (!textarea) return;
+      
+      let combinedContent = '';
+      let filesProcessed = 0;
+      let totalLines = 0;
+      
+      // Processar cada arquivo
+      Array.from(files).forEach((file, index) => {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+          const content = e.target.result;
+          
+          // Adicionar separador visual entre arquivos (se houver mais de 1)
+          if (files.length > 1 && index > 0 && combinedContent.length > 0) {
+            combinedContent += '\n';
+          }
+          
+          combinedContent += content;
+          
+          const lineCount = content.split('\n').filter(line => line.trim().length > 0).length;
+          totalLines += lineCount;
+          
+          filesProcessed++;
+          
+          // Quando todos os arquivos forem processados
+          if (filesProcessed === files.length) {
+            textarea.value = combinedContent;
+            
+            if (files.length === 1) {
+              showToast(`✅ Arquivo carregado! ${totalLines} linhas detectadas`, 'success');
+            } else {
+              showToast(`✅ ${files.length} arquivos carregados! Total: ${totalLines} linhas`, 'success');
+            }
+          }
+        };
+        
+        reader.onerror = function() {
+          showToast(`❌ Erro ao ler o arquivo: ${file.name}`, 'error');
+          filesProcessed++;
+        };
+        
+        reader.readAsText(file);
+      });
+      
+      event.target.value = '';
+    }
+
+    async function submitUploadGuestList(event, clientId) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const guestListRaw = formData.get('guest_list');
+      
+      if (!guestListRaw || !guestListRaw.trim()) {
+        showToast('❌ Lista vazia!', 'error');
+        return;
+      }
+      
+      const parsedGuests = parseGuestList(guestListRaw);
+      
+      if (parsedGuests.length === 0) {
+        showToast('❌ Nenhum convidado válido encontrado!', 'error');
+        return;
+      }
+      
+      // Verificar se há convidados duplicados comparando os nomes
+      const clientGuests = guests.filter(g => g.client_id === clientId);
+      const newGuestNames = parsedGuests.map(pg => pg.name.toLowerCase().trim());
+      const existingGuestNames = clientGuests.map(g => g.name.toLowerCase().trim());
+      
+      // Verificar quantos nomes já existem
+      const duplicatesCount = newGuestNames.filter(name => existingGuestNames.includes(name)).length;
+      
+      // Se mais de 50% dos nomes já existem, considerar como lista duplicada
+      const isDuplicateList = duplicatesCount > (newGuestNames.length * 0.5);
+      
+      if (isDuplicateList && clientGuests.length > 0) {
+        showDuplicateListConfirmation(clientId, parsedGuests, duplicatesCount);
+      } else {
+        await processGuestListUpload(clientId, parsedGuests, false);
+      }
+    }
+
+    function showDuplicateListConfirmation(clientId, parsedGuests, duplicatesCount) {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'duplicate-list-confirmation';
+      
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+          <div class="text-6xl mb-4">⚠️</div>
+          <h2 class="font-bold mb-4" style="font-size: 24px; color: ${config.text_color};">
+            Lista Duplicada Detectada!
+          </h2>
+          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
+            Detectamos <strong>${duplicatesCount} convidados</strong> que já existem neste cliente.<br><br>
+            O que você deseja fazer?
+          </p>
+          <div class="space-y-3">
+            <button 
+              onclick="confirmReplaceGuestList('${clientId}', ${JSON.stringify(parsedGuests).replace(/"/g, '&quot;')})"
+              class="w-full py-3 rounded-xl font-semibold"
+              style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; font-size: 16px;"
+            >
+              🔄 Substituir Lista Antiga
+            </button>
+            <button 
+              onclick="confirmAddToGuestList('${clientId}', ${JSON.stringify(parsedGuests).replace(/"/g, '&quot;')})"
+              class="w-full py-3 rounded-xl font-semibold"
+              style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white; font-size: 16px;"
+            >
+              ➕ Adicionar à Lista Existente<br>
+              <span style="font-size: 12px; opacity: 0.9;">(Ignora duplicados)</span>
+            </button>
+            <button 
+              onclick="closeModal('duplicate-list-confirmation')"
+              class="w-full py-3 rounded-xl font-semibold"
+              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+    }
+
+    async function confirmReplaceGuestList(clientId, parsedGuestsJson) {
+      const parsedGuests = JSON.parse(parsedGuestsJson);
+      await processGuestListUpload(clientId, parsedGuests, true);
+    }
+
+    async function confirmAddToGuestList(clientId, parsedGuestsJson) {
+      const parsedGuests = JSON.parse(parsedGuestsJson);
+      await processGuestListUpload(clientId, parsedGuests, false);
+    }
+
+    async function processGuestListUpload(clientId, parsedGuests, shouldReplace) {
+      closeModal('duplicate-list-confirmation');
+      
+      // Se for substituir, deletar todos os convidados existentes (sem check-in)
+      if (shouldReplace) {
+        const clientGuests = guests.filter(g => g.client_id === clientId);
+        const clientCheckins = checkins.filter(c => c.client_id === clientId);
+        const guestsWithCheckin = clientCheckins.map(c => c.guest_qr);
+        
+        const guestsToDelete = clientGuests.filter(g => !guestsWithCheckin.includes(g.qr_code));
+        
+        if (guestsToDelete.length > 0) {
+          showToast(`🔄 Removendo ${guestsToDelete.length} convidados antigos...`, 'info');
+          
+          for (const guest of guestsToDelete) {
+            await deleteGuest(guest.id);
+          }
+          
+          await loadGuests();
+        }
+      }
+      
+      // Filtrar convidados que já existem
+      const clientGuests = guests.filter(g => g.client_id === clientId);
+      const existingNames = clientGuests.map(g => g.name.toLowerCase().trim());
+      
+      const guestsToCreate = parsedGuests
+        .filter(pg => !existingNames.includes(pg.name.toLowerCase().trim()))
+        .map(pg => ({
+          id: generateId('guest'),
+          client_id: clientId,
+          name: pg.name,
+          qr_code: generateId('QR'),
+          has_companion: pg.has_companion,
+          is_vip: false,
+          deleted: false,
+          deleted_at: null,
+          created_at: new Date().toISOString()
+        }));
+      
+      if (guestsToCreate.length === 0) {
+        showToast('⚠️ Todos os convidados já existem!', 'warning');
+        closeModal('upload-guest-list-modal');
+        closeModal('client-details-modal');
+        await showClientDetails(clientId);
+        return;
+      }
+      
+      const result = await createMultipleGuests(guestsToCreate);
+      
+      if (result.success) {
+        const skippedCount = parsedGuests.length - guestsToCreate.length;
+        let message = `✅ ${result.count} convidados adicionados!`;
+        if (skippedCount > 0) {
+          message += ` (${skippedCount} duplicados ignorados)`;
+        }
+        showToast(message, 'success');
+        closeModal('upload-guest-list-modal');
+        closeModal('client-details-modal');
+        await showClientDetails(clientId);
+      } else {
+        showToast('❌ Erro ao adicionar convidados', 'error');
       }
     }
 
@@ -2899,6 +3364,12 @@
     window.restoreGuestFromTrash = restoreGuestFromTrash;
     window.undoCheckin = undoCheckin;
     window.closeModal = closeModal;
+    window.handleGuestListFile = handleGuestListFile;
+    window.showUploadGuestListModal = showUploadGuestListModal;
+    window.handleUploadGuestListFile = handleUploadGuestListFile;
+    window.submitUploadGuestList = submitUploadGuestList;
+    window.confirmReplaceGuestList = confirmReplaceGuestList;
+    window.confirmAddToGuestList = confirmAddToGuestList;
 
     // =============== VALIDAÇÃO PERIÓDICA E ATUALIZAÇÃO EM TEMPO REAL ===============
     
@@ -2922,7 +3393,6 @@
               showToast('❌ Sessão encerrada - Token expirado ou desativado', 'error');
               renderLogin();
             } else {
-              // Atualizar lista de convidados em tempo real
               await loadGuests();
               await loadCheckins();
               
@@ -2931,104 +3401,34 @@
               }
             }
           } catch (error) {
-            console.log('Erro na validação periódica (modo offline)');
+            console.log('Erro ao validar sessão');
           }
         } else if (currentUser.type === 'admin') {
           try {
-            // Atualizar dados do admin em tempo real
-            const previousCheckinsCount = checkins.length;
-            
             await loadAllData();
-            
             if (currentView === 'admin-dashboard') {
-              // Atualizar cards de estatísticas
-              const activeClients = clients.filter(c => parseInt(c.expiry) > Date.now());
-              const vipClients = clients.filter(c => c.is_vip);
-              const statsTexts = document.querySelectorAll('#admin-stats-cards p.font-bold');
-              if (statsTexts.length >= 5) {
-                statsTexts[0].textContent = clients.length;
-                statsTexts[1].textContent = activeClients.length;
-                statsTexts[2].textContent = vipClients.length;
-                statsTexts[3].textContent = guests.length;
-                statsTexts[4].textContent = checkins.length;
-              }
-              
-              // Se houver novos check-ins, atualizar a lista
-              if (checkins.length !== previousCheckinsCount) {
-                const recentList = document.getElementById('recent-checkins-list');
-                if (recentList) {
-                  recentList.innerHTML = checkins
-                    .slice(0, 10)
-                    .map(checkin => {
-                      const client = clients.find(c => c.id === checkin.client_id);
-                      const guest = guests.find(g => g.qr_code === checkin.guest_qr);
-                      return `
-                        <div class="flex items-center justify-between p-3 rounded-lg" style="background-color: ${config.background_color};">
-                          <div class="flex-1">
-                            <p class="font-bold flex items-center" style="font-size: 14px; color: ${config.text_color};">
-                              ${guest && guest.is_vip ? '⭐ ' : ''}${checkin.guest_name}
-                            </p>
-                            <p class="opacity-70" style="font-size: 12px; color: ${config.text_color};">
-                              ${client ? (client.is_vip ? '⭐ ' : '') + client.client_name : 'Cliente'} • ${new Date(checkin.checked_in_at).toLocaleString('pt-BR')}
-                            </p>
-                          </div>
-                          <button 
-                            onclick="undoCheckin('${checkin.id}')"
-                            class="px-3 py-2 rounded-lg font-semibold transition-all"
-                            style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 12px;"
-                          >
-                            ↩️ Desfazer
-                          </button>
-                        </div>
-                      `;
-                    }).join('') || `
-                      <p class="text-center opacity-70 py-4" style="font-size: 14px; color: ${config.text_color};">
-                        Nenhum check-in realizado ainda
-                      </p>
-                    `;
-                }
-              }
+              await renderAdminDashboard();
             }
           } catch (error) {
-            console.log('Erro na atualização do admin');
+            console.log('Erro ao atualizar dados do admin');
           }
         }
       }
-    }, 5000); // Atualiza a cada 5 segundos
+    }, 10000);
 
-    // =============== INITIALIZATION ===============
+    // =============== INIT ===============
 
     async function init() {
-      try {
-        loadOfflineQueue();
-        
-        const loaded = await loadAllData();
-        
-        if (!loaded) {
-          showToast('⚠️ Erro ao carregar dados', 'error');
-        }
-        
-        if (offlineQueue.length > 0 && isOnline) {
-          setTimeout(() => syncOfflineQueue(), 2000);
-        }
-
-        const hasSession = await checkExistingSession();
-        
-        if (!hasSession) {
-          renderLogin();
-        }
-      } catch (error) {
-        console.error('Erro na inicialização:', error);
-        showToast('❌ Erro ao inicializar aplicação', 'error');
+      loadOfflineQueue();
+      await loadAllData();
+      
+      const hasSession = await checkExistingSession();
+      if (!hasSession) {
         renderLogin();
       }
     }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', init);
-    } else {
-      init();
-    }
+    init();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ac820cbe1e4c13d',t:'MTc2NTQ4OTA5Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9acae17697e7c13d',t:'MTc2NTUxNzk2MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
