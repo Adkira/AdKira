@@ -8,7 +8,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="/_sdk/element_sdk.js"></script>
   <style>
     body {
       box-sizing: border-box;
@@ -30,29 +29,9 @@
       to { opacity: 1; }
     }
     
-    @keyframes fall {
-      to {
-        transform: translateY(100vh) rotate(360deg);
-        opacity: 0;
-      }
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0.5;
-      }
-    }
-
     @keyframes shimmer {
-      0% {
-        background-position: -1000px 0;
-      }
-      100% {
-        background-position: 1000px 0;
-      }
+      0% { background-position: -1000px 0; }
+      100% { background-position: 1000px 0; }
     }
 
     .vip-badge {
@@ -63,10 +42,6 @@
     
     .animate-slide-in {
       animation: slideIn 0.4s ease-out;
-    }
-
-    .animate-pulse-slow {
-      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
     
     .toast {
@@ -113,48 +88,17 @@
     #qr-reader__scan_region {
       border: 3px solid #007f9f !important;
     }
-
-    .tab-button {
-      transition: all 0.3s ease;
-      border-bottom: 3px solid transparent;
-    }
-
-    .tab-button.active {
-      border-bottom-color: #007f9f;
-    }
-
-    .confetti {
-      position: fixed;
-      animation: fall 3s linear;
-    }
-
-    .loading-spinner {
-      border: 3px solid rgba(255,255,255,0.3);
-      border-top: 3px solid white;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
   </style>
   <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
  </head>
  <body class="h-full" style="background-color: #0a1929;">
-  <div id="app" class="h-full w-full overflow-auto">
-   <div class="flex items-center justify-center h-full">
-    <div class="loading-spinner"></div>
-   </div>
-  </div>
+  <div id="app" class="h-full w-full overflow-auto"></div>
   <script>
     const SUPABASE_URL = 'https://sekkrboqttxpathyxcun.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNla2tyYm9xdHR4cGF0aHl4Y3VuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNjY0OTYsImV4cCI6MjA3OTc0MjQ5Nn0.JqrLUWHs3-jyUNT-0s2DwiyeDjK0uv6uIh0ip1qPWBA';
-
+    
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const config = {
@@ -175,415 +119,257 @@
     let currentUser = null;
     let currentTab = 'home';
     let html5QrCode = null;
-    let offlineQueue = [];
-    let isOnline = navigator.onLine;
-    let currentFilter = 'all';
     let currentSearchQuery = '';
 
-    const STORAGE_KEYS = {
-      ADMIN_SESSION: 'adkira_admin_session',
-      CLIENT_SESSION: 'adkira_client_session',
-      OFFLINE_QUEUE: 'adkira_offline_queue'
-    };
-
-    // =============== HELPER: PROCESSAR LISTA DE CONVIDADOS ===============
+    // =============== HELPER FUNCTIONS ===============
     
-    function parseGuestList(rawText) {
-      if (!rawText || !rawText.trim()) return [];
-      
-      const lines = rawText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-      const parsedGuests = [];
-      
-      lines.forEach((line, index) => {
-        // Remover código no início (vários formatos possíveis):
-        // "1, Nome" ou "1. Nome" ou "ABC123, Nome" ou "ABC123,Nome"
-        let cleanLine = line.replace(/^[A-Z0-9]+[\.,]\s*/, '').trim();
-        
-        if (!cleanLine) return;
-        
-        // Detectar se tem acompanhante pelo padrão " e " (case insensitive)
-        const hasCompanion = cleanLine.toLowerCase().includes(' e ');
-        
-        parsedGuests.push({
-          originalLine: line,
-          name: cleanLine,
-          has_companion: hasCompanion,
-          lineNumber: index + 1
-        });
-      });
-      
-      return parsedGuests;
+    function generateId(prefix) {
+      return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
 
-    // =============== FILE UPLOAD HANDLER ===============
-    
-    function handleGuestListFile(event) {
-      const files = event.target.files;
-      if (!files || files.length === 0) return;
+    function generateToken() {
+      return 'TKN-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+    }
+
+    function saveSession(type, data) {
+      localStorage.setItem(`adkira_${type}_session`, JSON.stringify(data));
+    }
+
+    function loadSession(type) {
+      const data = localStorage.getItem(`adkira_${type}_session`);
+      return data ? JSON.parse(data) : null;
+    }
+
+    function clearSession(type) {
+      localStorage.removeItem(`adkira_${type}_session`);
+    }
+
+    function showToast(message, type = 'success') {
+      const existingToast = document.querySelector('.toast');
+      if (existingToast) existingToast.remove();
+
+      const colors = {
+        success: '#10b981',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#3b82f6'
+      };
+
+      const toast = document.createElement('div');
+      toast.className = 'toast text-white font-semibold';
+      toast.style.backgroundColor = colors[type] || colors.info;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    function closeModal(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) modal.remove();
+    }
+
+    function parseGuestList(rawText) {
+      if (!rawText?.trim()) return [];
       
-      // Verificar se todos os arquivos são .txt
-      const invalidFiles = Array.from(files).filter(file => !file.name.endsWith('.txt'));
-      if (invalidFiles.length > 0) {
-        showToast('❌ Por favor, selecione apenas arquivos .txt', 'error');
+      const lines = rawText.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .filter(line => !line.startsWith('#'))
+        .filter(line => !line.includes('#validade'))
+        .filter(line => line.length > 2);
+      
+      return lines.map((line, index) => {
+        let cleanName = line;
+        if (/^[a-z0-9]+,/.test(line)) {
+          cleanName = line.split(',').slice(1).join(',').trim();
+        }
+        
+        if (cleanName.includes('#')) {
+          return null;
+        }
+        
+        return {
+          originalLine: line,
+          name: cleanName,
+          has_companion: cleanName.toLowerCase().includes(' e '),
+          lineNumber: index + 1
+        };
+      }).filter(guest => guest !== null);
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (!file.name.toLowerCase().endsWith('.txt')) {
+        showToast('❌ Por favor, selecione um arquivo TXT', 'error');
         event.target.value = '';
         return;
       }
-      
-      const textarea = document.getElementById('guest-list-textarea');
-      if (!textarea) return;
-      
-      let combinedContent = '';
-      let filesProcessed = 0;
-      let totalLines = 0;
-      
-      // Processar cada arquivo
-      Array.from(files).forEach((file, index) => {
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-          const content = e.target.result;
-          
-          // Adicionar separador visual entre arquivos (se houver mais de 1)
-          if (files.length > 1 && index > 0 && combinedContent.length > 0) {
-            combinedContent += '\n';
-          }
-          
-          combinedContent += content;
-          
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const content = e.target.result;
+        const textarea = document.getElementById('guest-list-textarea');
+        if (textarea) {
+          textarea.value = content;
           const lineCount = content.split('\n').filter(line => line.trim().length > 0).length;
-          totalLines += lineCount;
-          
-          filesProcessed++;
-          
-          // Quando todos os arquivos forem processados
-          if (filesProcessed === files.length) {
-            textarea.value = combinedContent;
-            
-            if (files.length === 1) {
-              showToast(`✅ Arquivo carregado! ${totalLines} linhas detectadas`, 'success');
-            } else {
-              showToast(`✅ ${files.length} arquivos carregados! Total: ${totalLines} linhas`, 'success');
-            }
-          }
-        };
-        
-        reader.onerror = function() {
-          showToast(`❌ Erro ao ler o arquivo: ${file.name}`, 'error');
-          filesProcessed++;
-        };
-        
-        reader.readAsText(file);
-      });
+          showToast(`✅ ${lineCount} convidados carregados!`, 'success');
+        }
+      };
       
-      event.target.value = '';
+      reader.onerror = function() {
+        showToast('❌ Erro ao ler arquivo', 'error');
+      };
+      
+      reader.readAsText(file);
     }
 
     // =============== SUPABASE FUNCTIONS ===============
 
     async function loadClients() {
-      try {
-        const { data, error } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('deleted', false)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        clients = data || [];
-        return true;
-      } catch (error) {
-        console.error('Erro ao carregar clientes:', error);
-        return false;
-      }
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('deleted', false)
+        .order('created_at', { ascending: false });
+      
+      if (!error && data) clients = data;
     }
 
     async function loadGuests() {
-      try {
-        const { data, error } = await supabase
-          .from('guests')
-          .select('*')
-          .eq('deleted', false)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        guests = data || [];
-        return true;
-      } catch (error) {
-        console.error('Erro ao carregar convidados:', error);
-        return false;
-      }
+      const { data, error } = await supabase
+        .from('guests')
+        .select('*')
+        .eq('deleted', false)
+        .order('created_at', { ascending: false });
+      
+      if (!error && data) guests = data;
     }
 
     async function loadCheckins() {
-      try {
-        const { data, error } = await supabase
-          .from('checkins')
-          .select('*')
-          .order('checked_in_at', { ascending: false });
-
-        if (error) throw error;
-        checkins = data || [];
-        return true;
-      } catch (error) {
-        console.error('Erro ao carregar check-ins:', error);
-        return false;
-      }
+      const { data, error } = await supabase
+        .from('checkins')
+        .select('*')
+        .order('checked_in_at', { ascending: false });
+      
+      if (!error && data) checkins = data;
     }
 
     async function loadAllData() {
-      const results = await Promise.all([
-        loadClients(),
-        loadGuests(),
-        loadCheckins()
-      ]);
-      return results.every(r => r === true);
+      await Promise.all([loadClients(), loadGuests(), loadCheckins()]);
     }
 
     async function validateAdminCredentials(username, password) {
-      try {
-        const { data, error } = await supabase
-          .from('admin_credentials')
-          .select('*')
-          .eq('username', username)
-          .eq('password', password)
-          .eq('active', true)
-          .single();
-
-        if (error || !data) return false;
-        return true;
-      } catch (error) {
-        console.error('Erro ao validar admin:', error);
-        return false;
-      }
+      const { data, error } = await supabase
+        .from('admin_credentials')
+        .select('*')
+        .eq('username', username)
+        .eq('password', password)
+        .eq('active', true)
+        .single();
+      return !error && data;
     }
 
     async function createClient(clientData) {
-      try {
-        const { data, error } = await supabase
-          .from('clients')
-          .insert([clientData])
-          .select();
-
-        if (error) throw error;
-        await loadClients();
-        return { success: true, data };
-      } catch (error) {
-        console.error('Erro ao criar cliente:', error);
-        return { success: false, error };
-      }
+      const { data, error } = await supabase.from('clients').insert([clientData]).select();
+      if (!error) await loadClients();
+      return { success: !error, data };
     }
 
     async function updateClient(clientId, updates) {
-      try {
-        const { data, error } = await supabase
-          .from('clients')
-          .update(updates)
-          .eq('id', clientId)
-          .select();
-
-        if (error) throw error;
-        await loadClients();
-        return { success: true, data };
-      } catch (error) {
-        console.error('Erro ao atualizar cliente:', error);
-        return { success: false, error };
-      }
+      const { data, error } = await supabase.from('clients').update(updates).eq('id', clientId).select();
+      if (!error) await loadClients();
+      return { success: !error };
     }
 
     async function deleteClient(clientId) {
-      try {
-        const { data, error } = await supabase
-          .from('clients')
-          .update({ deleted: true, deleted_at: new Date().toISOString() })
-          .eq('id', clientId)
-          .select();
-
-        if (error) throw error;
-        await loadClients();
-        return { success: true, data };
-      } catch (error) {
-        console.error('Erro ao deletar cliente:', error);
-        return { success: false, error };
-      }
-    }
-
-    async function restoreClient(clientId) {
-      try {
-        const { data, error } = await supabase
-          .from('clients')
-          .update({ deleted: false, deleted_at: null })
-          .eq('id', clientId)
-          .select();
-
-        if (error) throw error;
-        await loadClients();
-        return { success: true, data };
-      } catch (error) {
-        console.error('Erro ao restaurar cliente:', error);
-        return { success: false, error };
-      }
-    }
-
-    async function loadDeletedClients() {
-      try {
-        const { data, error } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('deleted', true)
-          .order('deleted_at', { ascending: false });
-
-        if (error) throw error;
-        return data || [];
-      } catch (error) {
-        console.error('Erro ao carregar clientes deletados:', error);
-        return [];
-      }
+      const { error } = await supabase
+        .from('clients')
+        .update({ deleted: true, deleted_at: new Date().toISOString() })
+        .eq('id', clientId);
+      
+      await supabase
+        .from('guests')
+        .update({ deleted: true, deleted_at: new Date().toISOString() })
+        .eq('client_id', clientId);
+      
+      await supabase
+        .from('checkins')
+        .delete()
+        .eq('client_id', clientId);
+      
+      if (!error) await loadAllData();
+      return { success: !error };
     }
 
     async function createGuest(guestData) {
-      try {
-        const { data, error } = await supabase
-          .from('guests')
-          .insert([guestData])
-          .select();
-
-        if (error) throw error;
-        await loadGuests();
-        return { success: true, data };
-      } catch (error) {
-        console.error('Erro ao criar convidado:', error);
-        return { success: false, error };
-      }
+      const { data, error } = await supabase.from('guests').insert([guestData]).select();
+      if (!error) await loadGuests();
+      return { success: !error };
     }
 
     async function createMultipleGuests(guestsArray) {
-      try {
-        const { data, error } = await supabase
-          .from('guests')
-          .insert(guestsArray)
-          .select();
-
-        if (error) throw error;
-        await loadGuests();
-        return { success: true, data, count: data.length };
-      } catch (error) {
-        console.error('Erro ao criar múltiplos convidados:', error);
-        return { success: false, error };
-      }
+      if (guestsArray.length === 0) return { success: true, count: 0 };
+      
+      const { data, error } = await supabase.from('guests').insert(guestsArray).select();
+      if (!error) await loadGuests();
+      return { success: !error, count: data?.length || 0 };
     }
 
     async function updateGuest(guestId, updates) {
-      try {
-        const { data, error } = await supabase
-          .from('guests')
-          .update(updates)
-          .eq('id', guestId)
-          .select();
-
-        if (error) throw error;
-        await loadGuests();
-        return { success: true, data };
-      } catch (error) {
-        console.error('Erro ao atualizar convidado:', error);
-        return { success: false, error };
-      }
+      const { error } = await supabase.from('guests').update(updates).eq('id', guestId);
+      if (!error) await loadGuests();
+      return { success: !error };
     }
 
     async function deleteGuest(guestId) {
-      try {
-        const { data, error } = await supabase
-          .from('guests')
-          .update({ deleted: true, deleted_at: new Date().toISOString() })
-          .eq('id', guestId)
-          .select();
-
-        if (error) throw error;
-        await loadGuests();
-        return { success: true, data };
-      } catch (error) {
-        console.error('Erro ao deletar convidado:', error);
-        return { success: false, error };
-      }
-    }
-
-    async function restoreGuest(guestId) {
-      try {
-        const { data, error } = await supabase
-          .from('guests')
-          .update({ deleted: false, deleted_at: null })
-          .eq('id', guestId)
-          .select();
-
-        if (error) throw error;
-        await loadGuests();
-        return { success: true, data };
-      } catch (error) {
-        console.error('Erro ao restaurar convidado:', error);
-        return { success: false, error };
-      }
-    }
-
-    async function loadDeletedGuests() {
-      try {
-        const { data, error } = await supabase
-          .from('guests')
-          .select('*')
-          .eq('deleted', true)
-          .order('deleted_at', { ascending: false });
-
-        if (error) throw error;
-        return data || [];
-      } catch (error) {
-        console.error('Erro ao carregar convidados deletados:', error);
-        return [];
-      }
+      const { error } = await supabase
+        .from('guests')
+        .update({ deleted: true, deleted_at: new Date().toISOString() })
+        .eq('id', guestId);
+      if (!error) await loadGuests();
+      return { success: !error };
     }
 
     async function createCheckin(checkinData) {
-      try {
-        const { data, error } = await supabase
-          .from('checkins')
-          .insert([checkinData])
-          .select();
-
-        if (error) throw error;
-        await loadCheckins();
-        return { success: true, data };
-      } catch (error) {
-        console.error('Erro ao criar check-in:', error);
-        return { success: false, error };
-      }
-    }
-
-    async function deleteCheckin(checkinId) {
-      try {
-        const { error } = await supabase
-          .from('checkins')
-          .delete()
-          .eq('id', checkinId);
-
-        if (error) throw error;
-        await loadCheckins();
-        return { success: true };
-      } catch (error) {
-        console.error('Erro ao deletar check-in:', error);
-        return { success: false, error };
-      }
+      const { data, error } = await supabase.from('checkins').insert([checkinData]).select();
+      if (!error) await loadCheckins();
+      return { success: !error };
     }
 
     async function deleteAllClientCheckins(clientId) {
-      try {
-        const { error } = await supabase
-          .from('checkins')
-          .delete()
-          .eq('client_id', clientId);
-
-        if (error) throw error;
+      const { error } = await supabase.from('checkins').delete().eq('client_id', clientId);
+      if (!error) {
         await loadCheckins();
-        return { success: true };
+        await createAuditLog('clear_all_checkins', { client_id: clientId });
+      }
+      return { success: !error };
+    }
+
+    async function deleteCheckin(checkinId) {
+      const { error } = await supabase.from('checkins').delete().eq('id', checkinId);
+      if (!error) {
+        await loadCheckins();
+        await createAuditLog('delete_single_checkin', { checkin_id: checkinId });
+      }
+      return { success: !error };
+    }
+
+    async function createAuditLog(action, metadata = {}) {
+      try {
+        await supabase.from('audit_logs').insert([{
+          id: generateId('audit'),
+          action,
+          user_type: currentUser?.type || 'unknown',
+          user_id: currentUser?.id || 'unknown',
+          metadata: JSON.stringify(metadata),
+          ip_address: 'client-side',
+          created_at: new Date().toISOString()
+        }]);
       } catch (error) {
-        console.error('Erro ao deletar check-ins do cliente:', error);
-        return { success: false, error };
+        console.log('Audit log não criado (tabela pode não existir)');
       }
     }
 
@@ -599,27 +385,13 @@
       try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-
-        const primaryColor = [0, 127, 159];
-        const darkColor = [10, 25, 41];
-        const successColor = [16, 185, 129];
-        const grayColor = [148, 163, 184];
-        const vipColor = [251, 191, 36];
-        
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
 
         // CABEÇALHO
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFillColor(0, 127, 159);
         doc.rect(0, 0, pageWidth, 45, 'F');
         
-        doc.setFillColor(255, 255, 255);
-        doc.circle(20, 22, 8, 'F');
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.setFontSize(16);
-        doc.setFont(undefined, 'bold');
-        doc.text('✓', 20, 25, { align: 'center' });
-
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(24);
         doc.setFont(undefined, 'bold');
@@ -627,58 +399,40 @@
         
         doc.setFontSize(11);
         doc.setFont(undefined, 'normal');
-        doc.text('Sistema Profissional de Gestão de Eventos', pageWidth / 2, 28, { align: 'center' });
+        doc.text('Sistema AdKira', pageWidth / 2, 28, { align: 'center' });
         
         doc.setFontSize(9);
-        doc.setTextColor(240, 240, 240);
         doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageWidth / 2, 36, { align: 'center' });
 
         let yPos = 55;
         
+        // INFO DO CLIENTE
         doc.setFillColor(245, 247, 250);
-        doc.roundedRect(15, yPos, pageWidth - 30, 40, 3, 3, 'F');
+        doc.roundedRect(15, yPos, pageWidth - 30, 35, 3, 3, 'F');
         
-        doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-        doc.setFontSize(16);
+        doc.setTextColor(10, 25, 41);
+        doc.setFontSize(18);
         doc.setFont(undefined, 'bold');
         doc.text(client.client_name, 20, yPos + 10);
         
         if (client.is_vip) {
-          doc.setFillColor(vipColor[0], vipColor[1], vipColor[2]);
-          doc.roundedRect(20 + doc.getTextWidth(client.client_name) + 5, yPos + 3, 20, 8, 2, 2, 'F');
+          doc.setFillColor(251, 191, 36);
+          doc.roundedRect(20 + doc.getTextWidth(client.client_name) + 5, yPos + 3, 22, 8, 2, 2, 'F');
           doc.setTextColor(255, 255, 255);
           doc.setFontSize(8);
-          doc.setFont(undefined, 'bold');
-          doc.text('VIP', 30 + doc.getTextWidth(client.client_name), yPos + 9, { align: 'center' });
+          doc.text('⭐ VIP', 31 + doc.getTextWidth(client.client_name), yPos + 9, { align: 'center' });
         }
         
         doc.setFontSize(10);
         doc.setFont(undefined, 'normal');
         doc.setTextColor(100, 100, 100);
-        doc.text(`Token de Acesso: ${client.token}`, 20, yPos + 20);
-        
-        if (client.event_date) {
-          const eventDate = new Date(parseInt(client.event_date));
-          const timeUntilEvent = parseInt(client.event_date) - Date.now();
-          const daysUntil = Math.floor(timeUntilEvent / (1000 * 60 * 60 * 24));
-          const hoursUntil = Math.floor((timeUntilEvent % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-          
-          doc.text(`Data do Evento: ${eventDate.toLocaleString('pt-BR')}`, 20, yPos + 28);
-          if (timeUntilEvent > 0) {
-            doc.text(`Faltam: ${daysUntil} dias e ${hoursUntil} horas`, 20, yPos + 35);
-          } else {
-            doc.text(`Evento já ocorreu`, 20, yPos + 35);
-          }
-        } else {
-          const expiryDate = new Date(parseInt(client.expiry)).toLocaleString('pt-BR');
-          const isExpired = parseInt(client.expiry) < Date.now();
-          doc.text(`Validade: ${expiryDate} ${isExpired ? '(EXPIRADO)' : '(ATIVO)'}`, 20, yPos + 28);
-        }
+        doc.text(`Token: ${client.token}`, 20, yPos + 20);
+        doc.text(`Validade: ${new Date(parseInt(client.expiry)).toLocaleString('pt-BR')}`, 20, yPos + 28);
 
-        yPos = 105;
+        yPos = 100;
         
+        // ESTATÍSTICAS
         const uniqueCheckins = clientCheckins.filter(c => !c.is_companion_only).length;
-        const companionCount = clientCheckins.filter(c => c.is_companion_only || c.with_companion).length;
         const vipGuests = clientGuests.filter(g => g.is_vip).length;
         const attendanceRate = clientGuests.length > 0 ? ((uniqueCheckins / clientGuests.length) * 100).toFixed(1) : 0;
 
@@ -686,20 +440,17 @@
         const cardHeight = 28;
         const cardSpacing = 5;
 
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFillColor(0, 127, 159);
         doc.roundedRect(15, yPos, cardWidth, cardHeight, 2, 2, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
-        doc.text('TOTAL', 15 + cardWidth/2, yPos + 8, { align: 'center' });
-        doc.text('CONVIDADOS', 15 + cardWidth/2, yPos + 14, { align: 'center' });
+        doc.text('CONVIDADOS', 15 + cardWidth/2, yPos + 11, { align: 'center' });
         doc.setFontSize(18);
         doc.setFont(undefined, 'bold');
         doc.text(clientGuests.length.toString(), 15 + cardWidth/2, yPos + 24, { align: 'center' });
 
-        doc.setFillColor(successColor[0], successColor[1], successColor[2]);
+        doc.setFillColor(16, 185, 129);
         doc.roundedRect(15 + cardWidth + cardSpacing, yPos, cardWidth, cardHeight, 2, 2, 'F');
-        doc.setTextColor(255, 255, 255);
         doc.setFontSize(9);
         doc.setFont(undefined, 'normal');
         doc.text('CHECK-INS', 15 + cardWidth + cardSpacing + cardWidth/2, yPos + 11, { align: 'center' });
@@ -707,9 +458,8 @@
         doc.setFont(undefined, 'bold');
         doc.text(uniqueCheckins.toString(), 15 + cardWidth + cardSpacing + cardWidth/2, yPos + 24, { align: 'center' });
 
-        doc.setFillColor(vipColor[0], vipColor[1], vipColor[2]);
+        doc.setFillColor(251, 191, 36);
         doc.roundedRect(15 + (cardWidth + cardSpacing) * 2, yPos, cardWidth, cardHeight, 2, 2, 'F');
-        doc.setTextColor(255, 255, 255);
         doc.setFontSize(9);
         doc.setFont(undefined, 'normal');
         doc.text('VIP', 15 + (cardWidth + cardSpacing) * 2 + cardWidth/2, yPos + 11, { align: 'center' });
@@ -719,30 +469,28 @@
 
         doc.setFillColor(99, 102, 241);
         doc.roundedRect(15 + (cardWidth + cardSpacing) * 3, yPos, cardWidth, cardHeight, 2, 2, 'F');
-        doc.setTextColor(255, 255, 255);
         doc.setFontSize(9);
         doc.setFont(undefined, 'normal');
-        doc.text('TAXA', 15 + (cardWidth + cardSpacing) * 3 + cardWidth/2, yPos + 8, { align: 'center' });
-        doc.text('COMPARECIMENTO', 15 + (cardWidth + cardSpacing) * 3 + cardWidth/2, yPos + 14, { align: 'center' });
+        doc.text('PRESENÇA', 15 + (cardWidth + cardSpacing) * 3 + cardWidth/2, yPos + 11, { align: 'center' });
         doc.setFontSize(16);
         doc.setFont(undefined, 'bold');
         doc.text(`${attendanceRate}%`, 15 + (cardWidth + cardSpacing) * 3 + cardWidth/2, yPos + 24, { align: 'center' });
 
-        yPos = 145;
+        yPos = 140;
         
-        doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+        // TABELA CHECK-INS REALIZADOS
+        doc.setTextColor(10, 25, 41);
         doc.setFontSize(14);
         doc.setFont(undefined, 'bold');
-        doc.text('     Check-ins Realizados', 15, yPos);
+        doc.text('✅ Check-ins Realizados', 15, yPos);
         
         yPos += 8;
         
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFillColor(0, 127, 159);
         doc.rect(15, yPos, pageWidth - 30, 10, 'F');
         
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(10);
-        doc.setFont(undefined, 'bold');
         doc.text('#', 20, yPos + 7);
         doc.text('CONVIDADO', 35, yPos + 7);
         doc.text('DATA E HORA', pageWidth - 65, yPos + 7);
@@ -753,11 +501,9 @@
         doc.setFontSize(9);
         
         if (clientCheckins.length === 0) {
-          doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-          doc.text('Nenhum check-in realizado até o momento', pageWidth / 2, yPos + 15, { align: 'center' });
+          doc.setTextColor(148, 163, 184);
+          doc.text('Nenhum check-in realizado', pageWidth / 2, yPos + 15, { align: 'center' });
         } else {
-          let rowIndex = 0;
-          
           const sortedCheckins = [...clientCheckins].sort((a, b) => 
             new Date(b.checked_in_at) - new Date(a.checked_in_at)
           );
@@ -766,40 +512,22 @@
             if (yPos > pageHeight - 30) {
               doc.addPage();
               yPos = 20;
-              
-              doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-              doc.rect(15, yPos, pageWidth - 30, 10, 'F');
-              doc.setTextColor(255, 255, 255);
-              doc.setFontSize(10);
-              doc.setFont(undefined, 'bold');
-              doc.text('#', 20, yPos + 7);
-              doc.text('CONVIDADO', 35, yPos + 7);
-              doc.text('DATA E HORA', pageWidth - 65, yPos + 7);
-              yPos += 10;
-              doc.setFont(undefined, 'normal');
-              doc.setFontSize(9);
             }
             
-            if (rowIndex % 2 === 0) {
+            if (index % 2 === 0) {
               doc.setFillColor(249, 250, 251);
               doc.rect(15, yPos, pageWidth - 30, 12, 'F');
             }
             
-            doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+            doc.setTextColor(10, 25, 41);
             doc.text((index + 1).toString(), 20, yPos + 8);
             
             let guestName = checkin.guest_name;
             const guest = guests.find(g => g.qr_code === checkin.guest_qr);
             
-            if (guest && guest.is_vip) {
-              guestName = `⭐ ${guestName}`;
-            }
-            
-            if (checkin.is_companion_only) {
-              guestName = `👤 Acompanhante de ${guestName}`;
-            } else if (checkin.with_companion) {
-              guestName = `${guestName} 👥`;
-            }
+            if (guest && guest.is_vip) guestName = `⭐ ${guestName}`;
+            if (checkin.is_companion_only) guestName = `👤 Acompanhante`;
+            else if (checkin.with_companion) guestName = `${guestName} 👥`;
             
             const maxNameWidth = pageWidth - 100;
             if (doc.getTextWidth(guestName) > maxNameWidth) {
@@ -821,191 +549,115 @@
             doc.text(checkinTime, pageWidth - 25, yPos + 8, { align: 'right' });
             
             yPos += 12;
-            rowIndex++;
           });
         }
 
+        // TABELA DE CONVIDADOS PENDENTES
+        yPos += 10;
+        
         if (yPos > pageHeight - 50) {
           doc.addPage();
           yPos = 20;
-        } else {
-          yPos += 10;
         }
         
-        doc.setFillColor(245, 247, 250);
-        doc.roundedRect(15, yPos, pageWidth - 30, 40, 3, 3, 'F');
+        const pendingGuests = clientGuests.filter(guest => 
+          !clientCheckins.some(c => c.guest_qr === guest.qr_code && !c.is_companion_only)
+        );
         
-        doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-        doc.setFontSize(12);
+        doc.setTextColor(10, 25, 41);
+        doc.setFontSize(14);
         doc.setFont(undefined, 'bold');
-        doc.text('📊 Resumo do Evento', 20, yPos + 10);
+        doc.text(`⏳ Convidados Pendentes (${pendingGuests.length})`, 15, yPos);
         
-        doc.setFontSize(9);
+        yPos += 8;
+        
+        doc.setFillColor(251, 191, 36);
+        doc.rect(15, yPos, pageWidth - 30, 10, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(10);
+        doc.text('#', 20, yPos + 7);
+        doc.text('CONVIDADO', 35, yPos + 7);
+        doc.text('STATUS', pageWidth - 40, yPos + 7);
+        
+        yPos += 10;
+        
         doc.setFont(undefined, 'normal');
-        doc.setTextColor(100, 100, 100);
-        doc.text(`• Total de convidados cadastrados: ${clientGuests.length}`, 20, yPos + 18);
-        doc.text(`• Check-ins realizados (convidados principais): ${uniqueCheckins}`, 20, yPos + 24);
-        doc.text(`• Acompanhantes registrados: ${companionCount}`, 20, yPos + 30);
-        doc.text(`• Convidados VIP: ${vipGuests}`, 20, yPos + 36);
+        doc.setFontSize(9);
+        
+        if (pendingGuests.length === 0) {
+          doc.setTextColor(148, 163, 184);
+          doc.text('Todos os convidados fizeram check-in! 🎉', pageWidth / 2, yPos + 15, { align: 'center' });
+        } else {
+          pendingGuests.forEach((guest, index) => {
+            if (yPos > pageHeight - 30) {
+              doc.addPage();
+              yPos = 20;
+            }
+            
+            if (index % 2 === 0) {
+              doc.setFillColor(249, 250, 251);
+              doc.rect(15, yPos, pageWidth - 30, 12, 'F');
+            }
+            
+            doc.setTextColor(10, 25, 41);
+            doc.text((index + 1).toString(), 20, yPos + 8);
+            
+            let guestName = guest.name;
+            if (guest.is_vip) guestName = `⭐ ${guestName}`;
+            if (guest.has_companion) guestName = `${guestName} 👥`;
+            
+            const maxNameWidth = pageWidth - 100;
+            if (doc.getTextWidth(guestName) > maxNameWidth) {
+              while (doc.getTextWidth(guestName + '...') > maxNameWidth && guestName.length > 0) {
+                guestName = guestName.slice(0, -1);
+              }
+              guestName += '...';
+            }
+            
+            doc.text(guestName, 35, yPos + 8);
+            
+            doc.setTextColor(251, 146, 60);
+            doc.text('Pendente', pageWidth - 40, yPos + 8);
+            
+            yPos += 12;
+          });
+        }
 
         const footerY = pageHeight - 15;
-        doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setDrawColor(0, 127, 159);
         doc.setLineWidth(0.5);
         doc.line(15, footerY - 5, pageWidth - 15, footerY - 5);
         
-        doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+        doc.setTextColor(148, 163, 184);
         doc.setFontSize(8);
-        doc.setFont(undefined, 'normal');
-        doc.text('Created By AdKira 2025 • Sistema Profissional de Check-In', pageWidth / 2, footerY, { align: 'center' });
-        doc.text(`Página 1 de ${doc.internal.pages.length - 1}`, pageWidth - 20, footerY, { align: 'right' });
-
-        const totalPages = doc.internal.pages.length - 1;
-        for (let i = 2; i <= totalPages; i++) {
-          doc.setPage(i);
-          doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-          doc.setLineWidth(0.5);
-          doc.line(15, footerY - 5, pageWidth - 15, footerY - 5);
-          doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-          doc.setFontSize(8);
-          doc.text('Created By AdKira 2025 • Sistema Profissional de Check-In', pageWidth / 2, footerY, { align: 'center' });
-          doc.text(`Página ${i} de ${totalPages}`, pageWidth - 20, footerY, { align: 'right' });
-        }
+        doc.text(`Created By AdKira ${new Date().getFullYear()} 💙`, pageWidth / 2, footerY, { align: 'center' });
 
         const fileName = `Relatorio_${client.client_name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`;
         doc.save(fileName);
-        showToast('✅ PDF profissional gerado com sucesso!', 'success');
+        showToast('✅ PDF gerado com sucesso!', 'success');
       } catch (error) {
         console.error('Erro ao gerar PDF:', error);
         showToast('❌ Erro ao gerar PDF', 'error');
       }
     }
 
-    // =============== OFFLINE QUEUE ===============
-
-    function loadOfflineQueue() {
-      const saved = localStorage.getItem(STORAGE_KEYS.OFFLINE_QUEUE);
-      if (saved) {
-        offlineQueue = JSON.parse(saved);
-      }
-    }
-
-    function saveOfflineQueue() {
-      localStorage.setItem(STORAGE_KEYS.OFFLINE_QUEUE, JSON.stringify(offlineQueue));
-    }
-
-    async function syncOfflineQueue() {
-      if (offlineQueue.length === 0) return;
-      
-      showToast('🔄 Sincronizando ' + offlineQueue.length + ' check-ins offline...', 'info');
-      
-      const successfulSyncs = [];
-      
-      for (const checkinData of offlineQueue) {
-        const result = await createCheckin(checkinData);
-        if (result.success) {
-          successfulSyncs.push(checkinData.id);
-        }
-      }
-      
-      offlineQueue = offlineQueue.filter(item => !successfulSyncs.includes(item.id));
-      saveOfflineQueue();
-      
-      if (offlineQueue.length === 0) {
-        showToast('✅ Todos os check-ins foram sincronizados!', 'success');
-      } else {
-        showToast('⚠️ ' + offlineQueue.length + ' check-ins ainda pendentes', 'warning');
-      }
-    }
-
-    window.addEventListener('online', () => {
-      isOnline = true;
-      showToast('🌐 Conexão restaurada!', 'success');
-      syncOfflineQueue();
-    });
-
-    window.addEventListener('offline', () => {
-      isOnline = false;
-      showToast('📴 Modo offline ativado', 'warning');
-    });
-
-    // =============== UI HELPERS ===============
-
-    function showToast(message, type = 'success') {
-      const existingToast = document.querySelector('.toast');
-      if (existingToast) {
-        existingToast.remove();
-      }
-
-      const colors = {
-        success: '#10b981',
-        error: '#ef4444',
-        warning: '#f59e0b',
-        info: '#3b82f6'
-      };
-
-      const toast = document.createElement('div');
-      toast.className = 'toast text-white font-semibold';
-      toast.style.backgroundColor = colors[type] || colors.info;
-      toast.textContent = message;
-      document.body.appendChild(toast);
-
-      setTimeout(() => {
-        toast.remove();
-      }, 4000);
-    }
-
-    function generateId(prefix) {
-      return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    }
-
-    function generateToken() {
-      return 'TKN-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-    }
-
-    function saveSession(type, data) {
-      const key = type === 'admin' ? STORAGE_KEYS.ADMIN_SESSION : STORAGE_KEYS.CLIENT_SESSION;
-      localStorage.setItem(key, JSON.stringify(data));
-    }
-
-    function loadSession(type) {
-      const key = type === 'admin' ? STORAGE_KEYS.ADMIN_SESSION : STORAGE_KEYS.CLIENT_SESSION;
-      const data = localStorage.getItem(key);
-      return data ? JSON.parse(data) : null;
-    }
-
-    function clearSession(type) {
-      const key = type === 'admin' ? STORAGE_KEYS.ADMIN_SESSION : STORAGE_KEYS.CLIENT_SESSION;
-      localStorage.removeItem(key);
-    }
-
-    function clearAllSessions() {
-      clearSession('admin');
-      clearSession('client');
-    }
+    // =============== SESSION CHECK ===============
 
     async function checkExistingSession() {
       const adminSession = loadSession('admin');
-      if (adminSession) {
-        if (adminSession.username) {
-          try {
-            const { data, error } = await supabase
-              .from('admin_credentials')
-              .select('active')
-              .eq('username', adminSession.username)
-              .single();
-            
-            if (error || !data || !data.active) {
-              clearSession('admin');
-              showToast('⚠️ Sessão administrativa inválida. Faça login novamente.', 'warning');
-              return false;
-            }
-          } catch (e) {
-            console.log('Erro ao validar admin (modo offline)');
-          }
+      if (adminSession?.username) {
+        // Verificar tempo de sessão (24 horas)
+        const sessionAge = Date.now() - (adminSession.timestamp || 0);
+        if (sessionAge > 24 * 60 * 60 * 1000) {
+          clearSession('admin');
+          showToast('⚠️ Sessão expirada. Faça login novamente.', 'warning');
+          return false;
         }
         
         currentUser = { type: 'admin', id: 'admin', name: 'Administrador' };
         currentView = 'admin-dashboard';
+        await loadAllData();
         await renderAdminDashboard();
         return true;
       }
@@ -1013,35 +665,25 @@
       const clientSession = loadSession('client');
       if (clientSession) {
         await loadClients();
-        
         const client = clients.find(c => c.id === clientSession.clientId);
         
-        if (!client) {
+        // Verificar validade do token
+        if (!client || client.deleted || parseInt(client.expiry) < Date.now()) {
           clearSession('client');
-          showToast('⚠️ Sessão inválida. Faça login novamente.', 'warning');
+          showToast('⚠️ Sessão inválida ou expirada', 'warning');
           return false;
         }
         
-        if (client.deleted) {
-          clearSession('client');
-          showToast('❌ Token desativado pelo administrador.', 'error');
-          return false;
-        }
-        
-        if (parseInt(client.expiry) < Date.now()) {
-          clearSession('client');
-          showToast('❌ Token expirado. Entre em contato com o administrador.', 'error');
-          return false;
-        }
-        
+        // Verificar se o token não foi alterado
         if (clientSession.token !== client.token) {
           clearSession('client');
-          showToast('❌ Token alterado. Faça login novamente.', 'warning');
+          showToast('⚠️ Token alterado. Faça login novamente.', 'warning');
           return false;
         }
 
         currentUser = { type: 'client', id: client.id, name: client.client_name };
         currentView = 'client-dashboard';
+        await loadAllData();
         await renderClientDashboard();
         return true;
       }
@@ -1084,7 +726,7 @@
 
             <div class="text-center mt-6">
               <p class="opacity-40" style="font-size: 12px; color: ${config.text_color};">
-                Created By AdKira 2025
+                Created By AdKira ${new Date().getFullYear()}
               </p>
             </div>
           </div>
@@ -1111,28 +753,30 @@
                 type="text" 
                 name="username" 
                 required 
-                class="w-full px-4 py-3 rounded-xl outline-none transition-all"
-                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px; border: 2px solid transparent;"
+                autocomplete="off"
+                class="w-full px-4 py-3 rounded-xl outline-none"
+                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
                 placeholder="Digite o usuário"
               >
             </div>
             <div class="mb-6">
               <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
-                Senha do Administrador
+                Senha
               </label>
               <input 
                 type="password" 
                 name="password" 
                 required 
-                class="w-full px-4 py-3 rounded-xl outline-none transition-all"
-                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px; border: 2px solid transparent;"
+                autocomplete="off"
+                class="w-full px-4 py-3 rounded-xl outline-none"
+                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
                 placeholder="Digite a senha"
               >
             </div>
             <button 
               type="submit" 
-              class="w-full py-4 rounded-xl font-bold transition-all transform active:scale-95"
-              style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 18px; box-shadow: 0 10px 30px rgba(0, 127, 159, 0.3);"
+              class="w-full py-4 rounded-xl font-bold"
+              style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 18px;"
             >
               Entrar como Admin
             </button>
@@ -1149,15 +793,15 @@
                 type="text" 
                 name="token" 
                 required 
-                class="w-full px-4 py-3 rounded-xl outline-none transition-all font-mono"
-                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px; border: 2px solid transparent;"
-                placeholder="TKN-XXXXXXXXX"
+                autocomplete="off"
+                class="w-full px-4 py-3 rounded-xl outline-none font-mono"
+                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
               >
             </div>
             <button 
               type="submit" 
-              class="w-full py-4 rounded-xl font-bold transition-all transform active:scale-95"
-              style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 18px; box-shadow: 0 10px 30px rgba(0, 127, 159, 0.3);"
+              class="w-full py-4 rounded-xl font-bold"
+              style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 18px;"
             >
               Entrar como Cliente
             </button>
@@ -1166,71 +810,104 @@
       }
     }
 
+    // Rate limiting para login
+    let loginAttempts = 0;
+    let lastLoginAttempt = 0;
+
     async function loginAdmin(event) {
       event.preventDefault();
+      
+      // Rate limiting: máximo 5 tentativas por minuto
+      const now = Date.now();
+      if (now - lastLoginAttempt < 60000) {
+        loginAttempts++;
+        if (loginAttempts > 5) {
+          showToast('⚠️ Muitas tentativas. Aguarde 1 minuto.', 'warning');
+          return;
+        }
+      } else {
+        loginAttempts = 1;
+      }
+      lastLoginAttempt = now;
+      
       const formData = new FormData(event.target);
-      const username = formData.get('username');
-      const password = formData.get('password');
+      const username = formData.get('username')?.trim();
+      const password = formData.get('password')?.trim();
 
-      const isValid = await validateAdminCredentials(username, password);
+      // Validação de input
+      if (!username || !password || username.length < 3 || password.length < 4) {
+        showToast('❌ Credenciais inválidas!', 'error');
+        return;
+      }
 
-      if (isValid) {
+      if (await validateAdminCredentials(username, password)) {
+        loginAttempts = 0; // Reset após sucesso
         currentUser = { type: 'admin', id: 'admin', name: 'Administrador' };
-        saveSession('admin', { loggedIn: true, username: username });
+        saveSession('admin', { loggedIn: true, username, timestamp: Date.now() });
         currentView = 'admin-dashboard';
-        currentTab = 'home';
-        showToast('Login realizado com sucesso!', 'success');
+        showToast('✅ Login realizado com sucesso!', 'success');
+        
+        // Log de auditoria
+        await createAuditLog('admin_login', { username });
+        
+        await loadAllData();
         await renderAdminDashboard();
       } else {
-        showToast('Usuário ou senha incorretos!', 'error');
+        showToast('❌ Usuário ou senha incorretos!', 'error');
       }
     }
 
     async function loginClient(event) {
       event.preventDefault();
       const formData = new FormData(event.target);
-      const token = formData.get('token').trim();
+      const token = formData.get('token')?.trim().toUpperCase();
+
+      // Validação básica do formato do token
+      if (!token || token.length < 5 || !token.startsWith('TKN-')) {
+        showToast('❌ Formato de token inválido!', 'error');
+        return;
+      }
 
       await loadClients();
-      
       const client = clients.find(c => c.token === token);
 
       if (!client) {
-        showToast('❌ Token inválido!', 'error');
-        clearSession('client');
+        showToast('❌ Token não encontrado!', 'error');
+        await createAuditLog('failed_client_login', { token: token.substring(0, 8) + '***' });
         return;
       }
 
       if (client.deleted) {
-        showToast('❌ Token desativado! Entre em contato com o administrador.', 'error');
-        clearSession('client');
+        showToast('❌ Token desativado!', 'error');
+        await createAuditLog('login_deleted_client', { client_id: client.id });
         return;
       }
 
       if (parseInt(client.expiry) < Date.now()) {
-        showToast('❌ Token expirado! Entre em contato com o administrador.', 'error');
-        clearSession('client');
+        showToast('❌ Token expirado!', 'error');
+        await createAuditLog('login_expired_client', { client_id: client.id });
         return;
       }
 
       currentUser = { type: 'client', id: client.id, name: client.client_name };
-      saveSession('client', { clientId: client.id, token: token, expiry: client.expiry });
+      saveSession('client', { clientId: client.id, token, expiry: client.expiry, timestamp: Date.now() });
       currentView = 'client-dashboard';
-      currentTab = 'home';
       showToast('✅ Bem-vindo, ' + client.client_name + '!', 'success');
+      await createAuditLog('client_login', { client_id: client.id });
+      await loadAllData();
       await renderClientDashboard();
     }
 
     function logout() {
-      clearAllSessions();
+      clearSession('admin');
+      clearSession('client');
       currentUser = null;
       currentView = 'login';
-      currentTab = 'home';
       if (html5QrCode) {
         html5QrCode.stop().catch(() => {});
         html5QrCode = null;
       }
-      showToast('Logout realizado com sucesso!', 'info');
+      showToast('✅ Logout realizado!', 'info');
       renderLogin();
     }
 
@@ -1238,24 +915,20 @@
 
     async function renderAdminDashboard() {
       const activeClients = clients.filter(c => parseInt(c.expiry) > Date.now());
-      const totalGuests = guests.length;
-      const totalCheckins = checkins.length;
-      const vipClients = clients.filter(c => c.is_vip);
 
       document.getElementById('app').innerHTML = `
         <div class="min-h-full flex flex-col" style="background-color: ${config.background_color};">
-          <div class="p-4" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+          <div class="p-4" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%);">
             <div class="flex items-center justify-between">
               <div>
                 <h1 class="font-bold mb-1" style="font-size: 28px; color: white;">
                   ${config.app_title}
-                  <span class="ml-2 inline-block w-3 h-3 rounded-full animate-pulse-slow" style="background-color: #10b981;"></span>
                 </h1>
                 <p style="font-size: 14px; color: rgba(255,255,255,0.8);">
-                  Painel do Administrador • Atualização em Tempo Real
+                  Painel do Administrador
                 </p>
               </div>
-              <button onclick="logout()" class="px-4 py-2 rounded-lg font-semibold transition-all" style="background-color: rgba(255,255,255,0.2); color: white; font-size: 14px;">
+              <button onclick="logout()" class="px-4 py-2 rounded-lg font-semibold" style="background-color: rgba(255,255,255,0.2); color: white;">
                 Sair
               </button>
             </div>
@@ -1263,97 +936,30 @@
 
           <div class="flex-1 overflow-auto p-4">
             <div class="max-w-6xl mx-auto">
-              <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-                <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
-                    Total Clientes
-                  </p>
-                  <p class="font-bold" style="font-size: 40px; color: ${config.primary_color};">
-                    ${clients.length}
-                  </p>
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="p-6 rounded-2xl" style="background-color: ${config.card_color};">
+                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">Total Clientes</p>
+                  <p class="font-bold" style="font-size: 40px; color: ${config.primary_color};">${clients.length}</p>
                 </div>
-                <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
-                    Clientes Ativos
-                  </p>
-                  <p class="font-bold" style="font-size: 40px; color: ${config.success_color};">
-                    ${activeClients.length}
-                  </p>
+                <div class="p-6 rounded-2xl" style="background-color: ${config.card_color};">
+                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">Clientes Ativos</p>
+                  <p class="font-bold" style="font-size: 40px; color: ${config.success_color};">${activeClients.length}</p>
                 </div>
-                <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
-                    Clientes VIP
-                  </p>
-                  <p class="font-bold" style="font-size: 40px; color: ${config.vip_color};">
-                    ${vipClients.length}
-                  </p>
+                <div class="p-6 rounded-2xl" style="background-color: ${config.card_color};">
+                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">Total Convidados</p>
+                  <p class="font-bold" style="font-size: 40px; color: ${config.text_color};">${guests.length}</p>
                 </div>
-                <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
-                    Total Convidados
-                  </p>
-                  <p class="font-bold" style="font-size: 40px; color: ${config.text_color};">
-                    ${totalGuests}
-                  </p>
-                </div>
-                <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
-                    Total Check-ins
-                  </p>
-                  <p class="font-bold" style="font-size: 40px; color: ${config.success_color};">
-                    ${totalCheckins}
-                  </p>
+                <div class="p-6 rounded-2xl" style="background-color: ${config.card_color};">
+                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">Total Check-ins</p>
+                  <p class="font-bold" style="font-size: 40px; color: ${config.success_color};">${checkins.length}</p>
                 </div>
               </div>
 
-              <div class="mb-6 p-6 rounded-2xl" style="background-color: ${config.card_color}; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-                <h2 class="font-bold mb-4" style="font-size: 20px; color: ${config.text_color};">
-                  📋 Check-ins Recentes (últimos 10)
-                </h2>
-                <div class="space-y-2">
-                  ${checkins
-                    .slice(0, 10)
-                    .map(checkin => {
-                      const client = clients.find(c => c.id === checkin.client_id);
-                      const guest = guests.find(g => g.qr_code === checkin.guest_qr);
-                      return `
-                        <div class="flex items-center justify-between p-3 rounded-lg" style="background-color: ${config.background_color};">
-                          <div class="flex-1">
-                            <p class="font-bold flex items-center" style="font-size: 14px; color: ${config.text_color};">
-                              ${guest && guest.is_vip ? '⭐ ' : ''}${checkin.guest_name}
-                            </p>
-                            <p class="opacity-70" style="font-size: 12px; color: ${config.text_color};">
-                              ${client ? (client.is_vip ? '⭐ ' : '') + client.client_name : 'Cliente'} • ${new Date(checkin.checked_in_at).toLocaleString('pt-BR')}
-                            </p>
-                          </div>
-                          <button 
-                            onclick="undoCheckin('${checkin.id}')"
-                            class="px-3 py-2 rounded-lg font-semibold transition-all"
-                            style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 12px;"
-                          >
-                            ↩️ Desfazer
-                          </button>
-                        </div>
-                      `;
-                    }).join('') || `
-                      <p class="text-center opacity-70 py-4" style="font-size: 14px; color: ${config.text_color};">
-                        Nenhum check-in realizado ainda
-                      </p>
-                    `}
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-4 mb-6">
-                <button onclick="showAddClientModal()" class="p-6 rounded-2xl font-bold transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 18px; box-shadow: 0 10px 40px rgba(0, 127, 159, 0.3);">
-                  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                  </svg>
-                  Novo Cliente
+              <div class="mb-6 grid grid-cols-2 gap-4">
+                <button onclick="showAddClientModal()" class="p-6 rounded-2xl font-bold" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 18px;">
+                  ➕ Novo Cliente
                 </button>
-                <button onclick="showTrashModal()" class="p-6 rounded-2xl font-bold transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; font-size: 18px; box-shadow: 0 10px 40px rgba(239, 68, 68, 0.3);">
-                  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                  </svg>
+                <button onclick="showTrashModal()" class="p-6 rounded-2xl font-bold" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; font-size: 18px;">
                   🗑️ Lixeira
                 </button>
               </div>
@@ -1362,98 +968,54 @@
                 Lista de Clientes
               </h2>
               
-              <div class="space-y-3 mb-6">
+              <div class="space-y-3">
                 ${clients.length === 0 ? `
                   <div class="p-8 rounded-2xl text-center" style="background-color: ${config.card_color};">
-                    <p class="opacity-70" style="font-size: 16px; color: ${config.text_color};">
-                      Nenhum cliente cadastrado ainda
-                    </p>
+                    <p class="opacity-70" style="color: ${config.text_color};">Nenhum cliente cadastrado</p>
                   </div>
                 ` : clients.map(client => {
                   const isExpired = parseInt(client.expiry) < Date.now();
                   const clientGuests = guests.filter(g => g.client_id === client.id);
                   const clientCheckins = checkins.filter(c => c.client_id === client.id);
-                  
-                  let timeInfo = '';
-                  if (client.event_date) {
-                    const eventDate = new Date(parseInt(client.event_date));
-                    const timeUntilEvent = parseInt(client.event_date) - Date.now();
-                    const daysUntil = Math.floor(timeUntilEvent / (1000 * 60 * 60 * 24));
-                    const hoursUntil = Math.floor((timeUntilEvent % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    
-                    if (timeUntilEvent > 0) {
-                      timeInfo = `🎯 Evento em: ${eventDate.toLocaleString('pt-BR')} <span style="color: ${config.primary_color}; font-weight: 600;"> (faltam ${daysUntil}d ${hoursUntil}h)</span>`;
-                    } else {
-                      timeInfo = `🎯 Evento ocorreu em: ${eventDate.toLocaleString('pt-BR')}`;
-                    }
-                  } else {
-                    const timeRemaining = parseInt(client.expiry) - Date.now();
-                    const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
-                    const daysRemaining = Math.floor(hoursRemaining / 24);
-                    timeInfo = `⏰ ${isExpired ? 'Expirou em' : 'Expira em'}: ${new Date(parseInt(client.expiry)).toLocaleString('pt-BR')}`;
-                    if (!isExpired) {
-                      timeInfo += ` <span style="color: ${config.primary_color}; font-weight: 600;"> (${daysRemaining}d ${hoursRemaining % 24}h restantes)</span>`;
-                    }
-                  }
 
                   return `
-                    <div class="p-6 rounded-2xl" style="background-color: ${config.card_color}; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-                      <div class="flex items-start justify-between mb-4">
+                    <div class="p-6 rounded-2xl" style="background-color: ${config.card_color};">
+                      <div class="flex items-start justify-between">
                         <div class="flex-1">
                           <h3 class="font-bold mb-2 flex items-center gap-2" style="font-size: 20px; color: ${config.text_color};">
                             ${client.client_name}
-                            ${client.is_vip ? `
-                              <span class="px-3 py-1 rounded-full text-xs font-bold vip-badge" style="color: white;">
-                                ⭐ VIP
-                              </span>
-                            ` : ''}
-                            ${isExpired ? `
-                              <span class="px-3 py-1 rounded-full text-xs" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
-                                🔒 Expirado
-                              </span>
-                            ` : `
-                              <span class="px-3 py-1 rounded-full text-xs" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">
-                                ✓ Ativo
-                              </span>
-                            `}
+                            ${client.is_vip ? `<span class="px-3 py-1 rounded-full text-xs font-bold vip-badge" style="color: white;">⭐ VIP</span>` : ''}
+                            ${isExpired ? `<span class="px-3 py-1 rounded-full text-xs" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444;">⏰ Expirado</span>` : ''}
                           </h3>
-                          <div class="flex flex-wrap gap-4 mb-3">
-                            <p class="opacity-70" style="font-size: 14px; color: ${config.text_color};">
-                              🎫 Token: <span class="font-mono font-bold" style="color: ${config.primary_color};">${client.token}</span>
-                            </p>
-                          </div>
                           <p class="opacity-70 mb-3" style="font-size: 14px; color: ${config.text_color};">
-                            ${timeInfo}
+                            🎫 Token: <span class="font-mono font-bold" style="color: ${config.primary_color};">${client.token}</span>
                           </p>
                           <div class="flex gap-4">
-                            <span class="px-3 py-1 rounded-lg text-sm font-semibold" style="background-color: rgba(59, 130, 246, 0.2); color: #3b82f6;">
+                            <span class="px-3 py-1 rounded-lg text-sm" style="background-color: rgba(59, 130, 246, 0.2); color: #3b82f6;">
                               👥 ${clientGuests.length} convidados
                             </span>
-                            <span class="px-3 py-1 rounded-lg text-sm font-semibold" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">
-                                 ${clientCheckins.length} check-ins
+                            <span class="px-3 py-1 rounded-lg text-sm" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">
+                              ✓ ${clientCheckins.length} check-ins
                             </span>
                           </div>
                         </div>
                         <div class="flex flex-col gap-2 ml-4">
-                          <button onclick="showClientDetails('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 14px;">
-                            📋 Ver Detalhes
+                          <button onclick="showClientDetails('${client.id}')" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap" style="background-color: ${config.primary_color}; color: white;">
+                            📋 Detalhes
                           </button>
-                          <button onclick="exportClientPDF('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: #3b82f6; color: white; font-size: 14px;">
-                            📄 Baixar PDF
+                          <button onclick="exportClientPDF('${client.id}')" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap" style="background-color: #3b82f6; color: white;">
+                            📄 PDF
                           </button>
-                          <button onclick="showExtendTokenModal('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: #10b981; color: white; font-size: 14px;">
-                            ⏰ Estender
-                          </button>
-                          <button onclick="toggleClientVIP('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: ${client.is_vip ? 'rgba(251, 191, 36, 0.3)' : 'rgba(148, 163, 184, 0.2)'}; color: ${client.is_vip ? config.vip_color : config.text_color}; font-size: 14px;">
-                            ${client.is_vip ? '⭐ Remover VIP' : '⭐ Tornar VIP'}
+                          <button onclick="toggleClientVIP('${client.id}')" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap" style="background-color: ${client.is_vip ? 'rgba(251, 191, 36, 0.3)' : 'rgba(148, 163, 184, 0.2)'}; color: ${client.is_vip ? config.vip_color : config.text_color};">
+                            ${client.is_vip ? '⭐ Remover VIP' : '⭐ VIP'}
                           </button>
                           ${clientCheckins.length > 0 ? `
-                            <button onclick="showClearCheckinsConfirmation('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: rgba(251, 191, 36, 0.2); color: #f59e0b; font-size: 14px;">
-                              🔄 Limpar Check-ins
+                            <button onclick="clearCheckins('${client.id}')" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap" style="background-color: rgba(251, 191, 36, 0.2); color: #f59e0b;">
+                              🔄 Limpar
                             </button>
                           ` : ''}
-                          <button onclick="showDeleteClientConfirmation('${client.id}')" class="px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 14px;">
-                            🗑️ Deletar
+                          <button onclick="deleteClientConfirm('${client.id}')" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
+                            🗑️
                           </button>
                         </div>
                       </div>
@@ -1463,12 +1025,6 @@
               </div>
             </div>
           </div>
-
-          <div class="text-center py-6" style="background-color: ${config.card_color};">
-            <p class="opacity-40" style="font-size: 12px; color: ${config.text_color};">
-              Created By AdKira 2025
-            </p>
-          </div>
         </div>
       `;
     }
@@ -1476,15 +1032,11 @@
     // =============== CLIENT DASHBOARD ===============
 
     async function renderClientDashboard() {
-      await loadClients();
       const client = clients.find(c => c.id === currentUser.id);
       
       if (!client || client.deleted || parseInt(client.expiry) < Date.now()) {
-        clearSession('client');
-        currentUser = null;
-        currentView = 'login';
-        showToast('     Sessão expirada ou desativada. Faça login novamente.', 'error');
-        renderLogin();
+        showToast('❌ Sessão inválida', 'error');
+        logout();
         return;
       }
       
@@ -1497,65 +1049,32 @@
 
     async function renderClientHome() {
       const client = clients.find(c => c.id === currentUser.id);
-      if (!client) {
-        logout();
-        return;
-      }
-
       const clientGuests = guests.filter(g => g.client_id === currentUser.id);
       const clientCheckins = checkins.filter(c => c.client_id === currentUser.id);
-
-      let timeInfo = '';
-      if (client.event_date) {
-        const eventDate = new Date(parseInt(client.event_date));
-        const timeUntilEvent = parseInt(client.event_date) - Date.now();
-        const daysUntil = Math.floor(timeUntilEvent / (1000 * 60 * 60 * 24));
-        const hoursUntil = Math.floor((timeUntilEvent % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        
-        if (timeUntilEvent > 0) {
-          timeInfo = `🎯 Evento em: <span class="font-bold">${daysUntil}d ${hoursUntil}h</span>`;
-        } else {
-          timeInfo = `🎯 Evento ocorreu em: ${eventDate.toLocaleDateString('pt-BR')}`;
-        }
-      } else {
-        const timeRemaining = parseInt(client.expiry) - Date.now();
-        const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
-        const daysRemaining = Math.floor(hoursRemaining / 24);
-        timeInfo = `⏰ Token expira em: <span class="font-bold">${daysRemaining}d ${hoursRemaining % 24}h</span>`;
-      }
-
       const uniqueCheckins = clientCheckins.filter(c => !c.is_companion_only).length;
 
       document.getElementById('app').innerHTML = `
         <div class="min-h-full flex flex-col" style="background-color: ${config.background_color};">
-          <div class="p-4" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <div class="flex items-center justify-between mb-3">
+          <div class="p-4" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%);">
+            <div class="flex items-center justify-between">
               <div>
-                <h1 class="font-bold mb-1 flex items-center gap-2" style="font-size: 28px; color: white;">
+                <h1 class="font-bold mb-1" style="font-size: 28px; color: white;">
                   ${config.app_title}
-                  ${client.is_vip ? `<span class="px-2 py-1 rounded-full text-sm font-bold vip-badge" style="color: white;">⭐ VIP</span>` : ''}
-                  <span class="inline-block w-3 h-3 rounded-full animate-pulse-slow" style="background-color: #10b981;"></span>
+                  ${client.is_vip ? `<span class="px-2 py-1 rounded text-sm vip-badge ml-2">⭐</span>` : ''}
                 </h1>
-                <p style="font-size: 14px; color: rgba(255,255,255,0.9);">
-                  ${currentUser.name}
-                </p>
+                <p style="font-size: 14px; color: white;">${currentUser.name}</p>
               </div>
-              <button onclick="logout()" class="px-4 py-2 rounded-lg font-semibold transition-all" style="background-color: rgba(255,255,255,0.2); color: white; font-size: 14px;">
+              <button onclick="logout()" class="px-4 py-2 rounded-lg font-semibold" style="background-color: rgba(255,255,255,0.2); color: white;">
                 Sair
               </button>
             </div>
-            <div class="px-3 py-2 rounded-lg" style="background-color: rgba(255,255,255,0.15);">
-              <p style="font-size: 14px; color: white;">
-                ${timeInfo}
-              </p>
-            </div>
           </div>
 
-          <div class="flex border-b" style="background-color: ${config.card_color}; border-color: ${config.background_color};">
-            <button onclick="switchClientTab('home')" class="tab-button flex-1 py-4 font-semibold active" style="color: ${config.text_color}; font-size: 14px;">
+          <div class="flex border-b" style="background-color: ${config.card_color};">
+            <button onclick="switchClientTab('home')" class="flex-1 py-4 font-semibold" style="color: ${config.primary_color}; border-bottom: 3px solid ${config.primary_color};">
               🏠 Início
             </button>
-            <button onclick="switchClientTab('scanner')" class="tab-button flex-1 py-4 font-semibold" style="color: ${config.text_color}; font-size: 14px;">
+            <button onclick="switchClientTab('scanner')" class="flex-1 py-4 font-semibold" style="color: ${config.text_color};">
               📷 Scanner
             </button>
           </div>
@@ -1563,136 +1082,66 @@
           <div class="flex-1 overflow-auto p-4">
             <div class="max-w-4xl mx-auto">
               <div class="grid grid-cols-2 gap-4 mb-6">
-                <div class="p-6 rounded-2xl text-center" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
-                    Convidados
-                  </p>
-                  <p class="font-bold" style="font-size: 32px; color: ${config.primary_color};">
-                    ${clientGuests.length}
-                  </p>
+                <div class="p-6 rounded-2xl text-center" style="background-color: ${config.card_color};">
+                  <p class="opacity-70 mb-2" style="color: ${config.text_color};">Convidados</p>
+                  <p class="font-bold" style="font-size: 32px; color: ${config.primary_color};">${clientGuests.length}</p>
                 </div>
-                <div class="p-6 rounded-2xl text-center" style="background: linear-gradient(135deg, ${config.card_color} 0%, ${config.background_color} 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-                  <p class="opacity-70 mb-2" style="font-size: 14px; color: ${config.text_color};">
-                    Check-ins
-                  </p>
-                  <p class="font-bold" style="font-size: 32px; color: ${config.success_color};">
-                    ${uniqueCheckins}
-                  </p>
+                <div class="p-6 rounded-2xl text-center" style="background-color: ${config.card_color};">
+                  <p class="opacity-70 mb-2" style="color: ${config.text_color};">Check-ins</p>
+                  <p class="font-bold" style="font-size: 32px; color: ${config.success_color};">${uniqueCheckins}</p>
                 </div>
               </div>
 
-              <div class="flex items-center justify-between mb-4">
-                <h2 class="font-bold" style="font-size: 24px; color: ${config.text_color};">
-                  Lista de Convidados
-                </h2>
-              </div>
+              <h2 class="font-bold mb-4" style="font-size: 24px; color: ${config.text_color};">Lista de Convidados</h2>
 
-              <div class="mb-4">
-                <input 
-                  type="text" 
-                  id="guest-search-input"
-                  placeholder="🔍 Pesquisar convidado por nome..."
-                  class="w-full px-4 py-3 rounded-xl outline-none"
-                  style="background-color: ${config.card_color}; color: ${config.text_color}; font-size: 16px; border: 2px solid ${config.primary_color};"
-                  oninput="searchGuests(this.value)"
-                >
-              </div>
+              <input 
+                type="text" 
+                id="guest-search"
+                placeholder="🔍 Pesquisar..."
+                class="w-full px-4 py-3 rounded-xl outline-none mb-4"
+                style="background-color: ${config.card_color}; color: ${config.text_color};"
+                oninput="searchGuests(this.value)"
+              >
 
-              <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
-                <button onclick="filterGuests('all')" id="filter-all" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all" style="background-color: ${config.primary_color}; color: white; font-size: 14px;">
-                  Todos (${clientGuests.length})
-                </button>
-                <button onclick="filterGuests('checked-in')" id="filter-checked-in" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all" style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;">
-                  Entraram (${uniqueCheckins})
-                </button>
-                <button onclick="filterGuests('pending')" id="filter-pending" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all" style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;">
-                  Pendentes (${clientGuests.length - uniqueCheckins})
-                </button>
-                <button onclick="filterGuests('vip')" id="filter-vip" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all" style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;">
-                  VIP (${clientGuests.filter(g => g.is_vip).length})
-                </button>
-                <button onclick="filterGuests('companion')" id="filter-companion" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all" style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 14px;">
-                  Com Acompanhante (${clientGuests.filter(g => g.has_companion).length})
-                </button>
-              </div>
-              
-              <div id="guests-list" class="space-y-3 mb-6">
+              <div id="guests-list" class="space-y-3">
                 ${renderGuestsList(clientGuests, clientCheckins)}
               </div>
-              
-              <p class="text-center opacity-40 mt-6" style="font-size: 11px; color: ${config.text_color};">
-                💡 Os códigos QR dos convidados são apenas para o sistema interno
-              </p>
             </div>
-          </div>
-
-          <div class="text-center py-6" style="background-color: ${config.card_color};">
-            <p class="opacity-40" style="font-size: 12px; color: ${config.text_color};">
-              Created By AdKira 2025
-            </p>
           </div>
         </div>
       `;
     }
 
     function renderGuestsList(filteredGuests, clientCheckins) {
-      const sortedGuests = [...filteredGuests].sort((a, b) => {
-        const aCheckin = clientCheckins.find(c => c.guest_qr === a.qr_code && !c.is_companion_only);
-        const bCheckin = clientCheckins.find(c => c.guest_qr === b.qr_code && !c.is_companion_only);
-        
-        if (aCheckin && !bCheckin) return -1;
-        if (!aCheckin && bCheckin) return 1;
-        if (aCheckin && bCheckin) {
-          return new Date(bCheckin.checked_in_at) - new Date(aCheckin.checked_in_at);
-        }
-        return 0;
-      });
-
-      if (sortedGuests.length === 0) {
-        return `
-          <div class="p-8 rounded-2xl text-center" style="background-color: ${config.card_color};">
-            <p class="opacity-70" style="font-size: 16px; color: ${config.text_color};">
-              Nenhum convidado encontrado
-            </p>
-          </div>
-        `;
+      if (filteredGuests.length === 0) {
+        return `<div class="p-8 rounded-2xl text-center" style="background-color: ${config.card_color};">
+          <p class="opacity-70" style="color: ${config.text_color};">Nenhum convidado encontrado</p>
+        </div>`;
       }
 
-      return sortedGuests.map(guest => {
-        const guestCheckins = clientCheckins.filter(c => c.guest_qr === guest.qr_code);
-        const hasCheckedIn = guestCheckins.length > 0;
-        const mainCheckin = guestCheckins.find(c => !c.is_companion_only);
-        const companionCheckin = guestCheckins.find(c => c.is_companion_only);
+      return filteredGuests.map(guest => {
+        const mainCheckin = clientCheckins.find(c => c.guest_qr === guest.qr_code && !c.is_companion_only);
+        let displayName = guest.name.includes(',') ? guest.name.split(',').pop().trim() : guest.name;
 
         return `
-          <div class="p-4 rounded-xl" style="background-color: ${config.card_color}; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+          <div class="p-4 rounded-xl" style="background-color: ${config.card_color};">
             <div class="flex items-center justify-between">
-              <div class="flex-1">
-                <h3 class="font-bold mb-2 flex items-center gap-2" style="font-size: 18px; color: ${config.text_color};">
-                  ${guest.is_vip ? `<span class="px-2 py-1 rounded text-xs font-bold vip-badge" style="color: white;">⭐</span>` : ''}
-                  ${guest.name}
-                  ${guest.has_companion ? `<span class="opacity-70 text-xs">👥</span>` : ''}
+              <div>
+                <h3 class="font-bold flex items-center gap-2" style="font-size: 18px; color: ${config.text_color};">
+                  ${guest.is_vip ? `<span class="vip-badge px-2 py-1 rounded text-xs">⭐</span>` : ''}
+                  ${displayName}
+                  ${guest.has_companion ? `<span class="opacity-70">👥</span>` : ''}
                 </h3>
                 ${mainCheckin ? `
-                  <p class="font-semibold mb-1" style="font-size: 12px; color: ${config.success_color};">
-                    ✅ Check-in: ${new Date(mainCheckin.checked_in_at).toLocaleString('pt-BR')}
-                    ${mainCheckin.with_companion ? ' (Com acompanhante)' : guest.has_companion ? ' (Sem acompanhante)' : ''}
-                  </p>
-                ` : ''}
-                ${companionCheckin ? `
-                  <p class="font-semibold" style="font-size: 12px; color: ${config.success_color};">
-                    ✅ Acompanhante: ${new Date(companionCheckin.checked_in_at).toLocaleString('pt-BR')}
+                  <p class="text-sm" style="color: ${config.success_color};">
+                    ✅ ${new Date(mainCheckin.checked_in_at).toLocaleString('pt-BR')}
                   </p>
                 ` : ''}
               </div>
-              ${hasCheckedIn ? `
-                <span class="px-4 py-2 rounded-lg font-bold" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">
-                  ✓
-                </span>
+              ${mainCheckin ? `
+                <span class="px-4 py-2 rounded-lg font-bold" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">✓</span>
               ` : `
-                <span class="px-4 py-2 rounded-lg font-semibold opacity-50" style="background-color: ${config.background_color}; color: ${config.text_color};">
-                  Pendente
-                </span>
+                <span class="px-4 py-2 rounded-lg opacity-50" style="background-color: ${config.background_color}; color: ${config.text_color};">Pendente</span>
               `}
             </div>
           </div>
@@ -1705,43 +1154,14 @@
       updateGuestsList();
     }
 
-    async function filterGuests(filterType) {
-      currentFilter = filterType;
-      
-      document.querySelectorAll('[id^="filter-"]').forEach(btn => {
-        btn.style.backgroundColor = config.background_color;
-        btn.style.color = config.text_color;
-      });
-      
-      const activeBtn = document.getElementById('filter-' + filterType);
-      if (activeBtn) {
-        activeBtn.style.backgroundColor = config.primary_color;
-        activeBtn.style.color = 'white';
-      }
-      
-      updateGuestsList();
-    }
-
     function updateGuestsList() {
       const clientGuests = guests.filter(g => g.client_id === currentUser.id);
       const clientCheckins = checkins.filter(c => c.client_id === currentUser.id);
       
       let filteredGuests = clientGuests;
-      
-      if (currentFilter === 'checked-in') {
-        filteredGuests = filteredGuests.filter(g => clientCheckins.some(c => c.guest_qr === g.qr_code && !c.is_companion_only));
-      } else if (currentFilter === 'pending') {
-        filteredGuests = filteredGuests.filter(g => !clientCheckins.some(c => c.guest_qr === g.qr_code && !c.is_companion_only));
-      } else if (currentFilter === 'vip') {
-        filteredGuests = filteredGuests.filter(g => g.is_vip);
-      } else if (currentFilter === 'companion') {
-        filteredGuests = filteredGuests.filter(g => g.has_companion);
-      }
-      
       if (currentSearchQuery) {
         filteredGuests = filteredGuests.filter(g => 
-          g.name.toLowerCase().includes(currentSearchQuery) ||
-          g.qr_code.toLowerCase().includes(currentSearchQuery)
+          g.name.toLowerCase().includes(currentSearchQuery)
         );
       }
       
@@ -1751,41 +1171,37 @@
       }
     }
 
+    function switchClientTab(tab) {
+      currentTab = tab;
+      renderClientDashboard();
+    }
+
     // =============== SCANNER ===============
 
     async function renderClientScanner() {
       document.getElementById('app').innerHTML = `
         <div class="h-full flex flex-col" style="background-color: ${config.background_color};">
           <div class="p-3 flex items-center justify-between" style="background-color: ${config.card_color};">
-            <button onclick="switchClientTab('home')" class="px-3 py-2 rounded-lg font-semibold" style="background-color: ${config.primary_color}; color: white; font-size: 14px;">
+            <button onclick="switchClientTab('home')" class="px-3 py-2 rounded-lg" style="background-color: ${config.primary_color}; color: white;">
               ← Voltar
             </button>
-            <h1 class="font-bold" style="font-size: 20px; color: ${config.text_color};">
-              Scanner QR Code
-            </h1>
-            <button onclick="logout()" class="px-3 py-2 rounded-lg font-semibold" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 14px;">
+            <h1 class="font-bold" style="font-size: 20px; color: ${config.text_color};">Scanner QR Code</h1>
+            <button onclick="logout()" class="px-3 py-2 rounded-lg" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
               Sair
             </button>
           </div>
 
-          <div class="flex-1 flex flex-col" style="background-color: #000;">
-            <div id="qr-reader" class="flex-1"></div>
-            
-            <div class="p-4 space-y-3" style="background-color: ${config.card_color};">
-              <p class="text-center opacity-70" style="font-size: 14px; color: ${config.text_color};">
-                📷 Aponte a câmera para o QR Code do convidado
-              </p>
-              <p class="text-center opacity-40" style="font-size: 11px; color: ${config.text_color};">
-                Created By AdKira 2025
-              </p>
-            </div>
+          <div class="flex-1" style="background-color: #000;">
+            <div id="qr-reader" class="h-full"></div>
+          </div>
+
+          <div class="p-4 text-center" style="background-color: ${config.card_color};">
+            <p class="opacity-70" style="color: ${config.text_color};">📷 Aponte para o QR Code</p>
           </div>
         </div>
       `;
 
-      setTimeout(() => {
-        startQrScanner();
-      }, 100);
+      setTimeout(startQrScanner, 100);
     }
 
     function startQrScanner() {
@@ -1794,231 +1210,105 @@
       }
 
       html5QrCode = new Html5Qrcode("qr-reader");
-
       html5QrCode.start(
         { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 }
-        },
-        (decodedText, decodedResult) => {
-          processQrCode(decodedText);
-        }
-      ).catch(err => {
-        showToast('Erro ao acessar câmera', 'error');
-        console.error(err);
-      });
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => processQrCode(decodedText)
+      ).catch(err => showToast('❌ Erro ao acessar câmera', 'error'));
     }
 
     async function processQrCode(qrCode) {
-      if (!qrCode) return;
-
-      if (html5QrCode) {
-        html5QrCode.pause(true);
-      }
-
-      await loadClients();
-      const client = clients.find(c => c.id === currentUser.id);
-      
-      if (!client || client.deleted || parseInt(client.expiry) < Date.now()) {
-        showErrorAnimation('ACESSO NEGADO', 'Token expirado ou desativado');
-        playErrorSound();
-        setTimeout(() => {
-          logout();
-        }, 2000);
-        return;
-      }
-
-      const cleanCode = qrCode.includes(',') ? qrCode.split(',')[0].trim() : qrCode.trim();
+      if (!qrCode || !html5QrCode) return;
+      html5QrCode.pause(true);
 
       const clientGuests = guests.filter(g => g.client_id === currentUser.id);
-      const guest = clientGuests.find(g => g.qr_code === cleanCode);
+      const guest = clientGuests.find(g => g.qr_code === qrCode.trim());
 
       if (!guest) {
-        showErrorAnimation('ENTRADA NÃO PERMITIDA', 'Convidado não encontrado');
-        playErrorSound();
-        setTimeout(() => {
-          if (html5QrCode) html5QrCode.resume();
-        }, 2500);
+        showErrorAnimation('ENTRADA NÃO PERMITIDA', 'Convidado não autorizado');
+        setTimeout(() => { if (html5QrCode) html5QrCode.resume(); }, 2500);
         return;
       }
 
       const clientCheckins = checkins.filter(c => c.client_id === currentUser.id);
-      const existingCheckins = clientCheckins.filter(c => c.guest_qr === cleanCode);
+      const existingCheckins = clientCheckins.filter(c => c.guest_qr === qrCode.trim());
 
       if (existingCheckins.length > 0 && (!guest.has_companion || existingCheckins.length >= 2)) {
-        showErrorAnimation('ENTRADA NÃO PERMITIDA', 'Este convite já foi usado');
-        playErrorSound();
-        setTimeout(() => {
-          if (html5QrCode) html5QrCode.resume();
-        }, 2500);
-        return;
-      }
-
-      if (guest.has_companion && existingCheckins.length === 1) {
-        showCompanionConfirmation(guest, cleanCode);
+        showErrorAnimation('ENTRADA NÃO PERMITIDA', 'Convite já usado');
+        setTimeout(() => { if (html5QrCode) html5QrCode.resume(); }, 2500);
         return;
       }
 
       if (guest.has_companion && existingCheckins.length === 0) {
-        showCompanionEntryConfirmation(guest, cleanCode);
+        showCompanionChoice(guest, qrCode.trim());
       } else {
-        await performCheckin(guest, cleanCode, false, false);
+        await performCheckin(guest, qrCode.trim(), false, existingCheckins.length === 1);
       }
     }
 
-    function showCompanionEntryConfirmation(guest, cleanCode) {
+    function showCompanionChoice(guest, qrCode) {
       const modal = document.createElement('div');
       modal.className = 'modal-overlay';
+      modal.id = 'companion-modal';
       
       modal.innerHTML = `
-        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color};">
           <div class="text-6xl mb-4">👥</div>
-          <h2 class="font-bold mb-2 flex items-center justify-center gap-2" style="font-size: 24px; color: ${config.text_color};">
-            ${guest.is_vip ? `<span class="px-2 py-1 rounded text-sm font-bold vip-badge" style="color: white;">⭐</span>` : ''}
+          <h2 class="font-bold mb-4" style="font-size: 24px; color: ${config.text_color};">
             ${guest.name}
           </h2>
-          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
-            Este convidado tem direito a acompanhante.<br>Entrou com acompanhante?
-          </p>
+          <p class="mb-6 opacity-70" style="color: ${config.text_color};">Entrou com acompanhante?</p>
           <div class="flex gap-3">
-            <button 
-              onclick="confirmCompanionEntry('${cleanCode}', false)"
-              class="flex-1 py-4 rounded-xl font-bold"
-              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 18px;"
-            >
-              NÃO<br><span style="font-size: 12px; opacity: 0.7;">(Só o convidado)</span>
+            <button onclick="confirmCheckin('${qrCode}', false)" class="flex-1 py-4 rounded-xl font-bold" style="background-color: ${config.background_color}; color: ${config.text_color};">
+              NÃO
             </button>
-            <button 
-              onclick="confirmCompanionEntry('${cleanCode}', true)"
-              class="flex-1 py-4 rounded-xl font-bold"
-              style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white; font-size: 18px;"
-            >
-              SIM<br><span style="font-size: 12px; opacity: 0.9;">(Convidado + Acompanhante)</span>
+            <button onclick="confirmCheckin('${qrCode}', true)" class="flex-1 py-4 rounded-xl font-bold" style="background-color: ${config.success_color}; color: white;">
+              SIM
             </button>
           </div>
         </div>
       `;
-
+      
       document.body.appendChild(modal);
     }
 
-    function showCompanionConfirmation(guest, cleanCode) {
-      const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
-      
-      modal.innerHTML = `
-        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-          <div class="text-6xl mb-4">👤</div>
-          <h2 class="font-bold mb-2" style="font-size: 24px; color: ${config.text_color};">
-            Acompanhante de ${guest.name}
-          </h2>
-          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
-            O convidado principal já entrou.<br>Esta    a entrada do acompanhante?
-          </p>
-          <div class="flex gap-3">
-            <button 
-              onclick="cancelCompanionEntry()"
-              class="flex-1 py-4 rounded-xl font-bold"
-              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 18px;"
-            >
-              Cancelar
-            </button>
-            <button 
-              onclick="confirmCompanionEntry('${cleanCode}', true, true)"
-              class="flex-1 py-4 rounded-xl font-bold"
-              style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white; font-size: 18px;"
-            >
-              SIM, Confirmar
-            </button>
-          </div>
-        </div>
-      `;
-
-      document.body.appendChild(modal);
-    }
-
-    async function confirmCompanionEntry(cleanCode, withCompanion, isCompanionOnly = false) {
-      const modalEl = document.querySelector('.modal-overlay');
-      if (modalEl) modalEl.remove();
-      
+    async function confirmCheckin(qrCode, withCompanion) {
+      closeModal('companion-modal');
       const clientGuests = guests.filter(g => g.client_id === currentUser.id);
-      const guest = clientGuests.find(g => g.qr_code === cleanCode);
-      
-      await performCheckin(guest, cleanCode, withCompanion, isCompanionOnly);
+      const guest = clientGuests.find(g => g.qr_code === qrCode);
+      await performCheckin(guest, qrCode, withCompanion, false);
     }
 
-    function cancelCompanionEntry() {
-      const modalEl = document.querySelector('.modal-overlay');
-      if (modalEl) modalEl.remove();
-      setTimeout(() => {
-        if (html5QrCode) html5QrCode.resume();
-      }, 500);
-    }
-
-    async function performCheckin(guest, cleanCode, withCompanion, isCompanionOnly) {
+    async function performCheckin(guest, qrCode, withCompanion, isCompanionOnly) {
       const checkinData = {
         id: generateId('checkin'),
         client_id: currentUser.id,
         guest_id: guest.id,
-        guest_qr: cleanCode,
+        guest_qr: qrCode,
         guest_name: guest.name,
         with_companion: withCompanion,
         is_companion_only: isCompanionOnly,
         status: 'confirmed',
-        checked_in_at: new Date().toISOString(),
-        synced: isOnline
+        checked_in_at: new Date().toISOString()
       };
 
-      let success = false;
+      const result = await createCheckin(checkinData);
 
-      if (isOnline) {
-        const result = await createCheckin(checkinData);
-        success = result.success;
+      if (result.success) {
+        let message = guest.name;
+        if (isCompanionOnly) message = 'Acompanhante de ' + message;
+        if (withCompanion) message += ' + Acompanhante';
+        if (guest.is_vip) message = '⭐ VIP - ' + message;
         
-        if (!success) {
-          isOnline = false;
-          offlineQueue.push(checkinData);
-          saveOfflineQueue();
-          success = true;
-        }
+        showSuccessAnimation('ENTRADA APROVADA', message);
+        setTimeout(() => { if (html5QrCode) html5QrCode.resume(); }, 3000);
       } else {
-        offlineQueue.push(checkinData);
-        saveOfflineQueue();
-        success = true;
-      }
-
-      if (success) {
-        let displayMessage = '';
-        if (isCompanionOnly) {
-          displayMessage = 'Acompanhante de ' + guest.name;
-        } else if (withCompanion) {
-          displayMessage = guest.name + ' e Acompanhante';
-        } else {
-          displayMessage = guest.name;
-        }
-        
-        if (guest.is_vip) {
-          displayMessage = '⭐ VIP - ' + displayMessage;
-        }
-        
-        showSuccessAnimation('ENTRADA APROVADA', displayMessage, !isOnline);
-        playSuccessSound();
-        vibrateDevice();
-        
-        setTimeout(() => {
-          if (html5QrCode) html5QrCode.resume();
-        }, 3000);
-      } else {
-        showErrorAnimation('ENTRADA NÃO PERMITIDA', 'Erro do sistema');
-        playErrorSound();
-        setTimeout(() => {
-          if (html5QrCode) html5QrCode.resume();
-        }, 2500);
+        showErrorAnimation('ERRO', 'Tente novamente');
+        setTimeout(() => { if (html5QrCode) html5QrCode.resume(); }, 2500);
       }
     }
 
-    function showSuccessAnimation(title, guestName, isOffline = false) {
+    function showSuccessAnimation(title, message) {
       const overlay = document.createElement('div');
       overlay.className = 'modal-overlay';
       overlay.style.zIndex = '10000';
@@ -2026,37 +1316,17 @@
       overlay.innerHTML = `
         <div class="text-center animate-slide-in">
           <div class="text-8xl mb-6">✅</div>
-          <div class="font-bold mb-3" style="font-size: 32px; color: ${config.success_color}; text-shadow: 0 2px 10px rgba(16, 185, 129, 0.5);">
+          <div class="font-bold mb-3" style="font-size: 32px; color: ${config.success_color};">
             ${title}
           </div>
-          <div class="font-bold mb-2" style="font-size: 28px; color: white;">
-            ${guestName}
+          <div class="font-bold" style="font-size: 28px; color: white;">
+            ${message}
           </div>
-          ${isOffline ? `
-            <div class="font-semibold" style="font-size: 14px; color: #f59e0b;">
-              [OFFLINE - Será sincronizado]
-            </div>
-          ` : ''}
-          <div id="confetti-container"></div>
         </div>
       `;
       
       document.body.appendChild(overlay);
-      
-      const container = overlay.querySelector('#confetti-container');
-      for (let i = 0; i < 50; i++) {
-        const confetti = document.createElement('div');
-        confetti.className = 'confetti';
-        confetti.textContent = ['🎉', '🎊', '   ', '⭐', '🌟'][Math.floor(Math.random() * 5)];
-        confetti.style.left = Math.random() * 100 + '%';
-        confetti.style.fontSize = (Math.random() * 20 + 20) + 'px';
-        confetti.style.animationDelay = (Math.random() * 0.5) + 's';
-        container.appendChild(confetti);
-      }
-      
-      setTimeout(() => {
-        overlay.remove();
-      }, 3000);
+      setTimeout(() => overlay.remove(), 3000);
     }
 
     function showErrorAnimation(title, message) {
@@ -2067,218 +1337,185 @@
       overlay.innerHTML = `
         <div class="text-center animate-slide-in">
           <div class="text-8xl mb-6">❌</div>
-          <div class="font-bold mb-3" style="font-size: 32px; color: ${config.error_color}; text-shadow: 0 2px 10px rgba(239, 68, 68, 0.5);">
+          <div class="font-bold mb-3" style="font-size: 32px; color: ${config.error_color};">
             ${title}
           </div>
-          <div class="font-semibold" style="font-size: 20px; color: white; opacity: 0.9;">
+          <div class="font-semibold" style="font-size: 20px; color: white;">
             ${message}
           </div>
         </div>
       `;
       
       document.body.appendChild(overlay);
+      setTimeout(() => overlay.remove(), 2500);
+    }
+
+    // =============== ADMIN MODALS ===============
+
+    async function showTrashModal() {
+      const deletedClients = await supabase
+        .from('clients')
+        .select('*')
+        .eq('deleted', true)
+        .order('deleted_at', { ascending: false });
       
-      setTimeout(() => {
-        overlay.remove();
-      }, 2500);
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'trash-modal';
+      
+      modal.innerHTML = `
+        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color};">
+          <h2 class="font-bold mb-6" style="font-size: 28px; color: ${config.text_color};">🗑️ Lixeira</h2>
+          
+          <div class="space-y-3 mb-6 max-h-96 overflow-auto">
+            ${!deletedClients.data || deletedClients.data.length === 0 ? `
+              <p class="text-center opacity-70 py-8" style="color: ${config.text_color};">Lixeira vazia</p>
+            ` : deletedClients.data.map(client => `
+              <div class="p-4 rounded-xl" style="background-color: ${config.background_color};">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="font-bold" style="font-size: 18px; color: ${config.text_color};">
+                      ${client.client_name}
+                      ${client.is_vip ? `<span class="px-2 py-1 rounded text-xs vip-badge ml-2">⭐</span>` : ''}
+                    </h3>
+                    <p class="text-sm opacity-70" style="color: ${config.text_color};">
+                      Deletado em: ${new Date(client.deleted_at).toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                  <div class="flex gap-2">
+                    <button onclick="restoreClient('${client.id}')" class="px-4 py-2 rounded-lg font-semibold" style="background-color: ${config.success_color}; color: white;">
+                      ↩️ Restaurar
+                    </button>
+                    <button onclick="permanentDeleteClient('${client.id}')" class="px-4 py-2 rounded-lg font-semibold" style="background-color: ${config.error_color}; color: white;">
+                      🗑️ Deletar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          
+          <div class="flex gap-3">
+            ${deletedClients.data && deletedClients.data.length > 0 ? `
+              <button onclick="deleteAllFromTrash()" class="flex-1 py-3 rounded-xl font-semibold" style="background-color: ${config.error_color}; color: white;">
+                🗑️ Deletar Todos (${deletedClients.data.length})
+              </button>
+            ` : ''}
+            <button onclick="closeModal('trash-modal')" class="flex-1 py-3 rounded-xl font-semibold" style="background-color: ${config.background_color}; color: ${config.text_color};">
+              Fechar
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
     }
 
-    function playSuccessSound() {
-      try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
+    async function restoreClient(clientId) {
+      const { error } = await supabase
+        .from('clients')
+        .update({ deleted: false, deleted_at: null })
+        .eq('id', clientId);
+      
+      if (!error) {
+        await supabase
+          .from('guests')
+          .update({ deleted: false, deleted_at: null })
+          .eq('client_id', clientId);
         
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.value = 800;
-        oscillator.type = 'sine';
-        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.3);
-      } catch (e) {
-        console.log('Audio not supported');
+        await loadAllData();
+        showToast('✅ Cliente restaurado!', 'success');
+        closeModal('trash-modal');
+        await renderAdminDashboard();
+      } else {
+        showToast('❌ Erro ao restaurar cliente', 'error');
       }
     }
 
-    function playErrorSound() {
-      try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.value = 200;
-        oscillator.type = 'sawtooth';
-        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
-      } catch (e) {
-        console.log('Audio not supported');
-      }
+    async function permanentDeleteClient(clientId) {
+      if (!confirm('⚠️ DELETAR PERMANENTEMENTE?\n\nEsta ação não pode ser desfeita!')) return;
+      
+      await supabase.from('checkins').delete().eq('client_id', clientId);
+      await supabase.from('guests').delete().eq('client_id', clientId);
+      await supabase.from('clients').delete().eq('id', clientId);
+      
+      await loadAllData();
+      showToast('✅ Cliente deletado permanentemente!', 'success');
+      closeModal('trash-modal');
+      await renderAdminDashboard();
     }
 
-    function vibrateDevice() {
-      if ('vibrate' in navigator) {
-        navigator.vibrate(200);
+    async function deleteAllFromTrash() {
+      const deletedClients = await supabase
+        .from('clients')
+        .select('*')
+        .eq('deleted', true);
+      
+      if (!deletedClients.data || deletedClients.data.length === 0) return;
+      
+      if (!confirm(`⚠️ DELETAR TODOS OS ${deletedClients.data.length} CLIENTES DA LIXEIRA?\n\nEsta ação não pode ser desfeita!`)) return;
+      
+      for (const client of deletedClients.data) {
+        await supabase.from('checkins').delete().eq('client_id', client.id);
+        await supabase.from('guests').delete().eq('client_id', client.id);
+        await supabase.from('clients').delete().eq('id', client.id);
       }
+      
+      await loadAllData();
+      showToast(`✅ ${deletedClients.data.length} clientes deletados permanentemente!`, 'success');
+      closeModal('trash-modal');
+      await renderAdminDashboard();
     }
 
-    // =============== ADMIN MODAL FUNCTIONS ===============
-
-    async function showAddClientModal() {
+    function showAddClientModal() {
       const modal = document.createElement('div');
       modal.className = 'modal-overlay';
       modal.id = 'add-client-modal';
       
       modal.innerHTML = `
-        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;">
-          <h2 class="font-bold mb-6" style="font-size: 28px; color: ${config.text_color};">
-            ➕ Novo Cliente
-          </h2>
+        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color};">
+          <h2 class="font-bold mb-6" style="font-size: 28px; color: ${config.text_color};">➕ Novo Cliente</h2>
           <form onsubmit="submitNewClient(event); return false;">
             <div class="mb-4">
-              <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
-                Nome do Cliente
-              </label>
-              <input 
-                type="text" 
-                name="client_name" 
-                required 
-                class="w-full px-4 py-3 rounded-xl outline-none"
-                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-                placeholder="Digite o nome do cliente"
-              >
+              <label class="block mb-2 font-semibold" style="color: ${config.text_color};">Nome do Cliente</label>
+              <input type="text" name="client_name" required class="w-full px-4 py-3 rounded-xl outline-none" style="background-color: ${config.background_color}; color: ${config.text_color};" placeholder="Digite o nome do cliente">
             </div>
-            
             <div class="mb-4">
-              <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
-                Tipo de Controle
-              </label>
-              <select 
-                name="control_type" 
-                id="control-type-select"
-                onchange="toggleControlType(this.value)"
-                class="w-full px-4 py-3 rounded-xl outline-none"
-                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-              >
-                <option value="expiry">Token com Validade</option>
-                <option value="event">Data do Evento</option>
+              <label class="block mb-2 font-semibold" style="color: ${config.text_color};">⏰ Validade do Token</label>
+              <select name="expiry_days" required class="w-full px-4 py-3 rounded-xl outline-none" style="background-color: ${config.background_color}; color: ${config.text_color};">
+                <option value="1">1 dia</option>
+                <option value="2">2 dias</option>
+                <option value="3">3 dias</option>
+                <option value="7">1 semana</option>
+                <option value="14">2 semanas</option>
+                <option value="30" selected>1 mês</option>
+                <option value="60">2 meses</option>
+                <option value="90">3 meses</option>
+                <option value="180">6 meses</option>
+                <option value="365">1 ano</option>
               </select>
             </div>
-
-            <div id="expiry-fields">
-              <div class="mb-4">
-                <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
-                  Validade do Token (dias)
-                </label>
-                <input 
-                  type="number" 
-                  name="expiry_days" 
-                  min="1"
-                  value="30"
-                  class="w-full px-4 py-3 rounded-xl outline-none"
-                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-                >
-              </div>
-            </div>
-
-            <div id="event-fields" style="display: none;">
-              <div class="mb-4">
-                <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
-                  Data e Hora do Evento
-                </label>
-                <input 
-                  type="datetime-local" 
-                  name="event_datetime"
-                  class="w-full px-4 py-3 rounded-xl outline-none"
-                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-                >
-              </div>
-            </div>
-
             <div class="mb-4">
-              <label class="flex items-center">
-                <input type="checkbox" name="is_vip" class="mr-2">
-                <span style="font-size: 14px; color: ${config.text_color};">
-                  ⭐ Marcar como Cliente VIP
-                </span>
+              <label class="flex items-center cursor-pointer">
+                <input type="checkbox" name="is_vip" class="mr-2 w-5 h-5">
+                <span style="color: ${config.text_color};">⭐ Cliente VIP</span>
               </label>
             </div>
-
-            <div class="mb-4">
-              <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
-                📋 Lista de Convidados (1 por linha)
+            <div class="mb-6">
+              <label class="block mb-2 font-semibold" style="color: ${config.text_color};">📋 Lista de Convidados</label>
+              <label class="w-full py-3 px-4 rounded-xl font-semibold cursor-pointer flex items-center justify-center gap-2" style="background-color: ${config.primary_color}; color: white;">
+                📁 Carregar arquivo TXT
+                <input type="file" id="guest-file-upload" accept=".txt" onchange="handleFileUpload(event)" class="hidden">
               </label>
-              <div class="mb-2 p-3 rounded-lg" style="background-color: ${config.background_color};">
-                <p class="mb-1" style="font-size: 12px; color: ${config.text_color};">
-                  <strong>Como funciona:</strong>
-                </p>
-                <ul class="list-disc list-inside" style="font-size: 11px; color: ${config.text_color}; opacity: 0.8;">
-                  <li>O sistema ignora códigos no início</li>
-                  <li>Detecta automaticamente nomes com " e " (acompanhante)</li>
-                  <li>Exemplo: "1, João Silva e Esposa" → João tem acompanhante</li>
-                  <li><strong>Você pode fazer upload de MÚLTIPLOS arquivos de uma vez!</strong></li>
-                </ul>
-              </div>
-              
-              <div class="mb-3">
-                <input 
-                  type="file" 
-                  id="guest-list-file"
-                  accept=".txt"
-                  multiple
-                  class="hidden"
-                  onchange="handleGuestListFile(event)"
-                >
-                <button 
-                  type="button"
-                  onclick="document.getElementById('guest-list-file').click()"
-                  class="w-full py-3 rounded-xl font-semibold mb-2"
-                  style="background-color: ${config.primary_color}; color: white; font-size: 14px;"
-                >
-                  📤 Fazer Upload de Arquivo(s) .txt
-                </button>
-                <p class="text-center opacity-70 mb-2" style="font-size: 12px; color: ${config.text_color};">
-                  ou cole a lista abaixo:
-                </p>
-              </div>
-              
-              <textarea 
-                name="guest_list" 
-                id="guest-list-textarea"
-                rows="8"
-                class="w-full px-4 py-3 rounded-xl outline-none font-mono"
-                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 13px;"
-                placeholder="1, Edvandro Borges e Esposa&#10;2, Helena Fernandes e Acompanhante&#10;3, Hamilton e Mila&#10;4, Jéssica Leonarda&#10;..."
-              ></textarea>
-              <p class="mt-2 opacity-70" style="font-size: 12px; color: ${config.text_color};">
-                💡 Você pode adicionar mais convidados depois
-              </p>
+              <p class="text-xs opacity-50 mt-2 text-center" style="color: ${config.text_color};">💡 Use "e Acompanhante" ou "e 1" para permitir acompanhantes</p>
+              <textarea id="guest-list-textarea" name="guest_list" rows="1" class="hidden"></textarea>
             </div>
-
             <div class="flex gap-3">
-              <button 
-                type="button"
-                onclick="closeModal('add-client-modal')"
-                class="flex-1 py-3 rounded-xl font-semibold"
-                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-              >
+              <button type="button" onclick="closeModal('add-client-modal')" class="flex-1 py-3 rounded-xl font-semibold" style="background-color: ${config.background_color}; color: ${config.text_color};">
                 Cancelar
               </button>
-              <button 
-                type="submit"
-                class="flex-1 py-3 rounded-xl font-semibold"
-                style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 16px;"
-              >
-                Criar Cliente
+              <button type="submit" class="flex-1 py-3 rounded-xl font-semibold" style="background-color: ${config.primary_color}; color: white;">
+                Criar
               </button>
             </div>
           </form>
@@ -2288,61 +1525,30 @@
       document.body.appendChild(modal);
     }
 
-    function toggleControlType(type) {
-      const expiryFields = document.getElementById('expiry-fields');
-      const eventFields = document.getElementById('event-fields');
-      
-      if (type === 'expiry') {
-        expiryFields.style.display = 'block';
-        eventFields.style.display = 'none';
-        document.querySelector('[name="expiry_days"]').required = true;
-        document.querySelector('[name="event_datetime"]').required = false;
-      } else {
-        expiryFields.style.display = 'none';
-        eventFields.style.display = 'block';
-        document.querySelector('[name="expiry_days"]').required = false;
-        document.querySelector('[name="event_datetime"]').required = true;
-      }
-    }
-
     async function submitNewClient(event) {
       event.preventDefault();
       const formData = new FormData(event.target);
-      const clientName = formData.get('client_name');
-      const controlType = formData.get('control_type');
-      const isVIP = formData.get('is_vip') === 'on';
-      const guestListRaw = formData.get('guest_list');
+      const expiryDays = parseInt(formData.get('expiry_days'));
       
       const clientData = {
         id: generateId('client'),
-        client_name: clientName,
+        client_name: formData.get('client_name'),
         token: generateToken(),
-        is_vip: isVIP,
+        is_vip: formData.get('is_vip') === 'on',
+        expiry: (Date.now() + (expiryDays * 24 * 60 * 60 * 1000)).toString(),
         deleted: false,
-        deleted_at: null,
         created_at: new Date().toISOString()
       };
-
-      if (controlType === 'expiry') {
-        const expiryDays = parseInt(formData.get('expiry_days'));
-        clientData.expiry = (Date.now() + (expiryDays * 24 * 60 * 60 * 1000)).toString();
-        clientData.event_date = null;
-      } else {
-        const eventDatetime = formData.get('event_datetime');
-        const eventDate = new Date(eventDatetime);
-        clientData.event_date = eventDate.getTime().toString();
-        clientData.expiry = eventDate.getTime().toString();
-      }
       
-      const resultClient = await createClient(clientData);
+      const result = await createClient(clientData);
       
-      if (!resultClient.success) {
+      if (!result.success) {
         showToast('❌ Erro ao criar cliente', 'error');
         return;
       }
 
-      // Processar lista de convidados
-      if (guestListRaw && guestListRaw.trim()) {
+      const guestListRaw = formData.get('guest_list');
+      if (guestListRaw?.trim()) {
         const parsedGuests = parseGuestList(guestListRaw);
         
         if (parsedGuests.length > 0) {
@@ -2354,29 +1560,19 @@
             has_companion: pg.has_companion,
             is_vip: false,
             deleted: false,
-            deleted_at: null,
             created_at: new Date().toISOString()
           }));
           
-          const resultGuests = await createMultipleGuests(guestsToCreate);
-          
-          if (resultGuests.success) {
-            showToast(`✅ Cliente criado com ${resultGuests.count} convidados!`, 'success');
-          } else {
-            showToast('   ️ Cliente criado, mas houve erro ao adicionar convidados', 'warning');
-          }
-        } else {
-          showToast('✅ Cliente criado com sucesso!', 'success');
+          await createMultipleGuests(guestsToCreate);
         }
-      } else {
-        showToast('✅ Cliente criado com sucesso!', 'success');
       }
       
+      showToast('✅ Cliente criado com sucesso!', 'success');
       closeModal('add-client-modal');
       await renderAdminDashboard();
     }
 
-    async function showClientDetails(clientId) {
+    function showClientDetails(clientId) {
       const client = clients.find(c => c.id === clientId);
       if (!client) return;
       
@@ -2388,80 +1584,72 @@
       modal.id = 'client-details-modal';
       
       modal.innerHTML = `
-        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;">
-          <h2 class="font-bold mb-6 flex items-center gap-2" style="font-size: 28px; color: ${config.text_color};">
-            📋 ${client.client_name}
-            ${client.is_vip ? `<span class="px-3 py-1 rounded-full text-sm font-bold vip-badge" style="color: white;">⭐ VIP</span>` : ''}
-          </h2>
-          
-          <div class="mb-6 space-y-3">
-            <p style="font-size: 14px; color: ${config.text_color};">
-              <strong>Token:</strong> <span class="font-mono" style="color: ${config.primary_color};">${client.token}</span>
-            </p>
-            <p style="font-size: 14px; color: ${config.text_color};">
-              <strong>Total Convidados:</strong> ${clientGuests.length} ${clientGuests.filter(g => g.is_vip).length > 0 ? `(${clientGuests.filter(g => g.is_vip).length} VIP)` : ''}
-            </p>
-            <p style="font-size: 14px; color: ${config.text_color};">
-              <strong>Total Check-ins:</strong> ${clientCheckins.length}
-            </p>
-            
-            <div class="grid grid-cols-2 gap-3">
-              <button onclick="showAddGuestModal('${clientId}')" class="py-3 rounded-xl font-semibold" style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 16px;">
-                ➕ Adicionar Convidado
+        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color};">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="font-bold" style="font-size: 28px; color: ${config.text_color};">
+              📋 ${client.client_name}
+            </h2>
+            ${clientCheckins.length > 0 ? `
+              <button onclick="showCheckinsManagement('${clientId}')" class="px-4 py-2 rounded-xl font-semibold" style="background-color: rgba(251, 191, 36, 0.2); color: #f59e0b;">
+                🔄 Gerir Check-ins
               </button>
-              <button onclick="showUploadGuestListModal('${clientId}')" class="py-3 rounded-xl font-semibold" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-size: 16px;">
-                📤 Fazer Upload de Lista
-              </button>
-            </div>
+            ` : ''}
           </div>
           
-          <h3 class="font-bold mb-3" style="font-size: 20px; color: ${config.text_color};">
-            Lista de Convidados
-          </h3>
+          <div class="mb-6">
+            <p class="mb-2" style="color: ${config.text_color};">
+              <strong>Token:</strong> <span style="color: ${config.primary_color};">${client.token}</span>
+            </p>
+            <p class="mb-2" style="color: ${config.text_color};">
+              <strong>Convidados:</strong> ${clientGuests.length}
+            </p>
+            <p style="color: ${config.text_color};">
+              <strong>Check-ins:</strong> ${clientCheckins.length}
+            </p>
+          </div>
+
+          <div class="flex gap-2 mb-4">
+            <label class="flex-1 py-3 px-4 rounded-xl font-semibold cursor-pointer flex items-center justify-center gap-2" style="background-color: ${config.primary_color}; color: white;">
+              📁 Adicionar Convidados
+              <input type="file" id="add-guests-file-upload" accept=".txt" onchange="handleAddGuestsFile(event, '${clientId}')" class="hidden">
+            </label>
+            ${clientGuests.length > 0 ? `
+              <button onclick="deleteAllGuestsConfirm('${clientId}')" class="py-3 px-4 rounded-xl font-semibold whitespace-nowrap" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
+                🗑️ Todos
+              </button>
+            ` : ''}
+          </div>
+          <p class="text-xs opacity-50 mb-4 text-center" style="color: ${config.text_color};">💡 Novos convidados serão adicionados sem duplicar</p>
           
-          <div class="space-y-2 mb-6">
+          <h3 class="font-bold mb-3" style="font-size: 20px; color: ${config.text_color};">Convidados</h3>
+          
+          <div class="space-y-2 mb-6 max-h-96 overflow-auto">
             ${clientGuests.length === 0 ? `
-              <p class="text-center opacity-70 py-4" style="font-size: 14px; color: ${config.text_color};">
-                Nenhum convidado cadastrado
-              </p>
+              <p class="text-center opacity-70 py-4" style="color: ${config.text_color};">Nenhum convidado</p>
             ` : clientGuests.map(guest => {
-              const guestCheckins = clientCheckins.filter(c => c.guest_qr === guest.qr_code);
-              const hasCheckedIn = guestCheckins.length > 0;
-              
+              const hasCheckedIn = clientCheckins.some(c => c.guest_qr === guest.qr_code);
               return `
-                <div class="p-3 rounded-lg" style="background-color: ${config.background_color};">
-                  <div class="flex items-center justify-between">
-                    <div class="flex-1">
-                      <p class="font-bold flex items-center gap-2" style="font-size: 14px; color: ${config.text_color};">
-                        ${guest.is_vip ? `<span class="px-2 py-1 rounded text-xs font-bold vip-badge" style="color: white;">⭐</span>` : ''}
-                        ${guest.name}
-                        ${guest.has_companion ? `<span class="opacity-70 text-xs">👥</span>` : ''}
-                      </p>
-                    </div>
-                    <div class="flex gap-2">
-                      ${hasCheckedIn ? `
-                        <span class="px-3 py-1 rounded-lg text-xs font-semibold" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">
-                          ✓ Entrou
-                        </span>
-                      ` : ''}
-                      <button onclick="toggleGuestVIP('${guest.id}')" class="px-3 py-1 rounded-lg text-xs font-semibold" style="background-color: ${guest.is_vip ? 'rgba(251, 191, 36, 0.3)' : 'rgba(148, 163, 184, 0.2)'}; color: ${guest.is_vip ? config.vip_color : config.text_color};">
-                        ${guest.is_vip ? '⭐' : '☆'}
-                      </button>
-                      <button onclick="showDeleteGuestConfirmation('${guest.id}')" class="px-3 py-1 rounded-lg text-xs font-semibold" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
-                        🗑️
-                      </button>
-                    </div>
+                <div class="p-3 rounded-lg flex items-center justify-between" style="background-color: ${config.background_color};">
+                  <div>
+                    <p class="font-bold" style="color: ${config.text_color};">
+                      ${guest.is_vip ? '⭐ ' : ''}${guest.name}${guest.has_companion ? ' 👥' : ''}
+                    </p>
+                  </div>
+                  <div class="flex gap-2">
+                    ${hasCheckedIn ? `<span class="px-2 py-1 rounded text-xs" style="background-color: rgba(16, 185, 129, 0.2); color: ${config.success_color};">✓</span>` : ''}
+                    <button onclick="toggleGuestVIP('${guest.id}')" class="px-2 py-1 rounded text-xs" style="background-color: ${guest.is_vip ? 'rgba(251, 191, 36, 0.3)' : 'rgba(148, 163, 184, 0.2)'}; color: ${guest.is_vip ? config.vip_color : config.text_color};">
+                      ${guest.is_vip ? '⭐' : '★'}
+                    </button>
+                    <button onclick="deleteGuestConfirm('${guest.id}')" class="px-2 py-1 rounded text-xs" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
+                      🗑️
+                    </button>
                   </div>
                 </div>
               `;
             }).join('')}
           </div>
           
-          <button 
-            onclick="closeModal('client-details-modal')"
-            class="w-full py-3 rounded-xl font-semibold"
-            style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-          >
+          <button onclick="closeModal('client-details-modal')" class="w-full py-3 rounded-xl font-semibold" style="background-color: ${config.background_color}; color: ${config.text_color};">
             Fechar
           </button>
         </div>
@@ -2470,365 +1658,41 @@
       document.body.appendChild(modal);
     }
 
-    async function showAddGuestModal(clientId) {
-      const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
-      modal.id = 'add-guest-modal';
-      
-      modal.innerHTML = `
-        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-          <h2 class="font-bold mb-6" style="font-size: 28px; color: ${config.text_color};">
-            ➕ Novo Convidado
-          </h2>
-          <form onsubmit="submitNewGuest(event, '${clientId}'); return false;">
-            <div class="mb-4">
-              <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
-                Nome do Convidado
-              </label>
-              <input 
-                type="text" 
-                name="guest_name" 
-                required 
-                class="w-full px-4 py-3 rounded-xl outline-none"
-                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-                placeholder="Digite o nome do convidado"
-              >
-            </div>
-            <div class="mb-4">
-              <label class="flex items-center">
-                <input type="checkbox" name="has_companion" class="mr-2">
-                <span style="font-size: 14px; color: ${config.text_color};">
-                  👥 Este convidado tem direito a acompanhante
-                </span>
-              </label>
-            </div>
-            <div class="mb-6">
-              <label class="flex items-center">
-                <input type="checkbox" name="is_vip" class="mr-2">
-                <span style="font-size: 14px; color: ${config.text_color};">
-                  ⭐ Marcar como Convidado VIP
-                </span>
-              </label>
-            </div>
-            <div class="flex gap-3">
-              <button 
-                type="button"
-                onclick="closeModal('add-guest-modal')"
-                class="flex-1 py-3 rounded-xl font-semibold"
-                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-              >
-                Cancelar
-              </button>
-              <button 
-                type="submit"
-                class="flex-1 py-3 rounded-xl font-semibold"
-                style="background: linear-gradient(135deg, ${config.primary_color} 0%, #005f7f 100%); color: white; font-size: 16px;"
-              >
-                Adicionar
-              </button>
-            </div>
-          </form>
-        </div>
-      `;
-      
-      document.body.appendChild(modal);
-    }
+    async function handleAddGuestsFile(event, clientId) {
+      const file = event.target.files[0];
+      if (!file) return;
 
-    async function submitNewGuest(event, clientId) {
-      event.preventDefault();
-      const formData = new FormData(event.target);
-      const guestName = formData.get('guest_name');
-      const hasCompanion = formData.get('has_companion') === 'on';
-      const isVIP = formData.get('is_vip') === 'on';
-      
-      const guestData = {
-        id: generateId('guest'),
-        client_id: clientId,
-        name: guestName,
-        qr_code: generateId('QR'),
-        has_companion: hasCompanion,
-        is_vip: isVIP,
-        deleted: false,
-        deleted_at: null,
-        created_at: new Date().toISOString()
-      };
-      
-      const result = await createGuest(guestData);
-      
-      if (result.success) {
-        showToast('✅ Convidado adicionado com sucesso!', 'success');
-        closeModal('add-guest-modal');
-        closeModal('client-details-modal');
-        await showClientDetails(clientId);
-      } else {
-        showToast('❌ Erro ao adicionar convidado', 'error');
-      }
-    }
-
-    function showUploadGuestListModal(clientId) {
-      const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
-      modal.id = 'upload-guest-list-modal';
-      
-      modal.innerHTML = `
-        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;">
-          <h2 class="font-bold mb-6" style="font-size: 28px; color: ${config.text_color};">
-            📤 Upload de Lista de Convidados
-          </h2>
-          
-          <form onsubmit="submitUploadGuestList(event, '${clientId}'); return false;">
-            <div class="mb-4">
-              <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
-                📋 Lista de Convidados (1 por linha)
-              </label>
-              <div class="mb-2 p-3 rounded-lg" style="background-color: ${config.background_color};">
-                <p class="mb-1" style="font-size: 12px; color: ${config.text_color};">
-                  <strong>Como funciona:</strong>
-                </p>
-                <ul class="list-disc list-inside" style="font-size: 11px; color: ${config.text_color}; opacity: 0.8;">
-                  <li>O sistema ignora códigos no início</li>
-                  <li>Detecta automaticamente nomes com " e " (acompanhante)</li>
-                  <li>Exemplo: "1, João Silva e Esposa" → João tem acompanhante</li>
-                  <li><strong>Se detectar lista duplicada, perguntará se deseja substituir</strong></li>
-                </ul>
-              </div>
-              
-              <div class="mb-3">
-                <input 
-                  type="file" 
-                  id="upload-guest-list-file"
-                  accept=".txt"
-                  multiple
-                  class="hidden"
-                  onchange="handleUploadGuestListFile(event)"
-                >
-                <button 
-                  type="button"
-                  onclick="document.getElementById('upload-guest-list-file').click()"
-                  class="w-full py-3 rounded-xl font-semibold mb-2"
-                  style="background-color: ${config.primary_color}; color: white; font-size: 14px;"
-                >
-                  📤 Fazer Upload de Arquivo(s) .txt
-                </button>
-                <p class="text-center opacity-70 mb-2" style="font-size: 12px; color: ${config.text_color};">
-                  ou cole a lista abaixo:
-                </p>
-              </div>
-              
-              <textarea 
-                name="guest_list" 
-                id="upload-guest-list-textarea"
-                rows="8"
-                class="w-full px-4 py-3 rounded-xl outline-none font-mono"
-                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 13px;"
-                placeholder="1, Edvandro Borges e Esposa&#10;2, Helena Fernandes e Acompanhante&#10;3, Hamilton e Mila&#10;4, Jéssica Leonarda&#10;..."
-              ></textarea>
-            </div>
-
-            <div class="flex gap-3">
-              <button 
-                type="button"
-                onclick="closeModal('upload-guest-list-modal')"
-                class="flex-1 py-3 rounded-xl font-semibold"
-                style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-              >
-                Cancelar
-              </button>
-              <button 
-                type="submit"
-                class="flex-1 py-3 rounded-xl font-semibold"
-                style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white; font-size: 16px;"
-              >
-                Processar Lista
-              </button>
-            </div>
-          </form>
-        </div>
-      `;
-      
-      document.body.appendChild(modal);
-    }
-
-    function handleUploadGuestListFile(event) {
-      const files = event.target.files;
-      if (!files || files.length === 0) return;
-      
-      // Verificar se todos os arquivos são .txt
-      const invalidFiles = Array.from(files).filter(file => !file.name.endsWith('.txt'));
-      if (invalidFiles.length > 0) {
-        showToast('❌ Por favor, selecione apenas arquivos .txt', 'error');
+      if (!file.name.toLowerCase().endsWith('.txt')) {
+        showToast('❌ Por favor, selecione um arquivo TXT', 'error');
         event.target.value = '';
         return;
       }
-      
-      const textarea = document.getElementById('upload-guest-list-textarea');
-      if (!textarea) return;
-      
-      let combinedContent = '';
-      let filesProcessed = 0;
-      let totalLines = 0;
-      
-      // Processar cada arquivo
-      Array.from(files).forEach((file, index) => {
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-          const content = e.target.result;
-          
-          // Adicionar separador visual entre arquivos (se houver mais de 1)
-          if (files.length > 1 && index > 0 && combinedContent.length > 0) {
-            combinedContent += '\n';
-          }
-          
-          combinedContent += content;
-          
-          const lineCount = content.split('\n').filter(line => line.trim().length > 0).length;
-          totalLines += lineCount;
-          
-          filesProcessed++;
-          
-          // Quando todos os arquivos forem processados
-          if (filesProcessed === files.length) {
-            textarea.value = combinedContent;
-            
-            if (files.length === 1) {
-              showToast(`✅ Arquivo carregado! ${totalLines} linhas detectadas`, 'success');
-            } else {
-              showToast(`✅ ${files.length} arquivos carregados! Total: ${totalLines} linhas`, 'success');
-            }
-          }
-        };
-        
-        reader.onerror = function() {
-          showToast(`❌ Erro ao ler o arquivo: ${file.name}`, 'error');
-          filesProcessed++;
-        };
-        
-        reader.readAsText(file);
-      });
-      
-      event.target.value = '';
-    }
 
-    async function submitUploadGuestList(event, clientId) {
-      event.preventDefault();
-      const formData = new FormData(event.target);
-      const guestListRaw = formData.get('guest_list');
-      
-      if (!guestListRaw || !guestListRaw.trim()) {
-        showToast('❌ Lista vazia!', 'error');
-        return;
-      }
-      
-      const parsedGuests = parseGuestList(guestListRaw);
-      
-      if (parsedGuests.length === 0) {
-        showToast('❌ Nenhum convidado válido encontrado!', 'error');
-        return;
-      }
-      
-      // Verificar se há convidados duplicados comparando os nomes
-      const clientGuests = guests.filter(g => g.client_id === clientId);
-      const newGuestNames = parsedGuests.map(pg => pg.name.toLowerCase().trim());
-      const existingGuestNames = clientGuests.map(g => g.name.toLowerCase().trim());
-      
-      // Verificar quantos nomes já existem
-      const duplicatesCount = newGuestNames.filter(name => existingGuestNames.includes(name)).length;
-      
-      // Se mais de 50% dos nomes já existem, considerar como lista duplicada
-      const isDuplicateList = duplicatesCount > (newGuestNames.length * 0.5);
-      
-      if (isDuplicateList && clientGuests.length > 0) {
-        showDuplicateListConfirmation(clientId, parsedGuests, duplicatesCount);
-      } else {
-        await processGuestListUpload(clientId, parsedGuests, false);
-      }
-    }
-
-    function showDuplicateListConfirmation(clientId, parsedGuests, duplicatesCount) {
-      const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
-      modal.id = 'duplicate-list-confirmation';
-      
-      modal.innerHTML = `
-        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-          <div class="text-6xl mb-4">⚠️</div>
-          <h2 class="font-bold mb-4" style="font-size: 24px; color: ${config.text_color};">
-            Lista Duplicada Detectada!
-          </h2>
-          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
-            Detectamos <strong>${duplicatesCount} convidados</strong> que já existem neste cliente.<br><br>
-            O que você deseja fazer?
-          </p>
-          <div class="space-y-3">
-            <button 
-              onclick="confirmReplaceGuestList('${clientId}', ${JSON.stringify(parsedGuests).replace(/"/g, '&quot;')})"
-              class="w-full py-3 rounded-xl font-semibold"
-              style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; font-size: 16px;"
-            >
-              🔄 Substituir Lista Antiga
-            </button>
-            <button 
-              onclick="confirmAddToGuestList('${clientId}', ${JSON.stringify(parsedGuests).replace(/"/g, '&quot;')})"
-              class="w-full py-3 rounded-xl font-semibold"
-              style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white; font-size: 16px;"
-            >
-              ➕ Adicionar à Lista Existente<br>
-              <span style="font-size: 12px; opacity: 0.9;">(Ignora duplicados)</span>
-            </button>
-            <button 
-              onclick="closeModal('duplicate-list-confirmation')"
-              class="w-full py-3 rounded-xl font-semibold"
-              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      `;
-      
-      document.body.appendChild(modal);
-    }
-
-    async function confirmReplaceGuestList(clientId, parsedGuestsJson) {
-      const parsedGuests = JSON.parse(parsedGuestsJson);
-      await processGuestListUpload(clientId, parsedGuests, true);
-    }
-
-    async function confirmAddToGuestList(clientId, parsedGuestsJson) {
-      const parsedGuests = JSON.parse(parsedGuestsJson);
-      await processGuestListUpload(clientId, parsedGuests, false);
-    }
-
-    async function processGuestListUpload(clientId, parsedGuests, shouldReplace) {
-      closeModal('duplicate-list-confirmation');
-      
-      // Se for substituir, deletar todos os convidados existentes (sem check-in)
-      if (shouldReplace) {
-        const clientGuests = guests.filter(g => g.client_id === clientId);
-        const clientCheckins = checkins.filter(c => c.client_id === clientId);
-        const guestsWithCheckin = clientCheckins.map(c => c.guest_qr);
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        const content = e.target.result;
+        const parsedGuests = parseGuestList(content);
         
-        const guestsToDelete = clientGuests.filter(g => !guestsWithCheckin.includes(g.qr_code));
-        
-        if (guestsToDelete.length > 0) {
-          showToast(`🔄 Removendo ${guestsToDelete.length} convidados antigos...`, 'info');
-          
-          for (const guest of guestsToDelete) {
-            await deleteGuest(guest.id);
-          }
-          
-          await loadGuests();
+        if (parsedGuests.length === 0) {
+          showToast('❌ Nenhum convidado encontrado no arquivo', 'error');
+          event.target.value = '';
+          return;
         }
-      }
-      
-      // Filtrar convidados que já existem
-      const clientGuests = guests.filter(g => g.client_id === clientId);
-      const existingNames = clientGuests.map(g => g.name.toLowerCase().trim());
-      
-      const guestsToCreate = parsedGuests
-        .filter(pg => !existingNames.includes(pg.name.toLowerCase().trim()))
-        .map(pg => ({
+
+        const clientGuests = guests.filter(g => g.client_id === clientId);
+        const existingNames = new Set(clientGuests.map(g => g.name.toLowerCase().trim()));
+        
+        const newGuests = parsedGuests.filter(pg => 
+          !existingNames.has(pg.name.toLowerCase().trim())
+        );
+
+        if (newGuests.length === 0) {
+          showToast('⚠️ Todos os convidados já existem', 'warning');
+          event.target.value = '';
+          return;
+        }
+
+        const guestsToCreate = newGuests.map(pg => ({
           id: generateId('guest'),
           client_id: clientId,
           name: pg.name,
@@ -2836,210 +1700,95 @@
           has_companion: pg.has_companion,
           is_vip: false,
           deleted: false,
-          deleted_at: null,
           created_at: new Date().toISOString()
         }));
-      
-      if (guestsToCreate.length === 0) {
-        showToast('⚠️ Todos os convidados já existem!', 'warning');
-        closeModal('upload-guest-list-modal');
-        closeModal('client-details-modal');
-        await showClientDetails(clientId);
-        return;
-      }
-      
-      const result = await createMultipleGuests(guestsToCreate);
-      
-      if (result.success) {
-        const skippedCount = parsedGuests.length - guestsToCreate.length;
-        let message = `✅ ${result.count} convidados adicionados!`;
-        if (skippedCount > 0) {
-          message += ` (${skippedCount} duplicados ignorados)`;
+
+        const result = await createMultipleGuests(guestsToCreate);
+        
+        if (result.success) {
+          showToast(`✅ ${newGuests.length} convidados adicionados!`, 'success');
+          closeModal('client-details-modal');
+          showClientDetails(clientId);
+        } else {
+          showToast('❌ Erro ao adicionar convidados', 'error');
         }
-        showToast(message, 'success');
-        closeModal('upload-guest-list-modal');
-        closeModal('client-details-modal');
-        await showClientDetails(clientId);
-      } else {
-        showToast('❌ Erro ao adicionar convidados', 'error');
-      }
+        
+        event.target.value = '';
+      };
+      
+      reader.onerror = function() {
+        showToast('❌ Erro ao ler arquivo', 'error');
+        event.target.value = '';
+      };
+      
+      reader.readAsText(file);
     }
 
     async function toggleClientVIP(clientId) {
       const client = clients.find(c => c.id === clientId);
       if (!client) return;
       
-      const result = await updateClient(clientId, { is_vip: !client.is_vip });
-      
-      if (result.success) {
-        showToast(client.is_vip ? '✅ Cliente removido do VIP' : '⭐ Cliente marcado como VIP', 'success');
-        await renderAdminDashboard();
-      } else {
-        showToast('❌ Erro ao atualizar status VIP', 'error');
-      }
+      await updateClient(clientId, { is_vip: !client.is_vip });
+      showToast(client.is_vip ? '✅ VIP removido' : '⭐ VIP ativado', 'success');
+      await renderAdminDashboard();
     }
 
     async function toggleGuestVIP(guestId) {
       const guest = guests.find(g => g.id === guestId);
       if (!guest) return;
       
-      const result = await updateGuest(guestId, { is_vip: !guest.is_vip });
+      await updateGuest(guestId, { is_vip: !guest.is_vip });
+      showToast(guest.is_vip ? '✅ VIP removido' : '⭐ VIP ativado', 'success');
+      closeModal('client-details-modal');
+      showClientDetails(guest.client_id);
+    }
+
+    async function clearCheckins(clientId) {
+      if (!confirm('Limpar todos os check-ins deste cliente?')) return;
+      await deleteAllClientCheckins(clientId);
+      showToast('✅ Check-ins limpos!', 'success');
+      await renderAdminDashboard();
+    }
+
+    async function deleteClientConfirm(clientId) {
+      if (!confirm('Deletar este cliente?')) return;
+      await deleteClient(clientId);
+      showToast('✅ Cliente deletado!', 'success');
+      await renderAdminDashboard();
+    }
+
+    async function deleteGuestConfirm(guestId) {
+      const guest = guests.find(g => g.id === guestId);
+      if (!guest || !confirm('Deletar este convidado?')) return;
+      await deleteGuest(guestId);
+      showToast('✅ Convidado deletado!', 'success');
+      closeModal('client-details-modal');
+      showClientDetails(guest.client_id);
+    }
+
+    async function deleteAllGuestsConfirm(clientId) {
+      const clientGuests = guests.filter(g => g.client_id === clientId);
+      if (clientGuests.length === 0) return;
       
-      if (result.success) {
-        showToast(guest.is_vip ? '✅ Convidado removido do VIP' : '⭐ Convidado marcado como VIP', 'success');
+      if (!confirm(`🗑️ Deletar TODOS os ${clientGuests.length} convidados?\n\nEsta ação não pode ser desfeita!`)) return;
+      
+      const { error } = await supabase
+        .from('guests')
+        .update({ deleted: true, deleted_at: new Date().toISOString() })
+        .eq('client_id', clientId);
+      
+      if (!error) {
+        await loadGuests();
+        await createAuditLog('delete_all_guests', { client_id: clientId, count: clientGuests.length });
+        showToast(`✅ ${clientGuests.length} convidados deletados!`, 'success');
         closeModal('client-details-modal');
-        await showClientDetails(guest.client_id);
+        showClientDetails(clientId);
       } else {
-        showToast('❌ Erro ao atualizar status VIP', 'error');
+        showToast('❌ Erro ao deletar convidados', 'error');
       }
     }
 
-    function showExtendTokenModal(clientId) {
-      const client = clients.find(c => c.id === clientId);
-      if (!client) return;
-      
-      const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
-      modal.id = 'extend-token-modal';
-      
-      modal.innerHTML = `
-        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-          <h2 class="font-bold mb-6" style="font-size: 28px; color: ${config.text_color};">
-            ⏰ Estender ${client.event_date ? 'Data do Evento' : 'Validade do Token'}
-          </h2>
-          
-          ${client.event_date ? `
-            <form onsubmit="submitExtendEvent(event, '${clientId}'); return false;">
-              <div class="mb-6">
-                <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
-                  Nova Data e Hora do Evento
-                </label>
-                <input 
-                  type="datetime-local" 
-                  name="new_event_datetime"
-                  required
-                  class="w-full px-4 py-3 rounded-xl outline-none"
-                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-                >
-              </div>
-              <div class="flex gap-3">
-                <button 
-                  type="button"
-                  onclick="closeModal('extend-token-modal')"
-                  class="flex-1 py-3 rounded-xl font-semibold"
-                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit"
-                  class="flex-1 py-3 rounded-xl font-semibold"
-                  style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white; font-size: 16px;"
-                >
-                  Atualizar Data
-                </button>
-              </div>
-            </form>
-          ` : `
-            <form onsubmit="submitExtendToken(event, '${clientId}'); return false;">
-              <div class="mb-6">
-                <label class="block mb-2 font-medium" style="font-size: 14px; color: ${config.text_color};">
-                  Estender por quantos dias?
-                </label>
-                <div class="grid grid-cols-3 gap-3 mb-4">
-                  <button type="button" onclick="setExtendDays(7)" class="py-3 rounded-xl font-semibold transition-all" style="background-color: ${config.background_color}; color: ${config.text_color};">
-                    7 dias
-                  </button>
-                  <button type="button" onclick="setExtendDays(15)" class="py-3 rounded-xl font-semibold transition-all" style="background-color: ${config.background_color}; color: ${config.text_color};">
-                    15 dias
-                  </button>
-                  <button type="button" onclick="setExtendDays(30)" class="py-3 rounded-xl font-semibold transition-all" style="background-color: ${config.background_color}; color: ${config.text_color};">
-                    30 dias
-                  </button>
-                </div>
-                <input 
-                  type="number" 
-                  name="extend_days" 
-                  id="extend-days-input"
-                  required 
-                  min="1"
-                  value="30"
-                  class="w-full px-4 py-3 rounded-xl outline-none"
-                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-                  placeholder="Ou digite o número de dias"
-                >
-              </div>
-              <div class="flex gap-3">
-                <button 
-                  type="button"
-                  onclick="closeModal('extend-token-modal')"
-                  class="flex-1 py-3 rounded-xl font-semibold"
-                  style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit"
-                  class="flex-1 py-3 rounded-xl font-semibold"
-                  style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white; font-size: 16px;"
-                >
-                  Estender Token
-                </button>
-              </div>
-            </form>
-          `}
-        </div>
-      `;
-      
-      document.body.appendChild(modal);
-    }
-
-    function setExtendDays(days) {
-      const input = document.getElementById('extend-days-input');
-      if (input) {
-        input.value = days;
-      }
-    }
-
-    async function submitExtendToken(event, clientId) {
-      event.preventDefault();
-      const formData = new FormData(event.target);
-      const extendDays = parseInt(formData.get('extend_days'));
-      
-      const newExpiry = (Date.now() + (extendDays * 24 * 60 * 60 * 1000)).toString();
-      
-      const result = await updateClient(clientId, { expiry: newExpiry });
-      
-      if (result.success) {
-        showToast(`✅ Token estendido por ${extendDays} dias!`, 'success');
-        closeModal('extend-token-modal');
-        await renderAdminDashboard();
-      } else {
-        showToast('❌ Erro ao estender token', 'error');
-      }
-    }
-
-    async function submitExtendEvent(event, clientId) {
-      event.preventDefault();
-      const formData = new FormData(event.target);
-      const newEventDatetime = formData.get('new_event_datetime');
-      const newEventDate = new Date(newEventDatetime);
-      
-      const result = await updateClient(clientId, { 
-        event_date: newEventDate.getTime().toString(),
-        expiry: newEventDate.getTime().toString()
-      });
-      
-      if (result.success) {
-        showToast(`✅ Data do evento atualizada!`, 'success');
-        closeModal('extend-token-modal');
-        await renderAdminDashboard();
-      } else {
-        showToast('❌ Erro ao atualizar data do evento', 'error');
-      }
-    }
-
-    function showClearCheckinsConfirmation(clientId) {
+    function showCheckinsManagement(clientId) {
       const client = clients.find(c => c.id === clientId);
       if (!client) return;
       
@@ -3047,32 +1796,59 @@
       
       const modal = document.createElement('div');
       modal.className = 'modal-overlay';
-      modal.id = 'clear-checkins-modal';
+      modal.id = 'checkins-management-modal';
       
       modal.innerHTML = `
-        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-          <div class="text-6xl mb-4">⚠️</div>
-          <h2 class="font-bold mb-4" style="font-size: 24px; color: ${config.text_color};">
-            Limpar Check-ins de ${client.client_name}
+        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color};">
+          <h2 class="font-bold mb-6" style="font-size: 28px; color: ${config.text_color};">
+            🔄 Gestão de Check-ins - ${client.client_name}
           </h2>
-          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
-            Tem certeza que deseja desfazer todos os ${clientCheckins.length} check-ins deste cliente?<br>
-            <strong>Esta ação não pode ser desfeita!</strong>
-          </p>
+          
+          <div class="mb-4 p-4 rounded-xl" style="background-color: rgba(251, 191, 36, 0.1);">
+            <p class="text-sm" style="color: ${config.text_color};">
+              ⚠️ <strong>Atenção:</strong> Desfazer check-ins permite que o convidado escaneie novamente.
+            </p>
+          </div>
+
+          <div class="space-y-2 mb-6 max-h-96 overflow-auto">
+            ${clientCheckins.length === 0 ? `
+              <p class="text-center opacity-70 py-8" style="color: ${config.text_color};">Nenhum check-in realizado</p>
+            ` : clientCheckins.sort((a, b) => new Date(b.checked_in_at) - new Date(a.checked_in_at)).map(checkin => {
+              const guest = guests.find(g => g.qr_code === checkin.guest_qr);
+              return `
+                <div class="p-4 rounded-xl flex items-center justify-between" style="background-color: ${config.background_color};">
+                  <div class="flex-1">
+                    <h3 class="font-bold mb-1" style="font-size: 16px; color: ${config.text_color};">
+                      ${guest?.is_vip ? '⭐ ' : ''}${checkin.guest_name}
+                      ${checkin.is_companion_only ? ' <span class="text-xs opacity-70">(Acompanhante)</span>' : ''}
+                      ${checkin.with_companion ? ' 👥' : ''}
+                    </h3>
+                    <p class="text-sm opacity-70" style="color: ${config.text_color};">
+                      ${new Date(checkin.checked_in_at).toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                  <button onclick="undoCheckin('${checkin.id}', '${clientId}')" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap" style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
+                    ↩️ Desfazer
+                  </button>
+                </div>
+              `;
+            }).join('')}
+          </div>
+          
           <div class="flex gap-3">
-            <button 
-              onclick="closeModal('clear-checkins-modal')"
-              class="flex-1 py-3 rounded-xl font-semibold"
-              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-            >
-              Cancelar
-            </button>
-            <button 
-              onclick="confirmClearCheckins('${clientId}')"
-              class="flex-1 py-3 rounded-xl font-semibold"
-              style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; font-size: 16px;"
-            >
-              Sim, Limpar Tudo
+            ${clientCheckins.length > 0 ? `
+              <button onclick="clearAllCheckinsConfirm('${clientId}')" class="flex-1 py-3 rounded-xl font-semibold" style="background-color: ${config.error_color}; color: white;">
+                🗑️ Limpar Todos (${clientCheckins.length})
+              </button>
+            ` : ''}
+            <button onclick="closeModal('checkins-management-modal'); showClientDetails('${clientId}');" class="flex-1 py-3 rounded-xl font-semibold" style="background-color: ${config.background_color}; color: ${config.text_color};">
+              Voltar
             </button>
           </div>
         </div>
@@ -3081,355 +1857,91 @@
       document.body.appendChild(modal);
     }
 
-    async function confirmClearCheckins(clientId) {
+    async function undoCheckin(checkinId, clientId) {
+      if (!confirm('Desfazer este check-in?\n\nO convidado poderá escanear novamente.')) return;
+      
+      const result = await deleteCheckin(checkinId);
+      
+      if (result.success) {
+        showToast('✅ Check-in desfeito!', 'success');
+        closeModal('checkins-management-modal');
+        showCheckinsManagement(clientId);
+      } else {
+        showToast('❌ Erro ao desfazer check-in', 'error');
+      }
+    }
+
+    async function clearAllCheckinsConfirm(clientId) {
+      const clientCheckins = checkins.filter(c => c.client_id === clientId);
+      if (!confirm(`🗑️ Limpar TODOS os ${clientCheckins.length} check-ins?\n\nTodos os convidados poderão escanear novamente!`)) return;
+      
       const result = await deleteAllClientCheckins(clientId);
       
       if (result.success) {
-        showToast('✅ Todos os check-ins foram removidos!', 'success');
-        closeModal('clear-checkins-modal');
+        showToast('✅ Todos os check-ins foram limpos!', 'success');
+        closeModal('checkins-management-modal');
         await renderAdminDashboard();
       } else {
         showToast('❌ Erro ao limpar check-ins', 'error');
       }
     }
 
-    function showDeleteClientConfirmation(clientId) {
-      const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
-      modal.id = 'delete-client-modal';
-      
-      modal.innerHTML = `
-        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-          <div class="text-6xl mb-4">⚠️</div>
-          <h2 class="font-bold mb-4" style="font-size: 24px; color: ${config.text_color};">
-            Confirmar Exclusão
-          </h2>
-          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
-            Tem certeza que deseja deletar este cliente?<br>Esta ação pode ser desfeita pela lixeira.
-          </p>
-          <div class="flex gap-3">
-            <button 
-              onclick="closeModal('delete-client-modal')"
-              class="flex-1 py-3 rounded-xl font-semibold"
-              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-            >
-              Cancelar
-            </button>
-            <button 
-              onclick="confirmDeleteClient('${clientId}')"
-              class="flex-1 py-3 rounded-xl font-semibold"
-              style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; font-size: 16px;"
-            >
-              Deletar
-            </button>
-          </div>
-        </div>
-      `;
-      
-      document.body.appendChild(modal);
-    }
+    // =============== REALTIME SUBSCRIPTIONS ===============
 
-    async function confirmDeleteClient(clientId) {
-      const result = await deleteClient(clientId);
-      
-      if (result.success) {
-        showToast('✅ Cliente deletado com sucesso!', 'success');
-        closeModal('delete-client-modal');
-        await renderAdminDashboard();
-      } else {
-        showToast('❌ Erro ao deletar cliente', 'error');
-      }
-    }
+    let clientsSubscription = null;
+    let guestsSubscription = null;
+    let checkinsSubscription = null;
 
-    function showDeleteGuestConfirmation(guestId) {
-      const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
-      modal.id = 'delete-guest-modal';
-      
-      modal.innerHTML = `
-        <div class="modal-content rounded-3xl p-8 text-center" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-          <div class="text-6xl mb-4">⚠️</div>
-          <h2 class="font-bold mb-4" style="font-size: 24px; color: ${config.text_color};">
-            Confirmar Exclusão
-          </h2>
-          <p class="mb-6 opacity-70" style="font-size: 16px; color: ${config.text_color};">
-            Tem certeza que deseja deletar este convidado?
-          </p>
-          <div class="flex gap-3">
-            <button 
-              onclick="closeModal('delete-guest-modal')"
-              class="flex-1 py-3 rounded-xl font-semibold"
-              style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-            >
-              Cancelar
-            </button>
-            <button 
-              onclick="confirmDeleteGuest('${guestId}')"
-              class="flex-1 py-3 rounded-xl font-semibold"
-              style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; font-size: 16px;"
-            >
-              Deletar
-            </button>
-          </div>
-        </div>
-      `;
-      
-      document.body.appendChild(modal);
-    }
-
-    async function confirmDeleteGuest(guestId) {
-      const guest = guests.find(g => g.id === guestId);
-      const result = await deleteGuest(guestId);
-      
-      if (result.success) {
-        showToast('✅ Convidado deletado com sucesso!', 'success');
-        closeModal('delete-guest-modal');
-        closeModal('client-details-modal');
-        if (guest) {
-          await showClientDetails(guest.client_id);
-        }
-      } else {
-        showToast('❌ Erro ao deletar convidado', 'error');
-      }
-    }
-
-    async function showTrashModal() {
-      const deletedClients = await loadDeletedClients();
-      const deletedGuests = await loadDeletedGuests();
-      
-      const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
-      modal.id = 'trash-modal';
-      
-      modal.innerHTML = `
-        <div class="modal-content rounded-3xl p-8" style="background-color: ${config.card_color}; box-shadow: 0 20px 60px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;">
-          <h2 class="font-bold mb-6" style="font-size: 28px; color: ${config.text_color};">
-            🗑️ Lixeira
-          </h2>
-          
-          ${deletedClients.length === 0 && deletedGuests.length === 0 ? `
-            <p class="text-center opacity-70 py-8" style="font-size: 16px; color: ${config.text_color};">
-              A lixeira está vazia
-            </p>
-          ` : ''}
-          
-          ${deletedClients.length > 0 ? `
-            <h3 class="font-bold mb-3" style="font-size: 20px; color: ${config.text_color};">
-              Clientes Deletados
-            </h3>
-            <div class="space-y-2 mb-6">
-              ${deletedClients.map(client => `
-                <div class="p-3 rounded-lg flex items-center justify-between" style="background-color: ${config.background_color};">
-                  <div>
-                    <p class="font-bold flex items-center gap-2" style="font-size: 14px; color: ${config.text_color};">
-                      ${client.is_vip ? '⭐ ' : ''}${client.client_name}
-                    </p>
-                    <p class="opacity-70 text-xs" style="color: ${config.text_color};">
-                      Deletado em: ${new Date(client.deleted_at).toLocaleString('pt-BR')}
-                    </p>
-                  </div>
-                  <button onclick="restoreClientFromTrash('${client.id}')" class="px-3 py-2 rounded-lg font-semibold text-sm" style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white;">
-                    ↩️ Restaurar
-                  </button>
-                </div>
-              `).join('')}
-            </div>
-          ` : ''}
-          
-          ${deletedGuests.length > 0 ? `
-            <h3 class="font-bold mb-3" style="font-size: 20px; color: ${config.text_color};">
-              Convidados Deletados
-            </h3>
-            <div class="space-y-2 mb-6">
-              ${deletedGuests.map(guest => {
-                const client = clients.find(c => c.id === guest.client_id);
-                return `
-                  <div class="p-3 rounded-lg flex items-center justify-between" style="background-color: ${config.background_color};">
-                    <div>
-                      <p class="font-bold flex items-center gap-2" style="font-size: 14px; color: ${config.text_color};">
-                        ${guest.is_vip ? '⭐ ' : ''}${guest.name}
-                      </p>
-                      <p class="opacity-70 text-xs" style="color: ${config.text_color};">
-                        Cliente: ${client ? client.client_name : 'N/A'} • Deletado em: ${new Date(guest.deleted_at).toLocaleString('pt-BR')}
-                      </p>
-                    </div>
-                    <button onclick="restoreGuestFromTrash('${guest.id}')" class="px-3 py-2 rounded-lg font-semibold text-sm" style="background: linear-gradient(135deg, ${config.success_color} 0%, #059669 100%); color: white;">
-                      ↩️ Restaurar
-                    </button>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          ` : ''}
-          
-          <button 
-            onclick="closeModal('trash-modal')"
-            class="w-full py-3 rounded-xl font-semibold"
-            style="background-color: ${config.background_color}; color: ${config.text_color}; font-size: 16px;"
-          >
-            Fechar
-          </button>
-        </div>
-      `;
-      
-      document.body.appendChild(modal);
-    }
-
-    async function restoreClientFromTrash(clientId) {
-      const result = await restoreClient(clientId);
-      
-      if (result.success) {
-        showToast('✅ Cliente restaurado com sucesso!', 'success');
-        closeModal('trash-modal');
-        await renderAdminDashboard();
-      } else {
-        showToast('❌ Erro ao restaurar cliente', 'error');
-      }
-    }
-
-    async function restoreGuestFromTrash(guestId) {
-      const result = await restoreGuest(guestId);
-      
-      if (result.success) {
-        showToast('✅ Convidado restaurado com sucesso!', 'success');
-        await showTrashModal();
-      } else {
-        showToast('❌ Erro ao restaurar convidado', 'error');
-      }
-    }
-
-    async function undoCheckin(checkinId) {
-      const result = await deleteCheckin(checkinId);
-      
-      if (result.success) {
-        showToast('✅ Check-in desfeito com sucesso!', 'success');
-        await renderAdminDashboard();
-      } else {
-        showToast('❌ Erro ao desfazer check-in', 'error');
-      }
-    }
-
-    function closeModal(modalId) {
-      const modal = document.getElementById(modalId);
-      if (modal) {
-        modal.remove();
-      }
-    }
-
-    async function switchClientTab(tab) {
-      if (html5QrCode && currentTab === 'scanner') {
-        try {
-          await html5QrCode.stop();
-          html5QrCode = null;
-        } catch (e) {
-          console.log('Scanner já parado');
-        }
-      }
-      
-      currentTab = tab;
-      await renderClientDashboard();
-    }
-
-    // =============== GLOBAL FUNCTIONS ===============
-
-    window.switchLoginType = switchLoginType;
-    window.loginAdmin = loginAdmin;
-    window.loginClient = loginClient;
-    window.logout = logout;
-    window.switchClientTab = switchClientTab;
-    window.confirmCompanionEntry = confirmCompanionEntry;
-    window.cancelCompanionEntry = cancelCompanionEntry;
-    window.filterGuests = filterGuests;
-    window.searchGuests = searchGuests;
-    window.exportClientPDF = exportClientPDF;
-    window.showAddClientModal = showAddClientModal;
-    window.toggleControlType = toggleControlType;
-    window.submitNewClient = submitNewClient;
-    window.showClientDetails = showClientDetails;
-    window.showAddGuestModal = showAddGuestModal;
-    window.submitNewGuest = submitNewGuest;
-    window.toggleClientVIP = toggleClientVIP;
-    window.toggleGuestVIP = toggleGuestVIP;
-    window.showExtendTokenModal = showExtendTokenModal;
-    window.setExtendDays = setExtendDays;
-    window.submitExtendToken = submitExtendToken;
-    window.submitExtendEvent = submitExtendEvent;
-    window.showClearCheckinsConfirmation = showClearCheckinsConfirmation;
-    window.confirmClearCheckins = confirmClearCheckins;
-    window.showDeleteClientConfirmation = showDeleteClientConfirmation;
-    window.confirmDeleteClient = confirmDeleteClient;
-    window.showDeleteGuestConfirmation = showDeleteGuestConfirmation;
-    window.confirmDeleteGuest = confirmDeleteGuest;
-    window.showTrashModal = showTrashModal;
-    window.restoreClientFromTrash = restoreClientFromTrash;
-    window.restoreGuestFromTrash = restoreGuestFromTrash;
-    window.undoCheckin = undoCheckin;
-    window.closeModal = closeModal;
-    window.handleGuestListFile = handleGuestListFile;
-    window.showUploadGuestListModal = showUploadGuestListModal;
-    window.handleUploadGuestListFile = handleUploadGuestListFile;
-    window.submitUploadGuestList = submitUploadGuestList;
-    window.confirmReplaceGuestList = confirmReplaceGuestList;
-    window.confirmAddToGuestList = confirmAddToGuestList;
-
-    // =============== VALIDAÇÃO PERIÓDICA E ATUALIZAÇÃO EM TEMPO REAL ===============
-    
-    setInterval(async () => {
-      if (currentUser && isOnline) {
-        if (currentUser.type === 'client') {
-          try {
+    function setupRealtimeSubscriptions() {
+      clientsSubscription = supabase
+        .channel('clients-changes')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'clients' },
+          async (payload) => {
             await loadClients();
-            const client = clients.find(c => c.id === currentUser.id);
-            
-            if (!client || client.deleted || parseInt(client.expiry) < Date.now()) {
-              clearSession('client');
-              currentUser = null;
-              currentView = 'login';
-              
-              if (html5QrCode) {
-                html5QrCode.stop().catch(() => {});
-                html5QrCode = null;
-              }
-              
-              showToast('❌ Sessão encerrada - Token expirado ou desativado', 'error');
-              renderLogin();
-            } else {
-              await loadGuests();
-              await loadCheckins();
-              
-              if (currentView === 'client-dashboard' && currentTab === 'home') {
-                updateGuestsList();
-              }
-            }
-          } catch (error) {
-            console.log('Erro ao validar sessão');
-          }
-        } else if (currentUser.type === 'admin') {
-          try {
-            await loadAllData();
             if (currentView === 'admin-dashboard') {
               await renderAdminDashboard();
             }
-          } catch (error) {
-            console.log('Erro ao atualizar dados do admin');
           }
-        }
-      }
-    }, 10000);
+        )
+        .subscribe();
+
+      guestsSubscription = supabase
+        .channel('guests-changes')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'guests' },
+          async (payload) => {
+            await loadGuests();
+            if (currentView === 'admin-dashboard') {
+              await renderAdminDashboard();
+            } else if (currentView === 'client-dashboard' && currentTab === 'home') {
+              updateGuestsList();
+            }
+          }
+        )
+        .subscribe();
+
+      checkinsSubscription = supabase
+        .channel('checkins-changes')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'checkins' },
+          async (payload) => {
+            await loadCheckins();
+            if (currentView === 'admin-dashboard') {
+              await renderAdminDashboard();
+            } else if (currentView === 'client-dashboard' && currentTab === 'home') {
+              updateGuestsList();
+            }
+          }
+        )
+        .subscribe();
+    }
 
     // =============== INIT ===============
 
-    async function init() {
-      loadOfflineQueue();
-      await loadAllData();
-      
-      const hasSession = await checkExistingSession();
-      if (!hasSession) {
-        renderLogin();
-      }
-    }
-
-    init();
+    renderLogin();
+    checkExistingSession();
+    setupRealtimeSubscriptions();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9acafa8ca01bc13d',t:'MTc2NTUxODk4OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9acd3dfc76e5c13d',t:'MTc2NTU0MjcyMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
