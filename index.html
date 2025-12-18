@@ -1,1619 +1,2278 @@
-<!doctype html>
-<html lang="pt" class="h-full">
- <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Adkira Presenças</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
-  <style>
-    body {
-      box-sizing: border-box;
-      font-family: 'Inter', sans-serif;
-    }
-    .heading-font {
-      font-family: 'Playfair Display', serif;
-    }
-    .couple-names {
-      font-family: 'Lucida Calligraphy', 'Lucida Handwriting', cursive;
-      font-weight: bold;
-    }
-    .modal-backdrop {
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(4px);
-    }
-    .cover-hero {
-      position: relative;
-      height: 350px;
-      background: linear-gradient(135deg, #5aa189 0%, #4a8c75 100%);
-      background-size: cover;
-      background-position: center;
-    }
-    .cover-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.5));
-    }
-    .cover-content {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-      color: white;
-      width: 90%;
-      z-index: 10;
-    }
-    .countdown-box {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 12px;
-      padding: 1rem;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    .countdown-number {
-      font-size: 2.5rem;
-      font-weight: bold;
-      color: #5aa189;
-      line-height: 1;
-    }
-    .countdown-label {
-      font-size: 0.75rem;
-      color: #666;
-      text-transform: uppercase;
-      margin-top: 0.25rem;
-    }
-    @keyframes pulse-border {
-      0%, 100% { border-color: currentColor; }
-      50% { border-color: transparent; }
-    }
-    .urgent-pulse {
-      animation: pulse-border 1.5s ease-in-out infinite;
-    }
-  </style>
-  <style>@view-transition { navigation: auto; }</style>
-  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
-  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
- </head>
- <body class="h-full bg-gray-50 text-gray-800 overflow-auto">
-  <div id="app" class="h-full w-full flex flex-col"><!-- Header -->
-   <header class="bg-gradient-to-r from-[#5aa189] to-[#4a8c75] text-white shadow-lg sticky top-0 z-40">
-    <div class="px-4 py-4 flex items-center justify-between">
-     <div class="flex items-center gap-3"><button id="backBtn" class="hidden text-white hover:text-gray-200 transition" onclick="goBack()">
-       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-       </svg></button>
-      <h1 class="text-xl font-bold heading-font">Adkira Presenças</h1>
-     </div><button onclick="toggleMenu()" class="text-white hover:bg-white/20 p-2 rounded transition">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-      </svg></button>
-    </div>
-    <div id="menuDropdown" class="hidden bg-[#4a8c75]">
-     <div id="menuLoginItem" class="px-4 py-3 hover:bg-white/10 cursor-pointer transition" onclick="showLogin()">
-      Login
-     </div>
-     <div id="menuLogoutItem" class="hidden px-4 py-3 hover:bg-white/10 cursor-pointer transition" onclick="logout()">
-      Sair
-     </div>
-     <div id="menuEventsItem" class="hidden px-4 py-3 hover:bg-white/10 cursor-pointer transition" onclick="showMyEvents()">
-      Meus Eventos
-     </div>
-    </div>
-   </header>
-   <main id="mainContent" class="flex-1 w-full"></main>
-   <footer class="bg-gray-800 text-white text-center py-6 text-sm">
-    <p>© <span id="year"></span> Adkira Presenças. Todos os direitos reservados.</p>
-   </footer>
-  </div>
-  <div id="photoModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop" onclick="closeModal()">
-   <div class="relative max-w-4xl"><button onclick="closeModal()" class="absolute -top-10 right-0 text-white hover:text-gray-300 text-4xl font-bold">×</button> <img id="modalImage" class="max-w-full max-h-screen rounded-lg shadow-2xl" alt="Foto">
-   </div>
-  </div>
-  <div id="loading" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-   <div class="bg-white p-8 rounded-lg shadow-2xl text-center">
-    <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-[#5aa189] mx-auto mb-4"></div>
-    <p class="text-gray-700 font-semibold">A processar...</p>
-   </div>
-  </div>
-  <script>
-    // Configuração do Supabase
-    const SUPABASE_URL = 'https://sekkrboqttxpathyxcun.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNla2tyYm9xdHR4cGF0aHl4Y3VuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNjY0OTYsImV4cCI6MjA3OTc0MjQ5Nn0.JqrLUWHs3-jyUNT-0s2DwiyeDjK0uv6uIh0ip1qPWBA';
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Gestão de Eventos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        .tab-active {
+            @apply bg-blue-50 border-blue-600 text-blue-600;
+        }
+        .tab-inactive {
+            @apply bg-white border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .drag-over {
+            @apply border-blue-500 bg-blue-50;
+        }
+        .client-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .client-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .client-card.selected {
+            @apply ring-2 ring-blue-500 bg-blue-50;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="toast-container"></div>
     
-    // Inicializar Supabase
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    
-    let systemConfig = {};
-    let allUsers = [];
-    let allEvents = [];
-    let allConfirmations = [];
-    let allMessages = [];
-    let currentUser = null;
-    let currentView = 'home';
-    let currentEventId = null;
-    let viewHistory = [];
-    let countdownInterval = null;
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div class="flex items-center">
+                    <i class="fas fa-calendar-alt text-2xl text-blue-600 mr-3"></i>
+                    <h1 class="text-3xl font-bold text-gray-900">Gestão de Eventos</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center text-sm text-gray-500">
+                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                        <span id="realtime-status">Desconectado</span>
+                    </div>
 
-    async function init() {
-      document.getElementById('year').textContent = new Date().getFullYear();
-      
-      showLoading();
-      
-      await loadSystemConfig();
-      
-      const savedUser = localStorage.getItem('adkiraUser');
-      if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        updateMenu();
-      }
+                    <button onclick="showNotifications()" class="relative text-gray-600 hover:text-gray-800 p-2" title="Notificações">
+                        <i class="fas fa-bell text-xl"></i>
+                    </button>
 
-      await loadAllData();
-      
-      hideLoading();
-      
-      checkRoute();
-    }
-
-    async function loadSystemConfig() {
-      try {
-        const { data, error } = await supabase.from('system_config').select('*');
-        
-        if (error) throw error;
-        
-        data.forEach(item => {
-          systemConfig[item.config_key] = item.config_value;
-        });
-        
-      } catch (error) {
-        console.error('Erro ao carregar configuração:', error);
-        showToast('Erro ao conectar ao sistema');
-      }
-    }
-
-    async function loadAllData() {
-      try {
-        const [usersRes, eventsRes, confirmationsRes, messagesRes] = await Promise.all([
-          supabase.from('users').select('*'),
-          supabase.from('events').select('*'),
-          supabase.from('confirmations').select('*'),
-          supabase.from('messages').select('*')
-        ]);
-
-        allUsers = usersRes.data || [];
-        allEvents = eventsRes.data || [];
-        allConfirmations = confirmationsRes.data || [];
-        allMessages = messagesRes.data || [];
-
-        renderCurrentView();
-      } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        showToast('Erro ao carregar dados');
-      }
-    }
-
-    function checkRoute() {
-      const hash = window.location.hash;
-      if (hash && hash.startsWith('#event=')) {
-        const eventId = hash.substring(7);
-        viewEvent(eventId);
-      } else {
-        if (currentUser) {
-          showView(currentUser.role === 'admin' ? 'adminDashboard' : 'clientDashboard');
-        } else {
-          showView('home');
-        }
-      }
-    }
-
-    function showView(view, addHistory = true) {
-      if (addHistory && currentView !== view) {
-        viewHistory.push(currentView);
-      }
-      currentView = view;
-      
-      if (countdownInterval) {
-        clearInterval(countdownInterval);
-        countdownInterval = null;
-      }
-
-      const backBtn = document.getElementById('backBtn');
-      if (view === 'home' || view === 'adminDashboard' || view === 'clientDashboard') {
-        backBtn.classList.add('hidden');
-      } else {
-        backBtn.classList.remove('hidden');
-      }
-
-      document.getElementById('menuDropdown').classList.add('hidden');
-      renderCurrentView();
-    }
-
-    function renderCurrentView() {
-      const main = document.getElementById('mainContent');
-      main.innerHTML = '';
-
-      switch(currentView) {
-        case 'home': renderHome(main); break;
-        case 'login': renderLogin(main); break;
-        case 'adminDashboard': renderAdminDashboard(main); break;
-        case 'clientDashboard': renderClientDashboard(main); break;
-        case 'eventForm': renderEventForm(main); break;
-        case 'eventDetail': renderEventDetail(main); break;
-        case 'photoManagement': renderPhotoManagement(main); break;
-      }
-    }
-
-    function goBack() {
-      if (viewHistory.length > 0) {
-        const prev = viewHistory.pop();
-        showView(prev, false);
-      } else {
-        if (currentUser) {
-          showView(currentUser.role === 'admin' ? 'adminDashboard' : 'clientDashboard', false);
-        } else {
-          showView('home', false);
-        }
-      }
-    }
-
-    function toggleMenu() {
-      document.getElementById('menuDropdown').classList.toggle('hidden');
-    }
-
-    function updateMenu() {
-      const loginItem = document.getElementById('menuLoginItem');
-      const logoutItem = document.getElementById('menuLogoutItem');
-      const eventsItem = document.getElementById('menuEventsItem');
-
-      if (currentUser) {
-        loginItem.classList.add('hidden');
-        logoutItem.classList.remove('hidden');
-        if (currentUser.role === 'client') {
-          eventsItem.classList.remove('hidden');
-        } else {
-          eventsItem.classList.add('hidden');
-        }
-      } else {
-        loginItem.classList.remove('hidden');
-        logoutItem.classList.add('hidden');
-        eventsItem.classList.add('hidden');
-      }
-    }
-
-    function showLogin() {
-      showView('login');
-    }
-
-    function logout() {
-      currentUser = null;
-      localStorage.removeItem('adkiraUser');
-      updateMenu();
-      showView('home');
-      showToast('Sessão terminada');
-    }
-
-    function showMyEvents() {
-      if (currentUser && currentUser.role === 'client') {
-        showView('clientDashboard');
-      }
-    }
-
-    // ========== HOME ==========
-    function renderHome(container) {
-      container.innerHTML = `
-        <div class="bg-gradient-to-br from-[#5aa189] via-[#4a8c75] to-[#3a7560] text-white py-32">
-          <div class="max-w-4xl mx-auto px-4 text-center">
-            <h2 class="text-6xl font-bold heading-font mb-6">Adkira Presenças</h2>
-            <p class="text-2xl mb-12 opacity-90">Gerencie confirmações de presença para seus eventos especiais</p>
-            <button onclick="showLogin()" class="bg-white text-[#5aa189] px-10 py-4 rounded-lg font-semibold hover:bg-gray-100 transition shadow-lg text-lg">
-              Começar Agora
-            </button>
-          </div>
+                    <button onclick="openNewClientModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center">
+                        <i class="fas fa-plus mr-2"></i>Novo Cliente
+                    </button>
+                </div>
+            </div>
         </div>
-      `;
-    }
+    </header>
 
-    // ========== LOGIN ==========
-    function renderLogin(container) {
-      container.innerHTML = `
-        <div class="p-4">
-          <div class="max-w-md mx-auto mt-8">
-            <div class="bg-white rounded-lg shadow-lg p-8">
-              <h2 class="text-3xl font-bold heading-font text-[#5aa189] mb-6 text-center">Login</h2>
-              <form id="loginForm" class="space-y-4">
-                <div>
-                  <label class="block text-sm font-medium mb-2">Username</label>
-                  <input type="text" id="loginUsername" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189]">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-2">Senha</label>
-                  <input type="password" id="loginPassword" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189]">
-                </div>
-                <button type="submit" class="w-full bg-gradient-to-r from-[#5aa189] to-[#4a8c75] text-white py-3 rounded-lg hover:from-[#4a8c75] hover:to-[#3a7560] font-semibold transition">
-                  Entrar
+    <!-- Navigation Tabs -->
+    <nav class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8">
+                <button id="tab-dashboard" onclick="showTab('dashboard')" class="tab-active py-4 px-1 border-b-2 font-medium text-sm">
+                    <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
                 </button>
-              </form>
-              <div id="loginError" class="hidden mt-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm"></div>
+                <button id="tab-clientes" onclick="showTab('clientes')" class="tab-inactive py-4 px-1 border-b-2 font-medium text-sm">
+                    <i class="fas fa-users mr-2"></i>Clientes
+                </button>
+                <button id="tab-convidados" onclick="showTab('convidados')" class="tab-inactive py-4 px-1 border-b-2 font-medium text-sm">
+                    <i class="fas fa-user-friends mr-2"></i>Convidados
+                </button>
+                <button id="tab-importar" onclick="showTab('importar')" class="tab-inactive py-4 px-1 border-b-2 font-medium text-sm">
+                    <i class="fas fa-upload mr-2"></i>Importar
+                </button>
+                <button id="tab-relatorios" onclick="showTab('relatorios')" class="tab-inactive py-4 px-1 border-b-2 font-medium text-sm">
+                    <i class="fas fa-chart-bar mr-2"></i>Relatórios
+                </button>
             </div>
-          </div>
         </div>
-      `;
+    </nav>
 
-      document.getElementById('loginForm').addEventListener('submit', handleLogin);
-    }
-
-    async function handleLogin(e) {
-      e.preventDefault();
-      showLoading();
-
-      const username = document.getElementById('loginUsername').value.trim();
-      const password = document.getElementById('loginPassword').value;
-
-      // Verificar se é admin usando configuração do banco
-      if (username === systemConfig.admin_username && password === systemConfig.admin_password) {
-        currentUser = { id: 'admin', username, role: 'admin' };
-        localStorage.setItem('adkiraUser', JSON.stringify(currentUser));
-        updateMenu();
-        hideLoading();
-        showView('adminDashboard');
-        showToast('Bem-vindo, Administrador!');
-        return;
-      }
-
-      // Verificar se é cliente
-      const user = allUsers.find(u => u.username === username && u.password === password);
-      
-      hideLoading();
-
-      if (user) {
-        currentUser = { id: user.id, username: user.username, role: user.role };
-        localStorage.setItem('adkiraUser', JSON.stringify(currentUser));
-        updateMenu();
-        showView('clientDashboard');
-        showToast(`Bem-vindo, ${user.username}!`);
-      } else {
-        document.getElementById('loginError').textContent = 'Username ou senha incorretos';
-        document.getElementById('loginError').classList.remove('hidden');
-      }
-    }
-
-    // ========== ADMIN DASHBOARD ==========
-    function renderAdminDashboard(container) {
-      container.innerHTML = `
-        <div class="p-4">
-          <div class="max-w-6xl mx-auto">
-            <h2 class="text-3xl font-bold heading-font text-[#5aa189] mb-6">Painel do Administrador</h2>
-            
-            <div class="space-y-6">
-              <!-- Users Management -->
-              <div class="bg-white rounded-lg shadow-md p-6">
-                <div class="flex items-center justify-between mb-4">
-                  <h3 class="text-xl font-bold">Contas de Clientes (${allUsers.length})</h3>
-                  <button onclick="showCreateUserModal()" class="px-4 py-2 bg-[#5aa189] text-white rounded-lg hover:bg-[#4a8c75] transition text-sm">
-                    + Nova Conta
-                  </button>
-                </div>
-                <div id="usersList" class="space-y-3">
-                  ${allUsers.length === 0 ? '<p class="text-gray-500 text-sm">Nenhuma conta criada.</p>' : allUsers.map(user => {
-                    const userEvents = allEvents.filter(e => e.owner_id === user.id);
-                    return `
-                      <div class="p-4 bg-gray-50 rounded-lg border">
-                        <div class="flex items-center justify-between mb-3">
-                          <div class="flex-1">
-                            <p class="font-semibold text-lg">${user.username}</p>
-                            <p class="text-sm text-gray-600 mb-1">Senha: <span class="font-mono">${user.password}</span></p>
-                            <p class="text-xs text-gray-500">Eventos: ${userEvents.length}</p>
-                          </div>
-                          <div class="flex flex-col gap-2">
-                            <button onclick="editUserPassword('${user.id}')" class="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition whitespace-nowrap">
-                              Alterar Senha
-                            </button>
-                            <button onclick="deleteUser('${user.id}')" class="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition whitespace-nowrap">
-                              Eliminar Conta
-                            </button>
-                          </div>
-                        </div>
-                        ${userEvents.length > 0 ? `
-                          <div class="mt-3 pt-3 border-t">
-                            <p class="text-xs font-semibold text-gray-700 mb-2">Eventos desta conta:</p>
-                            <div class="space-y-2">
-                              ${userEvents.map(evt => {
-                                const confirmations = allConfirmations.filter(c => c.event_id === evt.id).length;
-                                return `
-                                  <div class="flex items-center justify-between bg-white p-2 rounded text-xs">
-                                    <div class="flex-1">
-                                      <p class="font-medium">${evt.event_name}</p>
-                                      <p class="text-gray-500">${evt.event_type} - ${formatDate(evt.event_date)} • ${confirmations} confirmações</p>
-                                    </div>
-                                    <div class="flex gap-1">
-                                      <button onclick="viewEvent('${evt.id}')" class="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition">Ver</button>
-                                      <button onclick="deleteEventAsAdmin('${evt.id}')" class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition">Eliminar</button>
-                                    </div>
-                                  </div>
-                                `;
-                              }).join('')}
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <!-- Dashboard Tab -->
+        <div id="content-dashboard" class="tab-content">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-users text-2xl text-blue-600"></i>
                             </div>
-                          </div>
-                        ` : ''}
-                      </div>
-                    `;
-                  }).join('')}
-                </div>
-              </div>
-              
-              <!-- All Events -->
-              <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-xl font-bold mb-4">Todos os Eventos (${allEvents.length})</h3>
-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  ${allEvents.length === 0 ? '<p class="col-span-full text-gray-500 text-sm">Nenhum evento criado.</p>' : allEvents.map(event => {
-                    const owner = allUsers.find(u => u.id === event.owner_id);
-                    const confirmations = allConfirmations.filter(c => c.event_id === event.id).length;
-                    return `
-                      <div class="bg-gray-50 rounded-lg border overflow-hidden hover:shadow-lg transition">
-                        ${event.cover_photo ? `
-                          <img src="${event.cover_photo}" alt="${event.event_name}" class="w-full h-32 object-cover" onerror="this.src=''; this.alt='Imagem não disponível'; this.style.display='none';">
-                        ` : `
-                          <div class="w-full h-32 bg-gradient-to-br from-[#5aa189] to-[#4a8c75]"></div>
-                        `}
-                        <div class="p-4">
-                          <p class="font-bold mb-1">${event.event_name}</p>
-                          <p class="text-xs text-gray-600 mb-1">${event.event_type} - ${formatDate(event.event_date)}</p>
-                          <p class="text-xs text-gray-500">Cliente: ${owner ? owner.username : 'Desconhecido'}</p>
-                          <p class="text-xs text-gray-500">Confirmações: ${confirmations}</p>
-                          <div class="grid grid-cols-2 gap-1 mt-2">
-                            <button onclick="viewEvent('${event.id}')" class="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition">Ver</button>
-                            <button onclick="deleteEventAsAdmin('${event.id}')" class="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition">Eliminar</button>
-                          </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Clientes</dt>
+                                    <dd class="text-lg font-medium text-gray-900" id="total-clientes">0</dd>
+                                </dl>
+                            </div>
                         </div>
-                      </div>
-                    `;
-                  }).join('')}
+                    </div>
                 </div>
-              </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-user-friends text-2xl text-green-600"></i>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Convidados</dt>
+                                    <dd class="text-lg font-medium text-gray-900" id="total-convidados">0</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-qrcode text-2xl text-purple-600"></i>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Scans Hoje</dt>
+                                    <dd class="text-lg font-medium text-gray-900" id="scans-hoje">0</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-calendar-check text-2xl text-orange-600"></i>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Eventos Ativos</dt>
+                                    <dd class="text-lg font-medium text-gray-900" id="eventos-ativos">0</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
+
+            <!-- Recent Activity -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Atividade Recente</h3>
+                    <div id="recent-activity" class="space-y-3">
+                        <!-- Activity items will be inserted here -->
+                    </div>
+                </div>
+            </div>
         </div>
-      `;
-    }
 
-    function showCreateUserModal() {
-      const modal = createModal('Criar Nova Conta de Cliente', `
-        <form id="createUserForm" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium mb-2">Username</label>
-            <input type="text" id="newUsername" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189]">
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-2">Senha</label>
-            <input type="text" id="newPassword" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189]">
-          </div>
-        </form>
-      `, `
-        <button onclick="this.closest('.modal-backdrop').remove()" class="flex-1 px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 transition">Cancelar</button>
-        <button onclick="createUser()" class="flex-1 px-4 py-2 bg-[#5aa189] text-white rounded-lg hover:bg-[#4a8c75] transition">Criar</button>
-      `);
-    }
+        <!-- Clientes Tab -->
+        <div id="content-clientes" class="tab-content hidden">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">Gestão de Clientes</h2>
+            </div>
+            <div id="clientes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Cliente cards will be inserted here -->
+            </div>
+        </div>
 
-    async function createUser() {
-      const username = document.getElementById('newUsername').value.trim();
-      const password = document.getElementById('newPassword').value;
+        <!-- Convidados Tab -->
+        <div id="content-convidados" class="tab-content hidden">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">Gestão de Convidados</h2>
+            </div>
 
-      if (!username || !password) {
-        showToast('Preencha todos os campos');
-        return;
-      }
+            <!-- Client Selection View -->
+            <div id="client-selection-view">
+                <div class="mb-6">
+                    <p class="text-gray-600 mb-4">Selecione um cliente para ver seus convidados:</p>
+                </div>
+                <div id="client-selection-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Client selection cards will be inserted here -->
+                </div>
+            </div>
 
-      if (allUsers.find(u => u.username === username)) {
-        showToast('Username já existe');
-        return;
-      }
-
-      document.querySelector('.modal-backdrop').remove();
-      showLoading();
-
-      const { data, error } = await supabase.from('users').insert([
-        { username, password, role: 'client' }
-      ]).select();
-
-      hideLoading();
-
-      if (error) {
-        showToast('Erro ao criar conta');
-        console.error(error);
-      } else {
-        showToast('Conta criada com sucesso!');
-        await loadAllData();
-      }
-    }
-
-    function editUserPassword(userId) {
-      const modal = createModal('Alterar Senha do Cliente', `
-        <form id="editPasswordForm" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium mb-2">Nova Senha</label>
-            <input type="text" id="editPassword" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189]">
-          </div>
-        </form>
-      `, `
-        <button onclick="this.closest('.modal-backdrop').remove()" class="flex-1 px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 transition">Cancelar</button>
-        <button onclick="updateUserPassword('${userId}')" class="flex-1 px-4 py-2 bg-[#5aa189] text-white rounded-lg hover:bg-[#4a8c75] transition">Salvar</button>
-      `);
-    }
-
-    async function updateUserPassword(userId) {
-      const newPassword = document.getElementById('editPassword').value.trim();
-      
-      if (!newPassword) {
-        showToast('Senha não pode estar vazia');
-        return;
-      }
-
-      document.querySelector('.modal-backdrop').remove();
-      showLoading();
-
-      const { error } = await supabase
-        .from('users')
-        .update({ password: newPassword })
-        .eq('id', userId);
-
-      hideLoading();
-      
-      if (error) {
-        showToast('Erro ao alterar senha');
-        console.error(error);
-      } else {
-        showToast('Senha alterada com sucesso!');
-        await loadAllData();
-      }
-    }
-
-    async function deleteUser(userId) {
-      const user = allUsers.find(u => u.id === userId);
-      if (!user) return;
-
-      const modal = createModal('Confirmar Eliminação', `
-        <p class="mb-4">Tem certeza que deseja eliminar a conta <strong>${user.username}</strong>?</p>
-        <p class="text-sm text-red-600">Todos os eventos e dados desta conta serão eliminados permanentemente.</p>
-      `, `
-        <button onclick="this.closest('.modal-backdrop').remove()" class="flex-1 px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 transition">Cancelar</button>
-        <button onclick="confirmDeleteUser('${userId}')" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Eliminar</button>
-      `);
-    }
-
-    async function confirmDeleteUser(userId) {
-      document.querySelector('.modal-backdrop').remove();
-      showLoading();
-
-      const userEvents = allEvents.filter(e => e.owner_id === userId);
-      
-      for (const event of userEvents) {
-        await supabase.from('messages').delete().eq('event_id', event.id);
-        await supabase.from('confirmations').delete().eq('event_id', event.id);
-        await supabase.from('events').delete().eq('id', event.id);
-      }
-      
-      await supabase.from('users').delete().eq('id', userId);
-
-      hideLoading();
-      showToast('Conta e todos os eventos eliminados');
-      await loadAllData();
-    }
-
-    async function deleteEventAsAdmin(eventId) {
-      const event = allEvents.find(e => e.id === eventId);
-      if (!event) return;
-
-      const modal = createModal('Confirmar Eliminação', `
-        <p class="mb-4">Tem certeza que deseja eliminar o evento <strong>${event.event_name}</strong>?</p>
-        <p class="text-sm text-red-600">Esta ação não pode ser desfeita.</p>
-      `, `
-        <button onclick="this.closest('.modal-backdrop').remove()" class="flex-1 px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 transition">Cancelar</button>
-        <button onclick="confirmDeleteEventAsAdmin('${eventId}')" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Eliminar</button>
-      `);
-    }
-
-    async function confirmDeleteEventAsAdmin(eventId) {
-      document.querySelector('.modal-backdrop').remove();
-      showLoading();
-
-      await supabase.from('messages').delete().eq('event_id', eventId);
-      await supabase.from('confirmations').delete().eq('event_id', eventId);
-      await supabase.from('events').delete().eq('id', eventId);
-
-      hideLoading();
-      showToast('Evento eliminado com sucesso');
-      await loadAllData();
-    }
-
-    // ========== CLIENT DASHBOARD ==========
-    function renderClientDashboard(container) {
-      const events = allEvents.filter(e => e.owner_id === currentUser.id);
-      
-      container.innerHTML = `
-        <div class="p-4">
-          <div class="max-w-4xl mx-auto">
-            <h2 class="text-3xl font-bold heading-font text-[#5aa189] mb-6">Meus Eventos</h2>
-            <button onclick="showCreateEvent()" class="w-full bg-gradient-to-r from-[#5aa189] to-[#4a8c75] text-white py-4 rounded-lg hover:from-[#4a8c75] hover:to-[#3a7560] font-semibold mb-6 transition shadow-md">
-              + Criar Novo Evento
-            </button>
-            <div class="space-y-4">
-              ${events.length === 0 ? '<p class="text-gray-500 text-center py-8">Você ainda não criou nenhum evento.</p>' : events.map(event => {
-                const confirmations = allConfirmations.filter(c => c.event_id === event.id);
-                const link = `${window.location.origin}${window.location.pathname}#event=${event.id}`;
-                
-                const now = new Date();
-                const deadline = new Date(event.confirmation_deadline);
-                const eventDate = new Date(event.event_date);
-                const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
-                
-                let deadlineAlert = '';
-                
-                if (now > eventDate) {
-                  deadlineAlert = `
-                    <div class="mb-3 p-3 bg-gray-100 border-2 border-gray-400 rounded-lg text-gray-700">
-                      <p class="text-sm font-semibold">📅 Evento já realizado</p>
+            <!-- Guest Management View -->
+            <div id="guest-management-view" class="hidden">
+                <div class="mb-6 flex items-center justify-between">
+                    <div class="flex items-center">
+                        <button onclick="backToClientSelection()" class="mr-4 text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-arrow-left mr-2"></i>Voltar
+                        </button>
+                        <h3 class="text-xl font-semibold text-gray-900" id="selected-client-name">Cliente</h3>
                     </div>
-                  `;
-                } else if (now > deadline) {
-                  deadlineAlert = `
-                    <div class="mb-3 p-3 bg-red-50 border-2 border-red-300 rounded-lg text-red-700">
-                      <p class="text-sm font-semibold">⏰ Prazo de confirmação encerrado</p>
-                      <p class="text-xs">Encerrado em ${formatDate(event.confirmation_deadline)}</p>
+                    <div class="flex space-x-2">
+                        <button onclick="generateClientReport()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm">
+                            <i class="fas fa-file-pdf mr-2"></i>Relatório PDF
+                        </button>
+                        <button onclick="activateAllGuests()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
+                            <i class="fas fa-check-circle mr-2"></i>Ativar Todos
+                        </button>
+                        <button onclick="deactivateAllGuests()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm">
+                            <i class="fas fa-ban mr-2"></i>Desativar Todos
+                        </button>
+                        <button onclick="resetAllScans()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm">
+                            <i class="fas fa-undo mr-2"></i>Resetar Scans
+                        </button>
                     </div>
-                  `;
-                } else if (daysLeft > 0) {
-                  let bgColor, borderColor, textColor, icon, urgencyText;
-                  
-                  if (daysLeft <= 3) {
-                    bgColor = 'bg-red-50';
-                    borderColor = 'border-red-400';
-                    textColor = 'text-red-700';
-                    icon = '🚨';
-                    urgencyText = 'URGENTE';
-                  } else if (daysLeft <= 7) {
-                    bgColor = 'bg-orange-50';
-                    borderColor = 'border-orange-400';
-                    textColor = 'text-orange-700';
-                    icon = '⚠️';
-                    urgencyText = 'ATENÇÃO';
-                  } else if (daysLeft <= 14) {
-                    bgColor = 'bg-yellow-50';
-                    borderColor = 'border-yellow-400';
-                    textColor = 'text-yellow-700';
-                    icon = '⏰';
-                    urgencyText = 'LEMBRETE';
-                  } else {
-                    bgColor = 'bg-blue-50';
-                    borderColor = 'border-blue-300';
-                    textColor = 'text-blue-700';
-                    icon = '📅';
-                    urgencyText = '';
-                  }
-                  
-                  deadlineAlert = `
-                    <div class="mb-3 p-3 ${bgColor} border-2 ${borderColor} rounded-lg ${textColor}">
-                      <div class="flex items-center gap-2">
-                        <span class="text-xl">${icon}</span>
-                        <div class="flex-1">
-                          ${urgencyText ? `<p class="text-xs font-bold mb-1">${urgencyText}</p>` : ''}
-                          <p class="text-sm font-semibold">
-                            ${daysLeft === 1 ? 'Último dia para confirmações!' : `Faltam ${daysLeft} dias para o prazo`}
-                          </p>
-                          <p class="text-xs">Prazo: ${formatDate(event.confirmation_deadline)}</p>
+                </div>
+
+                <!-- Filters -->
+                <div class="bg-white p-4 rounded-lg shadow mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
+                            <input type="text" id="search-convidado" placeholder="Nome ou código..." 
+                                   onkeyup="filterConvidados()" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
-                      </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                            <select id="filter-status" onchange="filterConvidados()" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Todos os status</option>
+                                <option value="ativo">Ativo</option>
+                                <option value="inativo">Inativo</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Scan Status</label>
+                            <select id="filter-scan-status" onchange="filterConvidados()" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Todos</option>
+                                <option value="scanned">Escaneados</option>
+                                <option value="not-scanned">Não Escaneados</option>
+                            </select>
+                        </div>
                     </div>
-                  `;
+                </div>
+
+                <div id="convidados-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Guest cards will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Importar Tab -->
+        <div id="content-importar" class="tab-content hidden">
+            <div class="max-w-2xl mx-auto">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Importar Convidados</h2>
+                    <p class="text-gray-600">Faça upload de um ficheiro .txt com a lista de convidados</p>
+                </div>
+
+                <!-- Client Selection -->
+                <div class="bg-white p-6 rounded-lg shadow mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Selecionar Cliente</label>
+                    <select id="import-cliente" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Escolha um cliente...</option>
+                    </select>
+                </div>
+
+                <!-- File Upload -->
+                <div class="bg-white p-6 rounded-lg shadow mb-6">
+                    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-lg text-gray-600 mb-2">Arraste o ficheiro aqui ou clique para selecionar</p>
+                        <p class="text-sm text-gray-500">Apenas ficheiros .txt são aceites</p>
+                        <input type="file" id="file-input" accept=".txt" class="hidden">
+                    </div>
+                </div>
+
+                <!-- File Preview -->
+                <div id="file-preview" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Pré-visualização do Ficheiro</h3>
+                    <div class="bg-gray-50 p-4 rounded-lg max-h-64 overflow-y-auto">
+                        <pre id="file-content" class="text-sm text-gray-700 whitespace-pre-wrap"></pre>
+                    </div>
+                </div>
+
+                <!-- Import Progress -->
+                <div id="import-progress" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Progresso da Importação</h3>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                        <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <p id="progress-text" class="text-sm text-gray-600">Preparando...</p>
+                </div>
+
+                <!-- Import Button -->
+                <button id="import-btn" onclick="importFile()" disabled 
+                        class="w-full bg-gray-400 text-white py-2 px-4 rounded-lg cursor-not-allowed">
+                    <i class="fas fa-upload mr-2"></i>Importar Convidados
+                </button>
+            </div>
+        </div>
+
+        <!-- Relatórios Tab -->
+        <div id="content-relatorios" class="tab-content hidden">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">Relatórios e Logs</h2>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white p-6 rounded-lg shadow mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Cliente</label>
+                        <select id="report-cliente" onchange="loadReports()" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Todos os clientes</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Data Início</label>
+                        <input type="date" id="report-start" onchange="loadReports()" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Data Fim</label>
+                        <input type="date" id="report-end" onchange="loadReports()" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="loadReports()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">
+                            <i class="fas fa-search mr-2"></i>Filtrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="flex items-center">
+                        <i class="fas fa-qrcode text-2xl text-green-600 mr-4"></i>
+                        <div>
+                            <p class="text-sm text-gray-600">Total Validações</p>
+                            <p class="text-2xl font-bold text-gray-900" id="total-validacoes">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="flex items-center">
+                        <i class="fas fa-calendar-day text-2xl text-blue-600 mr-4"></i>
+                        <div>
+                            <p class="text-sm text-gray-600">Validações Hoje</p>
+                            <p class="text-2xl font-bold text-gray-900" id="validacoes-hoje">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="flex items-center">
+                        <i class="fas fa-percentage text-2xl text-purple-600 mr-4"></i>
+                        <div>
+                            <p class="text-sm text-gray-600">Taxa de Sucesso</p>
+                            <p class="text-2xl font-bold text-gray-900" id="taxa-sucesso">0%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs Table -->
+            <div class="bg-white shadow rounded-lg overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data/Hora</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente/Token</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ação</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dispositivo</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-table" class="bg-white divide-y divide-gray-200">
+                        <!-- Log entries will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- New Client Modal -->
+    <div id="newClientModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Novo Cliente</h3>
+            </div>
+            <form id="newClientForm" class="px-6 py-4">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Cliente</label>
+                    <input type="text" id="clientName" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Data de Validade</label>
+                    <input type="date" id="clientValidade" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Limite de Scans</label>
+                    <input type="number" id="clientLimite" required min="1" value="1000"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeNewClientModal()" 
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md">
+                        Cancelar
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md">
+                        Criar Cliente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Client Modal -->
+    <div id="editClientModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Editar Cliente</h3>
+            </div>
+            <form id="editClientForm" class="px-6 py-4">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Cliente</label>
+                    <input type="text" id="editClientName" readonly 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600">
+                    <p class="text-xs text-gray-500 mt-1">O nome não pode ser alterado</p>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Token</label>
+                    <input type="text" id="editClientToken" readonly 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600">
+                    <p class="text-xs text-gray-500 mt-1">O token não pode ser alterado</p>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Data de Validade</label>
+                    <input type="date" id="editClientValidade" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Limite de Scans</label>
+                    <input type="number" id="editClientLimite" required min="1"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeEditClientModal()" 
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md">
+                        Cancelar
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md">
+                        Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+    <script>
+        // Supabase configuration
+        let supabaseUrl = localStorage.getItem('supabaseUrl') || 'https://rnvunprjvppbjavkaoek.supabase.co';
+        let supabaseKey = localStorage.getItem('supabaseKey') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJudnVucHJqdnBwYmphdmthb2VrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE2NjYzOTksImV4cCI6MjA2NzI0MjM5OX0.5E37Qm-KMmyGtGKbOINbDqMQlZlfgcQx91RQ01qslT8';
+        let supabase = null;
+
+        // Initialize Supabase with provided credentials
+        try {
+            supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+            console.log('✅ Supabase conectado com sucesso!');
+        } catch (error) {
+            console.error('Erro ao conectar com Supabase:', error);
+            showToast('Erro ao conectar com Supabase', 'error');
+        }
+
+
+
+        // Initialize database schema if needed
+        async function initializeSchema() {
+            console.log('Schema inicializado - usando estrutura padrão das tabelas');
+        }
+
+        // Global variables
+        let clientes = [];
+        let convidados = [];
+        let filteredConvidados = [];
+        let logs = [];
+        let selectedClienteToken = null;
+        let realtimeChannel = null;
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            setupNewClientForm();
+            setupFileUpload();
+            
+            // Only initialize if Supabase is configured
+            if (supabase) {
+                initializeApp();
+            }
+        });
+
+        // Check for expiring tokens
+        function checkExpiringTokens() {
+            const now = new Date();
+            const warningDays = 7; // Warn 7 days before expiration
+            const warningTime = new Date(now.getTime() + (warningDays * 24 * 60 * 60 * 1000));
+            
+            const expiringClients = clientes.filter(cliente => {
+                const validade = new Date(cliente.validade * 1000);
+                return validade > now && validade <= warningTime;
+            });
+
+            const expiredClients = clientes.filter(cliente => {
+                const validade = new Date(cliente.validade * 1000);
+                return validade <= now;
+            });
+
+            // Show warnings for expiring tokens
+            expiringClients.forEach(cliente => {
+                const validade = new Date(cliente.validade * 1000);
+                const daysLeft = Math.ceil((validade - now) / (1000 * 60 * 60 * 24));
+                
+                showExpirationWarning(cliente.nome, cliente.token, daysLeft, 'warning');
+            });
+
+            // Show alerts for expired tokens
+            expiredClients.forEach(cliente => {
+                showExpirationWarning(cliente.nome, cliente.token, 0, 'expired');
+            });
+
+            // Update header notification badge
+            updateNotificationBadge(expiringClients.length + expiredClients.length);
+        }
+
+        function showExpirationWarning(clienteNome, token, daysLeft, type) {
+            const message = type === 'expired' 
+                ? `Token do cliente "${clienteNome}" expirou!`
+                : `Token do cliente "${clienteNome}" expira em ${daysLeft} dia${daysLeft !== 1 ? 's' : ''}`;
+            
+            const toastType = type === 'expired' ? 'error' : 'warning';
+            
+            // Create persistent warning toast
+            const toast = document.createElement('div');
+            toast.className = `toast bg-white border-l-4 ${
+                type === 'expired' ? 'border-red-500' : 'border-yellow-500'
+            } p-4 shadow-lg rounded-r-lg max-w-sm mb-2`;
+            
+            toast.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <i class="fas fa-${type === 'expired' ? 'exclamation-triangle text-red-500' : 'clock text-yellow-500'} mr-3"></i>
+                        <div>
+                            <div class="text-gray-900 font-medium">${message}</div>
+                            <div class="text-sm text-gray-600">Token: ${token}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center ml-4">
+                        <button onclick="editClient('${token}')" class="text-blue-600 hover:text-blue-800 mr-2" title="Renovar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="this.closest('.toast').remove()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('toast-container').appendChild(toast);
+
+            // Don't auto-remove expiration warnings
+            if (type !== 'expired' && type !== 'warning') {
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.remove();
+                    }
+                }, 10000);
+            }
+        }
+
+        function updateNotificationBadge(count) {
+            let badge = document.getElementById('notification-badge');
+            
+            if (count > 0) {
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.id = 'notification-badge';
+                    badge.className = 'absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center';
+                    
+                    const bellIcon = document.querySelector('.fa-bell').parentElement;
+                    bellIcon.style.position = 'relative';
+                    bellIcon.appendChild(badge);
                 }
+                badge.textContent = count > 99 ? '99+' : count;
+                badge.classList.remove('hidden');
+            } else if (badge) {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function showNotifications() {
+            const now = new Date();
+            const warningDays = 7;
+            const warningTime = new Date(now.getTime() + (warningDays * 24 * 60 * 60 * 1000));
+            
+            const expiringClients = clientes.filter(cliente => {
+                const validade = new Date(cliente.validade * 1000);
+                return validade > now && validade <= warningTime;
+            });
+
+            const expiredClients = clientes.filter(cliente => {
+                const validade = new Date(cliente.validade * 1000);
+                return validade <= now;
+            });
+
+            // Create notifications modal
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-900">
+                            <i class="fas fa-bell mr-2"></i>Notificações
+                        </h3>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    <div class="p-6 overflow-y-auto max-h-[60vh]">
+                        <div id="notifications-content">
+                            ${generateNotificationsContent(expiredClients, expiringClients)}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+
+        function generateNotificationsContent(expiredClients, expiringClients) {
+            if (expiredClients.length === 0 && expiringClients.length === 0) {
+                return `
+                    <div class="text-center py-8">
+                        <i class="fas fa-check-circle text-4xl text-green-500 mb-4"></i>
+                        <h4 class="text-lg font-medium text-gray-900 mb-2">Tudo em ordem!</h4>
+                        <p class="text-gray-600">Não há tokens expirados ou próximos do vencimento.</p>
+                    </div>
+                `;
+            }
+
+            let content = '';
+
+            // Expired tokens
+            if (expiredClients.length > 0) {
+                content += `
+                    <div class="mb-6">
+                        <h4 class="text-lg font-medium text-red-600 mb-4 flex items-center">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            Tokens Expirados (${expiredClients.length})
+                        </h4>
+                        <div class="space-y-3">
+                            ${expiredClients.map(cliente => {
+                                const validade = new Date(cliente.validade * 1000);
+                                const daysExpired = Math.ceil((new Date() - validade) / (1000 * 60 * 60 * 24));
+                                return `
+                                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h5 class="font-medium text-gray-900">${cliente.nome}</h5>
+                                                <p class="text-sm text-gray-600">Token: ${cliente.token}</p>
+                                                <p class="text-sm text-red-600">Expirou há ${daysExpired} dia${daysExpired !== 1 ? 's' : ''}</p>
+                                            </div>
+                                            <div class="flex space-x-2">
+                                                <button onclick="editClient('${cliente.token}'); this.closest('.fixed').remove();" 
+                                                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                                                    <i class="fas fa-edit mr-1"></i>Renovar
+                                                </button>
+                                                <button onclick="viewClientGuests('${cliente.token}'); this.closest('.fixed').remove();" 
+                                                        class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm">
+                                                    <i class="fas fa-users mr-1"></i>Ver
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Expiring tokens
+            if (expiringClients.length > 0) {
+                content += `
+                    <div class="mb-6">
+                        <h4 class="text-lg font-medium text-yellow-600 mb-4 flex items-center">
+                            <i class="fas fa-clock mr-2"></i>
+                            Tokens Próximos do Vencimento (${expiringClients.length})
+                        </h4>
+                        <div class="space-y-3">
+                            ${expiringClients.map(cliente => {
+                                const validade = new Date(cliente.validade * 1000);
+                                const daysLeft = Math.ceil((validade - new Date()) / (1000 * 60 * 60 * 24));
+                                return `
+                                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h5 class="font-medium text-gray-900">${cliente.nome}</h5>
+                                                <p class="text-sm text-gray-600">Token: ${cliente.token}</p>
+                                                <p class="text-sm text-yellow-600">Expira em ${daysLeft} dia${daysLeft !== 1 ? 's' : ''}</p>
+                                            </div>
+                                            <div class="flex space-x-2">
+                                                <button onclick="editClient('${cliente.token}'); this.closest('.fixed').remove();" 
+                                                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                                                    <i class="fas fa-edit mr-1"></i>Renovar
+                                                </button>
+                                                <button onclick="viewClientGuests('${cliente.token}'); this.closest('.fixed').remove();" 
+                                                        class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm">
+                                                    <i class="fas fa-users mr-1"></i>Ver
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            return content;
+        }
+
+        function initializeApp() {
+            if (!supabase) {
+                showToast('Supabase não configurado', 'error');
+                return;
+            }
+            
+            initializeSchema();
+            loadData();
+            setupRealtime();
+            
+            // Check for expiring tokens every hour
+            setInterval(checkExpiringTokens, 60 * 60 * 1000);
+        }
+
+        // Setup realtime subscriptions
+        function setupRealtime() {
+            // Subscribe to scans_realtime for real-time scan updates
+            realtimeChannel = supabase
+                .channel('realtime-scans')
+                .on('postgres_changes', 
+                    { event: 'INSERT', schema: 'public', table: 'scans_realtime' }, 
+                    (payload) => {
+                        handleRealtimeScan(payload.new);
+                    }
+                )
+                .on('postgres_changes', 
+                    { event: '*', schema: 'public', table: 'convidados' }, 
+                    (payload) => {
+                        loadConvidados();
+                    }
+                )
+                .on('postgres_changes', 
+                    { event: '*', schema: 'public', table: 'clientes' }, 
+                    (payload) => {
+                        loadClientes();
+                    }
+                )
+                .on('postgres_changes', 
+                    { event: 'INSERT', schema: 'public', table: 'logs' }, 
+                    (payload) => {
+                        handleRealtimeLog(payload.new);
+                    }
+                )
+                .subscribe((status) => {
+                    const statusEl = document.getElementById('realtime-status');
+                    if (status === 'SUBSCRIBED') {
+                        statusEl.textContent = 'Tempo Real Ativo';
+                        statusEl.previousElementSibling.className = 'w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse';
+                    } else if (status === 'CHANNEL_ERROR') {
+                        statusEl.textContent = 'Erro de Conexão';
+                        statusEl.previousElementSibling.className = 'w-2 h-2 bg-red-500 rounded-full mr-2';
+                    } else {
+                        statusEl.textContent = 'Conectando...';
+                        statusEl.previousElementSibling.className = 'w-2 h-2 bg-yellow-500 rounded-full mr-2 animate-pulse';
+                    }
+                });
+        }
+
+        // Handle real-time scan updates
+        function handleRealtimeScan(scanData) {
+            showToast(`Scan detectado: ${scanData.codigo_convidado}`, 'success');
+            
+            // Update dashboard metrics
+            updateDashboard();
+            
+            // Refresh current view if needed
+            if (selectedClienteToken === scanData.token_cliente) {
+                loadConvidados();
+            }
+        }
+
+        // Handle real-time log updates
+        function handleRealtimeLog(logData) {
+            // Refresh logs if we're on the reports tab
+            const currentTab = document.querySelector('.tab-active').id;
+            if (currentTab === 'tab-relatorios') {
+                loadReports();
+            }
+            
+            // Update dashboard
+            updateDashboard();
+        }
+
+        // Log admin panel access - REMOVED
+        // Admin access is no longer automatically logged to keep reports clean
+
+        // Manual function to log a client login (for testing)
+        async function logClientLogin(token) {
+            try {
+                const now = new Date().toISOString();
+                const userAgent = navigator.userAgent;
+                const dispositivo = getDeviceInfo(userAgent);
+                
+                const logEntry = {
+                    token: token,
+                    status: 'login',
+                    data: now,
+                    dispositivo: dispositivo
+                };
+                
+                console.log('Registrando login do cliente:', logEntry);
+                
+                const { data, error } = await supabase.from('logs').insert([logEntry]).select();
+                
+                if (error) {
+                    console.error('Erro ao inserir log de cliente:', error);
+                    showToast('Erro ao registrar login: ' + error.message, 'error');
+                } else {
+                    console.log('Client login logged successfully:', data);
+                    showToast('Login registrado com sucesso!', 'success');
+                    
+                    // Refresh reports if we're on that tab
+                    const currentTab = document.querySelector('.tab-active').id;
+                    if (currentTab === 'tab-relatorios') {
+                        loadReports();
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao registrar login do cliente:', error);
+                showToast('Erro ao registrar login', 'error');
+            }
+        }
+
+        // Get device info from user agent
+        function getDeviceInfo(userAgent) {
+            if (/Mobile|Android|iPhone|iPad/.test(userAgent)) {
+                if (/iPhone/.test(userAgent)) return 'iPhone';
+                if (/iPad/.test(userAgent)) return 'iPad';
+                if (/Android/.test(userAgent)) return 'Android';
+                return 'Mobile';
+            }
+            
+            if (/Windows/.test(userAgent)) return 'Windows';
+            if (/Mac/.test(userAgent)) return 'Mac';
+            if (/Linux/.test(userAgent)) return 'Linux';
+            
+            return 'Desktop';
+        }
+
+        // Load all data
+        async function loadData() {
+            await Promise.all([
+                loadClientes(),
+                loadConvidados(),
+                loadLogs()
+            ]);
+            updateDashboard();
+            updateFilters();
+            checkExpiringTokens();
+        }
+
+        // Load clientes
+        async function loadClientes() {
+            try {
+                const { data, error } = await supabase
+                    .from('clientes')
+                    .select('*')
+                    .order('id', { ascending: false });
+                
+                if (error) throw error;
+                clientes = data || [];
+                renderClientes();
+                renderClientSelection();
+            } catch (error) {
+                showToast('Erro ao carregar clientes', 'error');
+            }
+        }
+
+        // Load convidados
+        async function loadConvidados() {
+            try {
+                const { data, error } = await supabase
+                    .from('convidados')
+                    .select('*')
+                    .order('id', { ascending: false });
+                
+                if (error) throw error;
+                convidados = data || [];
+                filteredConvidados = [...convidados];
+                renderConvidados();
+            } catch (error) {
+                console.error('Erro ao carregar convidados:', error);
+                showToast('Erro ao carregar convidados: ' + error.message, 'error');
+            }
+        }
+
+        // Load logs from both scans_realtime and logs tables
+        async function loadLogs() {
+            logs = [];
+            
+            try {
+                // Load scan logs from scans_realtime
+                const { data: scanData, error: scanError } = await supabase
+                    .from('scans_realtime')
+                    .select('*')
+                    .order('data_scan', { ascending: false })
+                    .limit(100);
+                
+                if (!scanError && scanData) {
+                    // Transform scans_realtime data to match logs format
+                    const scanLogs = scanData.map(scan => ({
+                        token: scan.codigo_convidado,
+                        status: 'scan',
+                        data: scan.data_scan,
+                        token_cliente: scan.token_cliente,
+                        dispositivo: scan.dispositivo
+                    }));
+                    logs.push(...scanLogs);
+                }
+            } catch (error) {
+                console.log('Tabela scans_realtime não disponível');
+            }
+
+            try {
+                // Load other logs from logs table
+                const { data: logData, error: logError } = await supabase
+                    .from('logs')
+                    .select('*')
+                    .order('data', { ascending: false })
+                    .limit(100);
+                
+                if (!logError && logData) {
+                    const otherLogs = logData.map(log => ({
+                        token: log.token,
+                        status: log.status,
+                        data: log.data,
+                        dispositivo: log.dispositivo
+                    }));
+                    logs.push(...otherLogs);
+                }
+            } catch (error) {
+                console.log('Tabela logs não disponível');
+            }
+
+            // Sort all logs by date
+            logs.sort((a, b) => new Date(b.data) - new Date(a.data));
+            
+            // Keep only the most recent 100 logs
+            logs = logs.slice(0, 100);
+        }
+
+        // Tab management
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Remove active class from all tab buttons
+            document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+                btn.className = btn.className.replace('tab-active', 'tab-inactive').replace('border-blue-600', 'border-transparent');
+            });
+            
+            // Show selected tab
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+            
+            // Add active class to selected tab button
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            activeBtn.className = activeBtn.className.replace('tab-inactive', 'tab-active').replace('border-transparent', 'border-blue-600');
+            
+            // Load specific data if needed
+            if (tabName === 'relatorios') {
+                loadReports();
+            } else if (tabName === 'convidados') {
+                // Reset to client selection view
+                backToClientSelection();
+            }
+        }
+
+        // Update dashboard metrics
+        function updateDashboard() {
+            const today = new Date().toISOString().split('T')[0];
+            const scansToday = logs.filter(log => 
+                log.status === 'scan' && log.data.startsWith(today)
+            ).length;
+            
+            const eventosAtivos = clientes.filter(cliente => {
+                const validade = new Date(cliente.validade * 1000);
+                return validade >= new Date();
+            }).length;
+
+            document.getElementById('total-clientes').textContent = clientes.length;
+            document.getElementById('total-convidados').textContent = convidados.length;
+            document.getElementById('scans-hoje').textContent = scansToday;
+            document.getElementById('eventos-ativos').textContent = eventosAtivos;
+
+            // Recent activity (excluding admin logs)
+            const recentLogs = logs.filter(log => 
+                log.token !== 'admin-panel' && log.status !== 'admin_login'
+            ).slice(0, 5);
+            
+            const activityHtml = recentLogs.length > 0 ? 
+                recentLogs.map(log => {
+                    let clienteNome = '';
+                    let displayToken = log.token;
+                    
+                    // Find client name for this token
+                    const cliente = clientes.find(c => c.token === log.token || c.token === log.token_cliente);
+                    if (cliente) {
+                        clienteNome = cliente.nome;
+                    } else if (log.token_cliente) {
+                        // For scans, try to find by token_cliente
+                        const clienteByToken = clientes.find(c => c.token === log.token_cliente);
+                        if (clienteByToken) {
+                            clienteNome = clienteByToken.nome;
+                            displayToken = log.token_cliente;
+                        }
+                    }
+                    
+                    return `
+                        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                            <div class="flex items-center flex-1 min-w-0">
+                                <i class="fas fa-${log.status === 'scan' ? 'qrcode text-green-500' : 'sign-in-alt text-blue-500'} text-sm mr-3"></i>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-sm font-medium text-gray-900 truncate">
+                                        ${clienteNome || 'Cliente não encontrado'}
+                                    </div>
+                                    <div class="text-xs text-gray-500 truncate">
+                                        ${displayToken} • ${log.status === 'scan' ? 'Scan' : 'Login'}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-500 ml-2 flex-shrink-0">
+                                ${new Date(log.data).toLocaleString('pt-PT')}
+                            </div>
+                        </div>
+                    `;
+                }).join('') :
+                '<div class="text-gray-500 text-center py-4">Nenhuma atividade recente</div>';
+            
+            document.getElementById('recent-activity').innerHTML = activityHtml;
+        }
+
+        // Render clientes
+        function renderClientes() {
+            const grid = document.getElementById('clientes-grid');
+            
+            if (clientes.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">Nenhum cliente encontrado</div>';
+                return;
+            }
+
+            const clientesHtml = clientes.map(cliente => {
+                const validade = new Date(cliente.validade * 1000);
+                const isExpired = validade < new Date();
+                
+                const convidadosCount = convidados.filter(c => 
+                    c.token_cliente && cliente.token && c.token_cliente.toString() === cliente.token.toString()
+                ).length;
                 
                 return `
-                  <div class="bg-white rounded-lg shadow-md p-6">
-                    ${event.cover_photo ? `<img src="${event.cover_photo}" alt="${event.event_name}" class="w-full h-48 object-cover rounded-lg mb-4" onerror="this.src=''; this.alt='Imagem não disponível'; this.style.display='none';">` : ''}
-                    <h3 class="text-xl font-bold mb-2 couple-names">${event.event_name}</h3>
-                    <p class="text-sm text-gray-600 mb-1">${event.event_type} - ${formatDate(event.event_date)}</p>
-                    <p class="text-sm text-gray-600 mb-4">✓ ${confirmations.length} confirmações</p>
-                    
-                    ${deadlineAlert}
-                    
-                    <div class="flex gap-2 mb-3">
-                      <input type="text" value="${link}" readonly class="flex-1 text-xs px-3 py-2 bg-gray-50 border rounded-lg" onclick="this.select()">
-                      <button onclick="copyToClipboard('${link}')" class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
-                        Copiar Link
-                      </button>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                      <button onclick="viewEvent('${event.id}')" class="px-4 py-2 bg-[#5aa189] text-white rounded-lg hover:bg-[#4a8c75] transition">
-                        Ver Detalhes
-                      </button>
-                      <button onclick="editEvent('${event.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                        Editar
-                      </button>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function showCreateEvent() {
-      showView('eventForm');
-    }
-
-    function editEvent(eventId) {
-      currentEventId = eventId;
-      showView('eventForm');
-    }
-
-    function renderEventForm(container) {
-      const isEdit = currentEventId && allEvents.find(e => e.id === currentEventId);
-      const event = isEdit || {};
-
-      container.innerHTML = `
-        <div class="p-4">
-          <div class="max-w-2xl mx-auto">
-            <div class="bg-white rounded-lg shadow-lg p-8">
-              <h2 class="text-3xl font-bold heading-font text-[#5aa189] mb-6">${isEdit ? 'Editar Evento' : 'Criar Novo Evento'}</h2>
-              <form id="eventForm" class="space-y-5">
-                <div>
-                  <label class="block text-sm font-medium mb-2">Tipo de Evento *</label>
-                  <select id="eventType" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189]">
-                    <option value="">Selecione...</option>
-                    <option value="casamento" ${event.event_type === 'casamento' ? 'selected' : ''}>Casamento</option>
-                    <option value="noivado" ${event.event_type === 'noivado' ? 'selected' : ''}>Noivado</option>
-                    <option value="aniversario" ${event.event_type === 'aniversario' ? 'selected' : ''}>Aniversário</option>
-                  </select>
-                </div>
-
-                <div id="weddingFields" class="hidden space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium mb-2">Nome do Noivo *</label>
-                    <input type="text" id="groomName" value="${event.groom_name || ''}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189]">
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium mb-2">Nome da Noiva *</label>
-                    <input type="text" id="brideName" value="${event.bride_name || ''}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189]">
-                  </div>
-                </div>
-
-                <div id="birthdayFields" class="hidden">
-                  <label class="block text-sm font-medium mb-2">Nome do Aniversariante *</label>
-                  <input type="text" id="birthdayName" value="${event.groom_name || ''}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189]">
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium mb-2">Data do Evento *</label>
-                  <input type="date" id="eventDate" value="${event.event_date || ''}" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189]">
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium mb-2">Data Limite para Confirmação *</label>
-                  <input type="date" id="confirmationDeadline" value="${event.confirmation_deadline || ''}" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189]">
-                </div>
-
-                <div class="flex items-center gap-3">
-                  <input type="checkbox" id="allowCompanions" ${event.allow_companions ? 'checked' : ''} class="w-5 h-5 text-[#5aa189] rounded">
-                  <label class="text-sm font-medium">Permitir Acompanhantes</label>
-                </div>
-
-                <div id="maxCompanionsField" class="hidden">
-                  <label class="block text-sm font-medium mb-2">Número Máximo de Acompanhantes</label>
-                  <input type="number" id="maxCompanions" min="1" value="${event.max_companions || 2}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189]">
-                </div>
-
-                <div class="flex items-center gap-3">
-                  <input type="checkbox" id="allowChildren" ${event.allow_children ? 'checked' : ''} class="w-5 h-5 text-[#5aa189] rounded">
-                  <label class="text-sm font-medium">Permitir Crianças</label>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium mb-2">Foto de Capa</label>
-                  <input type="file" id="coverPhotoInput" accept="image/*" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
-                  ${event.cover_photo ? `<img src="${event.cover_photo}" class="mt-2 w-full h-32 object-cover rounded-lg" onerror="this.src=''; this.alt='Imagem não disponível'; this.style.display='none';">` : ''}
-                </div>
-
-                <button type="submit" class="w-full bg-gradient-to-r from-[#5aa189] to-[#4a8c75] text-white py-4 rounded-lg hover:from-[#4a8c75] hover:to-[#3a7560] font-semibold transition">
-                  ${isEdit ? 'Atualizar Evento' : 'Criar Evento'}
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      `;
-
-      document.getElementById('eventType').addEventListener('change', updateEventFields);
-      document.getElementById('allowCompanions').addEventListener('change', updateCompanionsField);
-      document.getElementById('eventForm').addEventListener('submit', handleSaveEvent);
-      document.getElementById('coverPhotoInput').addEventListener('change', handleCoverPhoto);
-      
-      updateEventFields();
-      updateCompanionsField();
-    }
-
-    function updateEventFields() {
-      const type = document.getElementById('eventType').value;
-      const wedding = document.getElementById('weddingFields');
-      const birthday = document.getElementById('birthdayFields');
-
-      wedding.classList.add('hidden');
-      birthday.classList.add('hidden');
-
-      if (type === 'casamento' || type === 'noivado') {
-        wedding.classList.remove('hidden');
-      } else if (type === 'aniversario') {
-        birthday.classList.remove('hidden');
-      }
-    }
-
-    function updateCompanionsField() {
-      const checked = document.getElementById('allowCompanions').checked;
-      const field = document.getElementById('maxCompanionsField');
-      
-      if (checked) {
-        field.classList.remove('hidden');
-      } else {
-        field.classList.add('hidden');
-      }
-    }
-
-    let pendingCoverPhoto = null;
-
-    function handleCoverPhoto(e) {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          pendingCoverPhoto = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-
-    async function handleSaveEvent(e) {
-      e.preventDefault();
-
-      const type = document.getElementById('eventType').value;
-      let name = '';
-
-      if (type === 'casamento' || type === 'noivado') {
-        const groom = document.getElementById('groomName').value.trim();
-        const bride = document.getElementById('brideName').value.trim();
-        if (!groom || !bride) {
-          showToast('Preencha os nomes do noivo e noiva');
-          return;
-        }
-        name = `${groom} & ${bride}`;
-      } else {
-        const birthday = document.getElementById('birthdayName').value.trim();
-        if (!birthday) {
-          showToast('Preencha o nome do aniversariante');
-          return;
-        }
-        name = birthday;
-      }
-
-      showLoading();
-
-      const eventData = {
-        event_name: name,
-        event_type: type,
-        groom_name: document.getElementById('groomName')?.value || document.getElementById('birthdayName')?.value || '',
-        bride_name: document.getElementById('brideName')?.value || '',
-        event_date: document.getElementById('eventDate').value,
-        confirmation_deadline: document.getElementById('confirmationDeadline').value,
-        allow_companions: document.getElementById('allowCompanions').checked,
-        max_companions: parseInt(document.getElementById('maxCompanions').value) || 2,
-        allow_children: document.getElementById('allowChildren').checked,
-        owner_id: currentUser.id
-      };
-
-      const isEdit = currentEventId && allEvents.find(e => e.id === currentEventId);
-
-      if (isEdit) {
-        const existing = allEvents.find(e => e.id === currentEventId);
-        eventData.cover_photo = pendingCoverPhoto || existing.cover_photo || '';
-        eventData.photos = existing.photos || [];
-        
-        const { error } = await supabase
-          .from('events')
-          .update(eventData)
-          .eq('id', currentEventId);
-
-        hideLoading();
-
-        if (error) {
-          showToast('Erro ao atualizar evento');
-          console.error(error);
-        } else {
-          showToast('Evento atualizado com sucesso!');
-          pendingCoverPhoto = null;
-          currentEventId = null;
-          await loadAllData();
-          showView('clientDashboard');
-        }
-      } else {
-        eventData.cover_photo = pendingCoverPhoto || '';
-        eventData.photos = [];
-        
-        const { error } = await supabase
-          .from('events')
-          .insert([eventData])
-          .select();
-
-        hideLoading();
-
-        if (error) {
-          showToast('Erro ao criar evento');
-          console.error(error);
-        } else {
-          showToast('Evento criado com sucesso!');
-          pendingCoverPhoto = null;
-          await loadAllData();
-          showView('clientDashboard');
-        }
-      }
-    }
-
-    function viewEvent(eventId) {
-      currentEventId = eventId;
-      window.location.hash = `event=${eventId}`;
-      showView('eventDetail');
-    }
-    
-    function toggleCompanionNames() {
-      const num = parseInt(document.getElementById('companions')?.value || 0);
-      const container = document.getElementById('companionNamesContainer');
-      const list = document.getElementById('companionNamesList');
-      
-      if (!container || !list) return;
-      
-      if (num > 0) {
-        container.classList.remove('hidden');
-        list.innerHTML = '';
-        for (let i = 1; i <= num; i++) {
-          list.innerHTML += `
-            <input type="text" id="companion${i}" placeholder="Nome do ${i}º acompanhante" class="w-full px-5 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5aa189] focus:border-transparent transition">
-          `;
-        }
-      } else {
-        container.classList.add('hidden');
-      }
-    }
-
-    function renderEventDetail(container) {
-      const event = allEvents.find(e => e.id === currentEventId);
-      if (!event) {
-        showToast('Evento não encontrado');
-        showView('home');
-        return;
-      }
-
-      const isOwner = currentUser && currentUser.id === event.owner_id;
-      const isGuest = !currentUser || currentUser.role !== 'admin';
-      const confirmations = allConfirmations.filter(c => c.event_id === currentEventId);
-      const messages = allMessages.filter(m => m.event_id === currentEventId);
-      const photos = event.photos || [];
-
-      container.innerHTML = `
-        <div class="cover-hero" style="${event.cover_photo ? `background-image: url(${event.cover_photo})` : ''}">
-          <div class="cover-overlay"></div>
-          <div class="cover-content">
-            <h2 class="text-5xl font-bold couple-names mb-3">${event.event_name}</h2>
-            <p class="text-2xl">${formatDate(event.event_date)}</p>
-          </div>
-        </div>
-
-        <div class="max-w-3xl mx-auto px-4 py-12">
-          <!-- Countdown -->
-          <div class="mb-12">
-            <h3 class="text-3xl font-bold heading-font text-center mb-6 text-[#5aa189]">Contagem Regressiva</h3>
-            <div id="countdown" class="grid grid-cols-4 gap-4"></div>
-          </div>
-
-          <!-- Owner Controls -->
-          ${isOwner ? `
-            <div class="mb-8 bg-white rounded-lg shadow-md p-6">
-              <h3 class="text-xl font-bold mb-4">Gerenciar Evento</h3>
-              <div class="grid md:grid-cols-2 gap-3">
-                <button onclick="editEvent('${event.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                  Editar Evento
-                </button>
-                <button onclick="showPhotoManagement()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                  Gerenciar Fotos (${photos.length}/8)
-                </button>
-                <button onclick="copyEventLink()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
-                  Copiar Link
-                </button>
-                <button onclick="deleteEvent('${event.id}')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
-                  Eliminar Evento
-                </button>
-              </div>
-            </div>
-          ` : ''}
-
-          <!-- Guest Form -->
-          ${isGuest ? `
-            <div class="mb-12 bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-              <div class="text-center mb-8">
-                <h3 class="text-3xl font-bold heading-font text-[#5aa189] mb-2">Confirme sua Presença</h3>
-                <p class="text-gray-600">Será um prazer recebê-lo em nosso evento especial</p>
-              </div>
-              
-              <div id="deadlineReminder" class="hidden mb-6"></div>
-              
-              <div id="deadlineExpired" class="hidden mb-6 p-5 bg-red-50 border-2 border-red-200 text-red-700 rounded-xl text-center">
-                <p class="font-semibold mb-1 text-lg">⏰ Prazo Encerrado</p>
-                <p class="text-sm">O período de confirmação foi encerrado</p>
-              </div>
-              <div id="eventPassed" class="hidden mb-6 p-5 bg-gray-100 border-2 border-gray-300 text-gray-700 rounded-xl text-center">
-                <p class="font-semibold mb-1 text-lg">📅 Evento Realizado</p>
-                <p class="text-sm">Este evento já aconteceu</p>
-              </div>
-              <form id="confirmationForm" class="space-y-6">
-                <div>
-                  <label class="block text-sm font-semibold mb-3 text-gray-700">Seu Nome Completo *</label>
-                  <input type="text" id="guestName" required class="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5aa189] focus:border-transparent transition text-lg">
-                </div>
-                
-                ${event.event_type === 'casamento' ? `
-                  <div>
-                    <label class="block text-sm font-semibold mb-3 text-gray-700">Lado do Convite</label>
-                    <select id="guestSide" class="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5aa189] focus:border-transparent transition text-lg">
-                      <option value="noivo">👔 Noivo</option>
-                      <option value="noiva">👰 Noiva</option>
-                    </select>
-                  </div>
-                ` : ''}
-
-                ${event.allow_companions ? `
-                  <div class="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                    <label class="block text-sm font-semibold mb-3 text-gray-700">Acompanhantes</label>
-                    <select id="companions" onchange="toggleCompanionNames()" class="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5aa189] focus:border-transparent transition text-lg mb-1">
-                      ${Array.from({length: event.max_companions + 1}, (_, i) => `
-                        <option value="${i}">${i === 0 ? 'Sem acompanhantes' : i === 1 ? '1 acompanhante' : `${i} acompanhantes`}</option>
-                      `).join('')}
-                    </select>
-                    <p class="text-xs text-gray-500 mt-2">Máximo de ${event.max_companions} acompanhante${event.max_companions > 1 ? 's' : ''}</p>
-                  </div>
-                  <div id="companionNamesContainer" class="hidden bg-gray-50 p-6 rounded-xl border border-gray-200">
-                    <label class="block text-sm font-semibold mb-4 text-gray-700">📝 Nomes dos Acompanhantes</label>
-                    <div id="companionNamesList" class="space-y-3"></div>
-                  </div>
-                ` : ''}
-
-                ${event.allow_children ? `
-                  <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
-                    <label class="flex items-center gap-3 cursor-pointer">
-                      <input type="checkbox" id="hasChildren" class="w-6 h-6 text-[#5aa189] rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-[#5aa189]">
-                      <span class="text-base font-medium text-gray-700">👶 Trarei crianças</span>
-                    </label>
-                  </div>
-                ` : ''}
-
-                <div class="pt-4 space-y-3">
-                  <button type="submit" class="w-full bg-gradient-to-r from-[#5aa189] to-[#4a8c75] text-white py-5 rounded-xl hover:from-[#4a8c75] hover:to-[#3a7560] font-semibold transition shadow-lg text-lg">
-                    ✓ Confirmar Presença
-                  </button>
-                  <button type="button" onclick="declineEvent()" class="w-full bg-white border-2 border-gray-300 text-gray-700 py-4 rounded-xl hover:bg-gray-50 font-medium transition text-base">
-                    Não poderei comparecer
-                  </button>
-                </div>
-              </form>
-            </div>
-          ` : ''}
-
-          <!-- Confirmations List -->
-          ${isOwner ? `
-            <div class="mb-12 bg-white rounded-lg shadow-md p-6">
-              <h3 class="text-2xl font-bold heading-font text-[#5aa189] mb-4">Confirmações (${confirmations.length})</h3>
-              ${confirmations.length === 0 ? '<p class="text-gray-500">Nenhuma confirmação ainda.</p>' : `
-                <div class="space-y-3">
-                  ${confirmations.map(conf => `
-                    <div class="p-4 bg-gray-50 rounded-lg border ${conf.status === 'nao_vai' ? 'border-red-200 bg-red-50' : 'border-green-200'}">
-                      <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                          <p class="font-semibold text-lg">${conf.guest_name}</p>
-                          ${conf.guest_side ? `<p class="text-sm text-gray-600">Lado: ${conf.guest_side === 'noivo' ? '👔 Noivo' : '👰 Noiva'}</p>` : ''}
-                          ${conf.companions > 0 ? `<p class="text-sm text-gray-600">👥 ${conf.companions} acompanhante${conf.companions > 1 ? 's' : ''}</p>` : ''}
-                          ${conf.companion_names ? `<p class="text-xs text-gray-500 mt-1">Nomes: ${conf.companion_names}</p>` : ''}
-                          ${conf.has_children ? `<p class="text-sm text-gray-600">👶 Com crianças</p>` : ''}
-                          <p class="text-xs text-gray-400 mt-1">${formatTimestamp(conf.created_at)}</p>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-gray-900 truncate">${cliente.nome}</h3>
+                            <span class="px-2 py-1 text-xs rounded-full ${isExpired ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                                ${isExpired ? 'Expirado' : 'Ativo'}
+                            </span>
                         </div>
-                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${conf.status === 'nao_vai' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
-                          ${conf.status === 'nao_vai' ? '✗ Não vai' : '✓ Confirmado'}
-                        </span>
-                      </div>
+                        <div class="space-y-2 text-sm text-gray-600 mb-4">
+                            <div><strong>Token:</strong> ${cliente.token}</div>
+                            <div><strong>Validade:</strong> ${validade.toLocaleDateString('pt-PT')}</div>
+                            <div><strong>Convidados:</strong> ${convidadosCount}</div>
+                            <div><strong>Scans:</strong> ${cliente.scans_usados || 0}/${cliente.limite_scans}</div>
+                        </div>
+                        <div class="flex space-x-2 mb-2">
+                            <button onclick="viewClientGuests('${cliente.token}')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 px-3 rounded">
+                                <i class="fas fa-users mr-1"></i>Ver Convidados
+                            </button>
+                            <button onclick="editClient('${cliente.token}')" class="bg-green-600 hover:bg-green-700 text-white text-xs py-2 px-3 rounded" title="Editar cliente">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                        <div class="flex space-x-2 mb-2">
+                            <button onclick="generatePDFReport('${cliente.token}', '${cliente.nome}')" class="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs py-2 px-3 rounded">
+                                <i class="fas fa-file-pdf mr-1"></i>Relatório PDF
+                            </button>
+                            <button onclick="copyToken('${cliente.token}')" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs py-2 px-3 rounded">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="removeClient('${cliente.token}')" class="w-full bg-red-600 hover:bg-red-700 text-white text-xs py-2 px-3 rounded">
+                                <i class="fas fa-trash mr-1"></i>Remover Cliente
+                            </button>
+                        </div>
                     </div>
-                  `).join('')}
-                </div>
-                <button onclick="exportConfirmations()" class="mt-4 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                  📊 Exportar Lista
-                </button>
-              `}
-            </div>
-          ` : ''}
+                `;
+            }).join('');
 
-          <!-- Photo Gallery -->
-          ${photos.length > 0 ? `
-            <div class="mb-12">
-              <h3 class="text-2xl font-bold heading-font text-[#5aa189] mb-6 text-center">Galeria de Fotos</h3>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                ${photos.map(photo => `
-                  <img src="${photo}" alt="Foto do evento" class="w-full h-40 object-cover rounded-lg shadow-md cursor-pointer hover:scale-105 transition" onclick="openPhotoModal('${photo}')" onerror="this.src=''; this.alt='Imagem não disponível'; this.style.display='none';">
-                `).join('')}
-              </div>
-            </div>
-          ` : ''}
+            grid.innerHTML = clientesHtml;
+        }
 
-          <!-- Messages Section -->
-          <div class="bg-white rounded-lg shadow-md p-6">
-            <h3 class="text-2xl font-bold heading-font text-[#5aa189] mb-6">Mensagens dos Convidados</h3>
+        // Render client selection for convidados tab
+        function renderClientSelection() {
+            const grid = document.getElementById('client-selection-grid');
             
-            <div id="messageFormContainer"></div>
+            if (clientes.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">Nenhum cliente encontrado</div>';
+                return;
+            }
 
-            <div class="space-y-4">
-              ${messages.length === 0 ? '<p class="text-gray-500 text-center py-4">Nenhuma mensagem ainda.</p>' : messages.map(msg => `
-                <div class="p-4 bg-gray-50 rounded-lg border">
-                  <p class="font-semibold text-lg mb-2">${msg.guest_name}</p>
-                  <p class="text-gray-700 mb-2">${msg.message}</p>
-                  <p class="text-xs text-gray-400">${formatTimestamp(msg.created_at)}</p>
+            const clientesHtml = clientes.map(cliente => {
+                const validade = new Date(cliente.validade * 1000);
+                const isExpired = validade < new Date();
+                
+                const convidadosCount = convidados.filter(c => 
+                    c.token_cliente && cliente.token && c.token_cliente.toString() === cliente.token.toString()
+                ).length;
+                
+                const convidadosAtivos = convidados.filter(c => 
+                    c.token_cliente && cliente.token && 
+                    c.token_cliente.toString() === cliente.token.toString() && 
+                    c.status === 'ativo'
+                ).length;
+                
+                return `
+                    <div class="client-card bg-white rounded-lg shadow p-6" onclick="selectClient('${cliente.token}', '${cliente.nome}')">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-gray-900 truncate">${cliente.nome}</h3>
+                            <span class="px-2 py-1 text-xs rounded-full ${isExpired ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                                ${isExpired ? 'Expirado' : 'Ativo'}
+                            </span>
+                        </div>
+                        <div class="space-y-2 text-sm text-gray-600 mb-4">
+                            <div class="flex justify-between">
+                                <span>Total Convidados:</span>
+                                <span class="font-medium">${convidadosCount}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Convidados Ativos:</span>
+                                <span class="font-medium text-green-600">${convidadosAtivos}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Validade:</span>
+                                <span class="font-medium">${validade.toLocaleDateString('pt-PT')}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center pt-4 border-t border-gray-200">
+                            <i class="fas fa-arrow-right text-blue-600 mr-2"></i>
+                            <span class="text-blue-600 font-medium">Ver Convidados</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            grid.innerHTML = clientesHtml;
+        }
+
+        // Select client and show guests
+        function selectClient(token, nome) {
+            selectedClienteToken = token;
+            document.getElementById('selected-client-name').textContent = nome;
+            document.getElementById('client-selection-view').classList.add('hidden');
+            document.getElementById('guest-management-view').classList.remove('hidden');
+            
+            // Filter convidados for selected client
+            filteredConvidados = convidados.filter(c => c.token_cliente === token);
+            renderConvidados();
+        }
+
+        // Back to client selection
+        function backToClientSelection() {
+            selectedClienteToken = null;
+            document.getElementById('client-selection-view').classList.remove('hidden');
+            document.getElementById('guest-management-view').classList.add('hidden');
+            
+            // Clear filters
+            document.getElementById('search-convidado').value = '';
+            document.getElementById('filter-status').value = '';
+            document.getElementById('filter-scan-status').value = '';
+        }
+
+        // Render convidados
+        function renderConvidados() {
+            const grid = document.getElementById('convidados-grid');
+            
+            if (filteredConvidados.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">Nenhum convidado encontrado</div>';
+                return;
+            }
+
+            const convidadosHtml = filteredConvidados.map(convidado => {
+                const cliente = clientes.find(c => c.token === convidado.token_cliente);
+                const clienteNome = cliente ? cliente.nome : 'Cliente não encontrado';
+                
+                // Check if guest has been scanned (you'll need to implement this logic based on your scan tracking)
+                const hasBeenScanned = false; // This should check your scans_realtime table
+                
+                return `
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-gray-900 truncate">${convidado.nome}</h3>
+                            <div class="flex space-x-2">
+                                <span class="px-2 py-1 text-xs rounded-full ${convidado.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                    ${convidado.status}
+                                </span>
+                                ${hasBeenScanned ? '<span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Escaneado</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-sm text-gray-600 mb-4">
+                            <div><strong>Código:</strong> ${convidado.codigo}</div>
+                            <div><strong>Cliente:</strong> ${clienteNome}</div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="toggleGuestStatus('${convidado.codigo}')" class="flex-1 ${convidado.status === 'ativo' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white text-xs py-2 px-3 rounded">
+                                <i class="fas fa-${convidado.status === 'ativo' ? 'ban' : 'check'} mr-1"></i>
+                                ${convidado.status === 'ativo' ? 'Desativar' : 'Ativar'}
+                            </button>
+                            <button onclick="removeGuest('${convidado.codigo}')" class="bg-red-600 hover:bg-red-700 text-white text-xs py-2 px-3 rounded">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            grid.innerHTML = convidadosHtml;
+        }
+
+        // Filter convidados
+        function filterConvidados() {
+            if (!selectedClienteToken) return;
+            
+            const searchFilter = document.getElementById('search-convidado').value.toLowerCase();
+            const statusFilter = document.getElementById('filter-status').value;
+            const scanStatusFilter = document.getElementById('filter-scan-status').value;
+
+            filteredConvidados = convidados.filter(convidado => {
+                if (convidado.token_cliente !== selectedClienteToken) return false;
+                
+                const matchesSearch = !searchFilter || 
+                    convidado.nome.toLowerCase().includes(searchFilter) ||
+                    convidado.codigo.toLowerCase().includes(searchFilter);
+                const matchesStatus = !statusFilter || convidado.status === statusFilter;
+                
+                // You'll need to implement scan status checking
+                let matchesScanStatus = true;
+                if (scanStatusFilter === 'scanned') {
+                    // Check if guest has been scanned
+                    matchesScanStatus = false; // Implement this logic
+                } else if (scanStatusFilter === 'not-scanned') {
+                    // Check if guest has NOT been scanned
+                    matchesScanStatus = true; // Implement this logic
+                }
+
+                return matchesSearch && matchesStatus && matchesScanStatus;
+            });
+
+            renderConvidados();
+        }
+
+        // Bulk actions for guests
+        async function activateAllGuests() {
+            if (!selectedClienteToken) return;
+            
+            if (!confirm('Tem certeza que deseja ativar todos os convidados deste cliente?')) {
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('convidados')
+                    .update({ status: 'ativo' })
+                    .eq('token_cliente', selectedClienteToken);
+
+                if (error) throw error;
+
+                showToast('Todos os convidados foram ativados', 'success');
+                loadConvidados();
+            } catch (error) {
+                showToast('Erro ao ativar convidados', 'error');
+            }
+        }
+
+        async function deactivateAllGuests() {
+            if (!selectedClienteToken) return;
+            
+            if (!confirm('Tem certeza que deseja desativar todos os convidados deste cliente?')) {
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('convidados')
+                    .update({ status: 'inativo' })
+                    .eq('token_cliente', selectedClienteToken);
+
+                if (error) throw error;
+
+                showToast('Todos os convidados foram desativados', 'success');
+                loadConvidados();
+            } catch (error) {
+                showToast('Erro ao desativar convidados', 'error');
+            }
+        }
+
+        async function resetAllScans() {
+            if (!selectedClienteToken) return;
+            
+            if (!confirm('Tem certeza que deseja resetar todos os scans deste cliente? Esta ação não pode ser desfeita.')) {
+                return;
+            }
+
+            try {
+                // Delete all scan records for this client
+                const { error } = await supabase
+                    .from('scans_realtime')
+                    .delete()
+                    .eq('token_cliente', selectedClienteToken);
+
+                if (error) throw error;
+
+                showToast('Todos os scans foram resetados', 'success');
+                loadConvidados();
+            } catch (error) {
+                showToast('Erro ao resetar scans', 'error');
+            }
+        }
+
+        // Update filters
+        function updateFilters() {
+            const clienteSelects = ['filter-cliente', 'import-cliente', 'report-cliente'];
+            
+            clienteSelects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                if (select) {
+                    const currentValue = select.value;
+                    const options = clientes.map(cliente => 
+                        `<option value="${cliente.token}" ${currentValue === cliente.token ? 'selected' : ''}>${cliente.nome}</option>`
+                    ).join('');
+                    
+                    if (selectId === 'filter-cliente' || selectId === 'report-cliente') {
+                        select.innerHTML = '<option value="">Todos os clientes</option>' + options;
+                    } else {
+                        select.innerHTML = '<option value="">Escolha um cliente...</option>' + options;
+                    }
+                }
+            });
+        }
+
+        // Client actions
+        function viewClientGuests(token) {
+            const cliente = clientes.find(c => c.token === token);
+            if (cliente) {
+                showTab('convidados');
+                setTimeout(() => {
+                    selectClient(token, cliente.nome);
+                }, 100);
+            }
+        }
+
+        function copyToken(token) {
+            navigator.clipboard.writeText(token).then(() => {
+                showToast('Token copiado para a área de transferência', 'success');
+            });
+        }
+
+        async function removeClient(token) {
+            if (!confirm('Tem certeza que deseja remover este cliente? Esta ação não pode ser desfeita.')) {
+                return;
+            }
+
+            try {
+                // Move convidados to historico before deleting
+                const clientGuests = convidados.filter(c => c.token_cliente === token);
+                
+                for (const guest of clientGuests) {
+                    await supabase.from('convidados_historico').insert([{
+                        codigo: guest.codigo,
+                        nome: guest.nome,
+                        token_cliente: guest.token_cliente,
+                        status: guest.status,
+                        data_criacao: guest.created_at || new Date().toISOString(),
+                        data_exclusao: new Date().toISOString(),
+                        excluido: true
+                    }]);
+                }
+                
+                // Remove convidados
+                await supabase.from('convidados').delete().eq('token_cliente', token);
+                
+                // Remove client
+                const { error } = await supabase.from('clientes').delete().eq('token', token);
+                if (error) throw error;
+
+                showToast('Cliente removido com sucesso', 'success');
+                loadData();
+            } catch (error) {
+                showToast('Erro ao remover cliente', 'error');
+            }
+        }
+
+        // Guest actions
+        async function toggleGuestStatus(codigo) {
+            const convidado = convidados.find(c => c.codigo === codigo);
+            if (!convidado) return;
+
+            const newStatus = convidado.status === 'ativo' ? 'inativo' : 'ativo';
+
+            try {
+                const { error } = await supabase
+                    .from('convidados')
+                    .update({ status: newStatus })
+                    .eq('codigo', codigo);
+
+                if (error) throw error;
+
+                showToast(`Convidado ${newStatus === 'ativo' ? 'ativado' : 'desativado'} com sucesso`, 'success');
+                loadConvidados();
+            } catch (error) {
+                showToast('Erro ao alterar status do convidado', 'error');
+            }
+        }
+
+        async function removeGuest(codigo) {
+            if (!confirm('Tem certeza que deseja remover este convidado?')) {
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('convidados')
+                    .delete()
+                    .eq('codigo', codigo);
+                
+                if (error) throw error;
+
+                showToast('Convidado removido com sucesso', 'success');
+                loadConvidados();
+            } catch (error) {
+                console.error('Erro ao remover convidado:', error);
+                showToast('Erro ao remover convidado: ' + error.message, 'error');
+            }
+        }
+
+        // New client modal
+        function openNewClientModal() {
+            document.getElementById('newClientModal').classList.remove('hidden');
+            document.getElementById('newClientModal').classList.add('flex');
+        }
+
+        function closeNewClientModal() {
+            document.getElementById('newClientModal').classList.add('hidden');
+            document.getElementById('newClientModal').classList.remove('flex');
+            document.getElementById('newClientForm').reset();
+        }
+
+        function setupNewClientForm() {
+            document.getElementById('newClientForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const nome = document.getElementById('clientName').value;
+                const validade = document.getElementById('clientValidade').value;
+                const limite = parseInt(document.getElementById('clientLimite').value);
+                
+                const token = 'evt-' + Math.random().toString(36).substr(2, 6);
+                const validadeTimestamp = Math.floor(new Date(validade + 'T23:59:59').getTime() / 1000);
+
+                try {
+                    const { error } = await supabase.from('clientes').insert([{
+                        nome,
+                        token,
+                        validade: validadeTimestamp,
+                        limite_scans: limite,
+                        scans_usados: 0,
+                        dispositivos: ''
+                    }]);
+
+                    if (error) throw error;
+
+                    showToast('Cliente criado com sucesso', 'success');
+                    closeNewClientModal();
+                    loadData();
+                } catch (error) {
+                    showToast('Erro ao criar cliente', 'error');
+                }
+            });
+
+            // Setup edit client form
+            document.getElementById('editClientForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const token = document.getElementById('editClientToken').value;
+                const validade = document.getElementById('editClientValidade').value;
+                const limite = parseInt(document.getElementById('editClientLimite').value);
+                
+                const validadeTimestamp = Math.floor(new Date(validade + 'T23:59:59').getTime() / 1000);
+
+                try {
+                    const { error } = await supabase
+                        .from('clientes')
+                        .update({
+                            validade: validadeTimestamp,
+                            limite_scans: limite
+                        })
+                        .eq('token', token);
+
+                    if (error) throw error;
+
+                    showToast('Cliente atualizado com sucesso', 'success');
+                    closeEditClientModal();
+                    loadData();
+                } catch (error) {
+                    console.error('Erro ao atualizar cliente:', error);
+                    showToast('Erro ao atualizar cliente: ' + error.message, 'error');
+                }
+            });
+        }
+
+        // Edit client functions
+        function editClient(token) {
+            const cliente = clientes.find(c => c.token === token);
+            if (!cliente) {
+                showToast('Cliente não encontrado', 'error');
+                return;
+            }
+
+            // Fill form with current data
+            document.getElementById('editClientName').value = cliente.nome;
+            document.getElementById('editClientToken').value = cliente.token;
+            document.getElementById('editClientLimite').value = cliente.limite_scans;
+            
+            // Convert timestamp to date string
+            const validadeDate = new Date(cliente.validade * 1000);
+            const dateString = validadeDate.toISOString().split('T')[0];
+            document.getElementById('editClientValidade').value = dateString;
+
+            // Show modal
+            document.getElementById('editClientModal').classList.remove('hidden');
+            document.getElementById('editClientModal').classList.add('flex');
+        }
+
+        function closeEditClientModal() {
+            document.getElementById('editClientModal').classList.add('hidden');
+            document.getElementById('editClientModal').classList.remove('flex');
+            document.getElementById('editClientForm').reset();
+        }
+
+        // File upload setup
+        function setupFileUpload() {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('drag-over');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('drag-over');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0]);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0]);
+                }
+            });
+        }
+
+        function handleFile(file) {
+            if (!file.name.endsWith('.txt')) {
+                showToast('Por favor, selecione um ficheiro .txt', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                document.getElementById('file-content').textContent = content;
+                document.getElementById('file-preview').classList.remove('hidden');
+                
+                const importBtn = document.getElementById('import-btn');
+                const clienteSelect = document.getElementById('import-cliente');
+                
+                if (clienteSelect.value) {
+                    importBtn.disabled = false;
+                    importBtn.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg cursor-pointer';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Import file
+        async function importFile() {
+            const clienteToken = document.getElementById('import-cliente').value;
+            const fileContent = document.getElementById('file-content').textContent;
+
+            if (!clienteToken || !fileContent) {
+                showToast('Selecione um cliente e um ficheiro', 'error');
+                return;
+            }
+
+            const lines = fileContent.trim().split('\n');
+            let validade = null;
+            const convidadosToImport = [];
+
+            // Parse file
+            for (const line of lines) {
+                if (line.startsWith('#validade:')) {
+                    validade = line.replace('#validade:', '');
+                } else if (line.includes(',')) {
+                    const [codigo, nome] = line.split(',');
+                    convidadosToImport.push({
+                        token_cliente: clienteToken,
+                        nome: nome.trim(),
+                        codigo: codigo.trim(),
+                        status: 'ativo'
+                    });
+                }
+            }
+
+            if (convidadosToImport.length === 0) {
+                showToast('Nenhum convidado encontrado no ficheiro', 'error');
+                return;
+            }
+
+            // Show progress
+            document.getElementById('import-progress').classList.remove('hidden');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+
+            try {
+                for (let i = 0; i < convidadosToImport.length; i++) {
+                    const progress = ((i + 1) / convidadosToImport.length) * 100;
+                    progressBar.style.width = progress + '%';
+                    progressText.textContent = `Importando ${i + 1} de ${convidadosToImport.length}...`;
+
+                    // Check if guest already exists
+                    const { data: existingGuest } = await supabase
+                        .from('convidados')
+                        .select('codigo')
+                        .eq('codigo', convidadosToImport[i].codigo)
+                        .single();
+
+                    if (!existingGuest) {
+                        console.log('Inserindo convidado:', convidadosToImport[i]);
+                        const { data: insertedData, error } = await supabase.from('convidados').insert([convidadosToImport[i]]).select();
+                        if (error) {
+                            console.error('Erro ao inserir convidado:', error);
+                            throw error;
+                        }
+                        console.log('Convidado inserido com sucesso:', insertedData);
+                    } else {
+                        console.log('Convidado já existe:', convidadosToImport[i].codigo);
+                    }
+
+                    // Small delay for visual feedback
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                showToast(`${convidadosToImport.length} convidados importados com sucesso`, 'success');
+                
+                // Reset form
+                document.getElementById('file-preview').classList.add('hidden');
+                document.getElementById('import-progress').classList.add('hidden');
+                document.getElementById('file-input').value = '';
+                document.getElementById('import-cliente').value = '';
+                document.getElementById('import-btn').disabled = true;
+                document.getElementById('import-btn').className = 'w-full bg-gray-400 text-white py-2 px-4 rounded-lg cursor-not-allowed';
+
+                loadData();
+            } catch (error) {
+                showToast('Erro durante a importação', 'error');
+                document.getElementById('import-progress').classList.add('hidden');
+            }
+        }
+
+        // Reports
+        async function loadReports() {
+            // Make sure we have the latest client and guest data
+            await loadClientes();
+            await loadConvidados();
+            
+            const clienteFilter = document.getElementById('report-cliente').value;
+            const startDate = document.getElementById('report-start').value;
+            const endDate = document.getElementById('report-end').value;
+
+            try {
+                // Load scans from scans_realtime table
+                let scanData = [];
+                try {
+                    let scanQuery = supabase.from('scans_realtime').select('*');
+                    
+                    if (clienteFilter) {
+                        scanQuery = scanQuery.eq('token_cliente', clienteFilter);
+                    }
+                    
+                    if (startDate) {
+                        scanQuery = scanQuery.gte('data_scan', startDate + 'T00:00:00');
+                    }
+                    
+                    if (endDate) {
+                        scanQuery = scanQuery.lte('data_scan', endDate + 'T23:59:59');
+                    }
+
+                    const { data: scanResult, error: scanError } = await scanQuery.order('data_scan', { ascending: false });
+                    if (!scanError) {
+                        scanData = scanResult || [];
+                    }
+                } catch (error) {
+                    console.log('Tabela scans_realtime não disponível:', error);
+                }
+
+                // Load ALL logs from logs table (including logins, admin_login, etc.)
+                let allLogsData = [];
+                try {
+                    let logsQuery = supabase.from('logs').select('*');
+                    
+                    // Apply filters
+                    if (clienteFilter) {
+                        // For logs table, we need to filter by token OR include admin logs if no specific client
+                        logsQuery = logsQuery.eq('token', clienteFilter);
+                    }
+                    
+                    if (startDate) {
+                        logsQuery = logsQuery.gte('data', startDate + 'T00:00:00');
+                    }
+                    
+                    if (endDate) {
+                        logsQuery = logsQuery.lte('data', endDate + 'T23:59:59');
+                    }
+
+                    const { data: logsResult, error: logsError } = await logsQuery.order('data', { ascending: false });
+                    if (!logsError) {
+                        allLogsData = logsResult || [];
+                        console.log('Logs carregados:', allLogsData.length, 'registros');
+                    } else {
+                        console.error('Erro ao carregar logs:', logsError);
+                    }
+                } catch (error) {
+                    console.log('Erro ao acessar tabela logs:', error);
+                }
+
+                // Skip admin logs - we don't want them in reports anymore
+
+                // Combine and format all logs
+                const reportLogs = [];
+                
+                // Add scan logs
+                scanData.forEach(scan => {
+                    const cliente = clientes.find(c => c.token === scan.token_cliente);
+                    const convidado = convidados.find(c => c.codigo === scan.codigo_convidado);
+                    
+                    reportLogs.push({
+                        data: scan.data_scan,
+                        token: scan.token_cliente,
+                        cliente_nome: cliente ? cliente.nome : `Cliente não encontrado (${scan.token_cliente})`,
+                        status: 'scan',
+                        detalhes: {
+                            codigo_convidado: scan.codigo_convidado,
+                            nome_convidado: convidado ? convidado.nome : 'Convidado não encontrado',
+                            dispositivo: scan.dispositivo || 'N/A'
+                        }
+                    });
+                });
+
+                // Add all logs from logs table (excluding admin logs)
+                allLogsData.forEach(log => {
+                    // Skip admin panel logs
+                    if (log.token === 'admin-panel' || log.status === 'admin_login') {
+                        return;
+                    }
+                    
+                    const cliente = clientes.find(c => c.token === log.token);
+                    const cliente_nome = cliente ? cliente.nome : `Cliente não encontrado (${log.token})`;
+                    
+                    reportLogs.push({
+                        data: log.data,
+                        token: log.token,
+                        cliente_nome: cliente_nome,
+                        status: log.status,
+                        detalhes: {
+                            dispositivo: log.dispositivo || 'N/A'
+                        }
+                    });
+                });
+
+                console.log('Total de logs processados:', reportLogs.length);
+
+                // Sort by date
+                reportLogs.sort((a, b) => new Date(b.data) - new Date(a.data));
+                
+                // Update summary
+                const totalValidacoes = reportLogs.filter(log => log.status === 'scan').length;
+                const today = new Date().toISOString().split('T')[0];
+                const validacoesHoje = reportLogs.filter(log => 
+                    log.status === 'scan' && log.data.startsWith(today)
+                ).length;
+                const taxaSucesso = reportLogs.length > 0 ? 
+                    Math.round((totalValidacoes / reportLogs.length) * 100) : 0;
+
+                document.getElementById('total-validacoes').textContent = totalValidacoes;
+                document.getElementById('validacoes-hoje').textContent = validacoesHoje;
+                document.getElementById('taxa-sucesso').textContent = taxaSucesso + '%';
+
+                // Update table
+                const tableBody = document.getElementById('logs-table');
+                if (reportLogs.length === 0) {
+                    // Show debug information when no logs found
+                    const debugInfo = `
+                        <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                            <div class="space-y-2">
+                                <div>Nenhum log encontrado</div>
+                                <div class="text-xs">
+                                    <div>Scans encontrados: ${scanData.length}</div>
+                                    <div>Logs encontrados: ${allLogsData.length}</div>
+                                    <div>Cliente selecionado: ${clienteFilter || 'Todos'}</div>
+                                    <div>Período: ${startDate || 'Sem início'} até ${endDate || 'Sem fim'}</div>
+                                </div>
+                            </div>
+                        </td></tr>
+                    `;
+                    tableBody.innerHTML = debugInfo;
+                } else {
+                    const logsHtml = reportLogs.map(log => `
+                        <tr class="hover:bg-gray-50 cursor-pointer" onclick="showLogDetails('${log.token}', '${log.data}', '${log.status}')">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                ${new Date(log.data).toLocaleString('pt-PT')}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <div class="font-medium">${log.token}</div>
+                                <div class="text-xs text-gray-500">${log.cliente_nome}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <i class="fas fa-${
+                                    log.status === 'scan' ? 'qrcode' : 
+                                    log.status === 'admin_login' ? 'user-shield' : 
+                                    'sign-in-alt'
+                                } mr-2"></i>
+                                ${
+                                    log.status === 'scan' ? 'Scan' : 
+                                    log.status === 'admin_login' ? 'Admin Login' : 
+                                    'Login'
+                                }
+                                ${log.status === 'scan' && log.detalhes.nome_convidado ? 
+                                    `<div class="text-xs text-gray-500">${log.detalhes.nome_convidado}</div>` : ''}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                ${log.detalhes.dispositivo}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                    log.status === 'scan' ? 'bg-green-100 text-green-800' : 
+                                    log.status === 'admin_login' ? 'bg-purple-100 text-purple-800' :
+                                    'bg-blue-100 text-blue-800'
+                                }">
+                                    ${
+                                        log.status === 'scan' ? 'Sucesso' : 
+                                        log.status === 'admin_login' ? 'Admin' : 
+                                        'Login'
+                                    }
+                                </span>
+                            </td>
+                        </tr>
+                    `).join('');
+                    tableBody.innerHTML = logsHtml;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar relatórios:', error);
+                showToast('Erro ao carregar relatórios', 'error');
+            }
+        }
+
+        // Show detailed log history for a specific token
+        async function showLogDetails(token, selectedDate, selectedStatus) {
+            // Make sure we have the latest client data
+            await loadClientes();
+            const cliente = clientes.find(c => c.token === token);
+            const clienteNome = cliente ? cliente.nome : 'Cliente não encontrado';
+            
+            // Create modal for detailed view
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900">Histórico Detalhado</h3>
+                            <p class="text-sm text-gray-600">${clienteNome} (${token})</p>
+                        </div>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    <div class="p-6 overflow-y-auto max-h-[70vh]">
+                        <div id="detailed-logs">Carregando histórico...</div>
+                    </div>
                 </div>
-              `).join('')}
-            </div>
-          </div>
-        </div>
-      `;
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Load detailed history for this token
+            try {
+                // Load all scans for this token
+                const { data: scans } = await supabase
+                    .from('scans_realtime')
+                    .select('*')
+                    .eq('token_cliente', token)
+                    .order('data_scan', { ascending: false });
 
-      startCountdown(event.event_date);
+                // Load all logins for this token
+                let logins = [];
+                try {
+                    const { data: loginData } = await supabase
+                        .from('logs')
+                        .select('*')
+                        .eq('token', token)
+                        .eq('status', 'login')
+                        .order('data', { ascending: false });
+                    logins = loginData || [];
+                } catch (error) {
+                    console.log('Sem dados de login disponíveis');
+                }
 
-      if (isGuest) {
-        checkDeadlineAndEventDate(event);
-        updateMessageForm();
-        const confirmForm = document.getElementById('confirmationForm');
-        if (confirmForm) {
-          confirmForm.addEventListener('submit', handleConfirmation);
-        }
-      }
-    }
+                // Combine and display
+                const allLogs = [];
+                
+                (scans || []).forEach(scan => {
+                    const convidado = convidados.find(c => c.codigo === scan.codigo_convidado);
+                    allLogs.push({
+                        data: scan.data_scan,
+                        tipo: 'scan',
+                        detalhes: `Scan do convidado: ${convidado ? convidado.nome : 'Desconhecido'} (${scan.codigo_convidado})`,
+                        dispositivo: scan.dispositivo || 'N/A'
+                    });
+                });
 
-    // === UTILITIES ===
-    function formatDate(dateStr) {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    }
+                logins.forEach(login => {
+                    allLogs.push({
+                        data: login.data,
+                        tipo: 'login',
+                        detalhes: 'Login no sistema',
+                        dispositivo: login.dispositivo || 'N/A'
+                    });
+                });
 
-    function formatTimestamp(timestamp) {
-      const date = new Date(timestamp);
-      return date.toLocaleDateString('pt-PT', { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
+                allLogs.sort((a, b) => new Date(b.data) - new Date(a.data));
 
-    function showLoading() {
-      document.getElementById('loading').classList.remove('hidden');
-    }
+                const detailedHtml = allLogs.length > 0 ? `
+                    <div class="space-y-4">
+                        ${allLogs.map(log => `
+                            <div class="border border-gray-200 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-${log.tipo === 'scan' ? 'qrcode text-green-600' : 'sign-in-alt text-blue-600'} mr-3"></i>
+                                        <span class="font-medium text-gray-900">${log.tipo === 'scan' ? 'Scan' : 'Login'}</span>
+                                    </div>
+                                    <span class="text-sm text-gray-500">${new Date(log.data).toLocaleString('pt-PT')}</span>
+                                </div>
+                                <p class="text-gray-700 mb-2">${log.detalhes}</p>
+                                <div class="text-sm text-gray-500">
+                                    <i class="fas fa-mobile-alt mr-1"></i>
+                                    Dispositivo: ${log.dispositivo}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : '<div class="text-center text-gray-500 py-8">Nenhum histórico encontrado para este token</div>';
 
-    function hideLoading() {
-      document.getElementById('loading').classList.add('hidden');
-    }
-
-    function showToast(message) {
-      const toast = document.createElement('div');
-      toast.className = 'fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-2xl z-50';
-      toast.textContent = message;
-      document.body.appendChild(toast);
-
-      setTimeout(() => toast.remove(), 3000);
-    }
-
-    function copyToClipboard(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        showToast('Link copiado!');
-      }).catch(() => {
-        showToast('Erro ao copiar');
-      });
-    }
-
-    function createModal(title, content, actions) {
-      const modal = document.createElement('div');
-      modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop';
-      modal.innerHTML = `
-        <div class="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full">
-          <h3 class="text-xl font-bold mb-4">${title}</h3>
-          ${content}
-          <div class="flex gap-3 mt-4">
-            ${actions}
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-      return modal;
-    }
-
-    function startCountdown(eventDate) {
-      const update = () => {
-        const now = new Date().getTime();
-        const target = new Date(eventDate).getTime();
-        const diff = target - now;
-
-        const container = document.getElementById('countdown');
-        if (!container) return;
-
-        if (diff < 0) {
-          container.innerHTML = '<p class="col-span-4 text-center text-gray-500">Evento já ocorreu</p>';
-          if (countdownInterval) clearInterval(countdownInterval);
-          return;
+                document.getElementById('detailed-logs').innerHTML = detailedHtml;
+                
+            } catch (error) {
+                document.getElementById('detailed-logs').innerHTML = '<div class="text-center text-red-500 py-8">Erro ao carregar histórico detalhado</div>';
+            }
         }
 
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-        container.innerHTML = `
-          <div class="countdown-box"><div class="countdown-number">${days}</div><div class="countdown-label">Dias</div></div>
-          <div class="countdown-box"><div class="countdown-number">${hours}</div><div class="countdown-label">Horas</div></div>
-          <div class="countdown-box"><div class="countdown-number">${minutes}</div><div class="countdown-label">Minutos</div></div>
-          <div class="countdown-box"><div class="countdown-number">${seconds}</div><div class="countdown-label">Segundos</div></div>
-        `;
-      };
-
-      update();
-      countdownInterval = setInterval(update, 1000);
-    }
-
-    async function handleConfirmation(e) {
-      e.preventDefault();
-
-      const event = allEvents.find(e => e.id === currentEventId);
-      if (!checkDeadlineAndEventDate(event)) {
-        showToast('Prazo expirado');
-        return;
-      }
-
-      showLoading();
-
-      const companionsField = document.getElementById('companions');
-      const sideField = document.getElementById('guestSide');
-      const childrenField = document.getElementById('hasChildren');
-      
-      const numCompanions = companionsField ? parseInt(companionsField.value) || 0 : 0;
-      const companionNames = [];
-      
-      for (let i = 1; i <= numCompanions; i++) {
-        const nameField = document.getElementById(`companion${i}`);
-        if (nameField && nameField.value.trim()) {
-          companionNames.push(nameField.value.trim());
-        }
-      }
-
-      const data = {
-        event_id: currentEventId,
-        guest_name: document.getElementById('guestName').value.trim(),
-        guest_side: sideField ? sideField.value : '',
-        companions: numCompanions,
-        companion_names: companionNames.join(', '),
-        has_children: childrenField ? childrenField.checked : false,
-        status: 'confirmado'
-      };
-
-      const { error } = await supabase.from('confirmations').insert([data]);
-
-      hideLoading();
-
-      if (error) {
-        showToast('Erro ao confirmar');
-        console.error(error);
-      } else {
-        showToast('Presença confirmada!');
-        document.getElementById('confirmationForm').reset();
-        toggleCompanionNames();
-        await loadAllData();
-        setTimeout(() => updateMessageForm(), 500);
-      }
-    }
-
-    function checkDeadlineAndEventDate(event) {
-      const now = new Date();
-      const deadline = new Date(event.confirmation_deadline);
-      const eventDate = new Date(event.event_date);
-
-      const form = document.getElementById('confirmationForm');
-      const deadlineMsg = document.getElementById('deadlineExpired');
-      const eventPassedMsg = document.getElementById('eventPassed');
-
-      if (now > eventDate) {
-        if (form) form.classList.add('hidden');
-        if (eventPassedMsg) eventPassedMsg.classList.remove('hidden');
-        return false;
-      }
-
-      if (now > deadline) {
-        if (form) form.classList.add('hidden');
-        if (deadlineMsg) deadlineMsg.classList.remove('hidden');
-        return false;
-      }
-
-      return true;
-    }
-
-    function updateMessageForm() {
-      const container = document.getElementById('messageFormContainer');
-      if (!container) return;
-
-      const guestNameField = document.getElementById('guestName');
-      const guestName = guestNameField ? guestNameField.value.trim() : '';
-
-      const hasConfirmed = allConfirmations.some(c => 
-        c.event_id === currentEventId && 
-        c.status === 'confirmado' &&
-        c.guest_name.toLowerCase() === guestName.toLowerCase()
-      );
-
-      if (hasConfirmed && guestName) {
-        container.innerHTML = `
-          <form id="messageForm" class="mb-6">
-            <textarea id="messageText" rows="3" placeholder="Deixe sua mensagem..." required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189] mb-3"></textarea>
-            <button type="submit" class="w-full bg-[#5aa189] text-white py-3 rounded-lg hover:bg-[#4a8c75] transition font-semibold">
-              Publicar Mensagem
-            </button>
-          </form>
-        `;
-        
-        const msgForm = document.getElementById('messageForm');
-        if (msgForm) {
-          msgForm.addEventListener('submit', (e) => handleMessage(e, guestName));
-        }
-      } else {
-        container.innerHTML = `
-          <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p class="text-blue-800 text-sm">
-              <span class="font-semibold">💬 Para deixar uma mensagem:</span><br>
-              Por favor, confirme sua presença primeiro.
-            </p>
-          </div>
-        `;
-      }
-    }
-
-    async function handleMessage(e, guestName) {
-      e.preventDefault();
-
-      showLoading();
-
-      const { error } = await supabase.from('messages').insert([{
-        event_id: currentEventId,
-        guest_name: guestName,
-        message: document.getElementById('messageText').value.trim(),
-        approved: true
-      }]);
-
-      hideLoading();
-
-      if (error) {
-        showToast('Erro ao publicar');
-        console.error(error);
-      } else {
-        showToast('Mensagem publicada!');
-        document.getElementById('messageForm').reset();
-        await loadAllData();
-      }
-    }
-
-    async function declineEvent() {
-      const modal = createModal('Não Poderá Comparecer?', `
-        <p class="mb-4">Informe seu nome:</p>
-        <form id="declineForm" class="space-y-3">
-          <div>
-            <label class="block text-sm font-medium mb-2">Seu Nome *</label>
-            <input type="text" id="declineName" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5aa189]">
-          </div>
-        </form>
-      `, `
-        <button onclick="this.closest('.modal-backdrop').remove()" class="flex-1 px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 transition">Cancelar</button>
-        <button onclick="confirmDecline()" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Confirmar</button>
-      `);
-    }
-
-    async function confirmDecline() {
-      const name = document.getElementById('declineName').value.trim();
-
-      if (!name) {
-        showToast('Informe seu nome');
-        return;
-      }
-
-      document.querySelector('.modal-backdrop').remove();
-      showLoading();
-
-      const { error } = await supabase.from('confirmations').insert([{
-        event_id: currentEventId,
-        guest_name: name,
-        guest_side: '',
-        companions: 0,
-        has_children: false,
-        status: 'nao_vai'
-      }]);
-
-      hideLoading();
-
-      if (error) {
-        showToast('Erro ao registrar');
-        console.error(error);
-      } else {
-        showToast('Resposta registrada!');
-        await loadAllData();
-      }
-    }
-
-    function copyEventLink() {
-      const link = `${window.location.origin}${window.location.pathname}#event=${currentEventId}`;
-      copyToClipboard(link);
-    }
-
-    async function deleteEvent(eventId) {
-      const event = allEvents.find(e => e.id === eventId);
-      if (!event) return;
-
-      const modal = createModal('Confirmar Eliminação', `
-        <p class="mb-4">Eliminar <strong>${event.event_name}</strong>?</p>
-        <p class="text-sm text-red-600">Esta ação não pode ser desfeita.</p>
-      `, `
-        <button onclick="this.closest('.modal-backdrop').remove()" class="flex-1 px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 transition">Cancelar</button>
-        <button onclick="confirmDeleteEvent('${eventId}')" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Eliminar</button>
-      `);
-    }
-
-    async function confirmDeleteEvent(eventId) {
-      document.querySelector('.modal-backdrop').remove();
-      showLoading();
-
-      await supabase.from('messages').delete().eq('event_id', eventId);
-      await supabase.from('confirmations').delete().eq('event_id', eventId);
-      await supabase.from('events').delete().eq('id', eventId);
-
-      hideLoading();
-      showToast('Evento eliminado');
-
-      window.location.hash = '';
-      currentEventId = null;
-      await loadAllData();
-      showView('clientDashboard');
-    }
-
-    function showPhotoManagement() {
-      showView('photoManagement');
-    }
-
-    function renderPhotoManagement(container) {
-      const event = allEvents.find(e => e.id === currentEventId);
-      const photos = event.photos || [];
-
-      container.innerHTML = `
-        <div class="p-4">
-          <div class="max-w-4xl mx-auto">
-            <div class="bg-white rounded-lg shadow-lg p-8">
-              <h2 class="text-3xl font-bold heading-font text-[#5aa189] mb-4">Gerenciar Fotos</h2>
-              <p class="text-gray-600 mb-6">Adicione até 8 fotos (${photos.length}/8).</p>
-              
-              ${photos.length < 8 ? `
-                <div class="mb-6">
-                  <input type="file" id="photoUploadInput" accept="image/*" class="w-full px-4 py-3 border border-gray-300 rounded-lg mb-3">
-                  <button onclick="uploadPhoto()" class="w-full bg-[#5aa189] text-white py-3 rounded-lg hover:bg-[#4a8c75] transition font-semibold">
-                    Adicionar Foto
-                  </button>
-                </div>
-              ` : '<p class="text-orange-600 font-semibold mb-6">Limite atingido.</p>'}
-
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                ${photos.map((photo, i) => `
-                  <div class="relative group">
-                    <img src="${photo}" alt="Foto ${i+1}" class="w-full h-32 object-cover rounded-lg" onerror="this.src=''; this.alt='Imagem não disponível'; this.style.display='none';">
-                    <button onclick="deletePhoto(${i})" class="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full hover:bg-red-700 opacity-0 group-hover:opacity-100 transition">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                      </svg>
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast bg-white border-l-4 ${
+                type === 'success' ? 'border-green-500' : 
+                type === 'error' ? 'border-red-500' : 
+                type === 'warning' ? 'border-yellow-500' :
+                'border-blue-500'
+            } p-4 shadow-lg rounded-r-lg max-w-sm`;
+            
+            toast.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-${
+                        type === 'success' ? 'check-circle text-green-500' : 
+                        type === 'error' ? 'exclamation-circle text-red-500' : 
+                        type === 'warning' ? 'exclamation-triangle text-yellow-500' :
+                        'info-circle text-blue-500'
+                    } mr-3"></i>
+                    <span class="text-gray-900">${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
                     </button>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
+                </div>
+            `;
 
-    async function uploadPhoto() {
-      const event = allEvents.find(e => e.id === currentEventId);
-      const photos = event.photos || [];
+            document.getElementById('toast-container').appendChild(toast);
 
-      if (photos.length >= 8) {
-        showToast('Limite atingido');
-        return;
-      }
-
-      const input = document.getElementById('photoUploadInput');
-      const file = input.files[0];
-
-      if (!file) {
-        showToast('Selecione uma foto');
-        return;
-      }
-
-      showLoading();
-
-      const reader = new FileReader();
-      reader.onload = async function(e) {
-        photos.push(e.target.result);
-
-        const { error } = await supabase
-          .from('events')
-          .update({ photos })
-          .eq('id', currentEventId);
-
-        hideLoading();
-
-        if (error) {
-          showToast('Erro ao adicionar foto');
-          console.error(error);
-        } else {
-          showToast('Foto adicionada!');
-          await loadAllData();
-          renderCurrentView();
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 5000);
         }
-      };
-      reader.readAsDataURL(file);
-    }
 
-    async function deletePhoto(index) {
-      const modal = createModal('Confirmar', `
-        <p>Eliminar esta foto?</p>
-      `, `
-        <button onclick="this.closest('.modal-backdrop').remove()" class="flex-1 px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 transition">Cancelar</button>
-        <button onclick="confirmDeletePhoto(${index})" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Eliminar</button>
-      `);
-    }
+        // PDF Report Generation
+        async function generatePDFReport(clientToken, clientName) {
+            try {
+                showToast('Gerando relatório PDF...', 'info');
+                
+                // Get client data
+                const cliente = clientes.find(c => c.token === clientToken);
+                if (!cliente) {
+                    showToast('Cliente não encontrado', 'error');
+                    return;
+                }
 
-    async function confirmDeletePhoto(index) {
-      document.querySelector('.modal-backdrop').remove();
-      showLoading();
+                // Get client guests
+                const clientGuests = convidados.filter(c => c.token_cliente === clientToken);
+                
+                // Get scan data for this client
+                let scanData = [];
+                try {
+                    const { data: scans } = await supabase
+                        .from('scans_realtime')
+                        .select('*')
+                        .eq('token_cliente', clientToken)
+                        .order('data_scan', { ascending: false });
+                    scanData = scans || [];
+                } catch (error) {
+                    console.log('Sem dados de scan disponíveis');
+                }
 
-      const event = allEvents.find(e => e.id === currentEventId);
-      const photos = [...event.photos];
-      photos.splice(index, 1);
+                // Generate PDF
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Set font
+                doc.setFont('helvetica');
+                
+                // Header
+                doc.setFontSize(20);
+                doc.setTextColor(40, 40, 40);
+                doc.text('RELATÓRIO DE EVENTO', 105, 20, { align: 'center' });
+                
+                // Client info
+                doc.setFontSize(14);
+                doc.setTextColor(60, 60, 60);
+                doc.text(`Cliente: ${clientName}`, 20, 40);
+                doc.text(`Token: ${clientToken}`, 20, 50);
+                
+                const validade = new Date(cliente.validade * 1000);
+                doc.text(`Validade: ${validade.toLocaleDateString('pt-PT')}`, 20, 60);
+                doc.text(`Data do Relatório: ${new Date().toLocaleDateString('pt-PT')} às ${new Date().toLocaleTimeString('pt-PT')}`, 20, 70);
+                
+                // Statistics
+                const totalGuests = clientGuests.length;
+                const activeGuests = clientGuests.filter(g => g.status === 'ativo').length;
+                const inactiveGuests = clientGuests.filter(g => g.status === 'inativo').length;
+                const scannedGuests = scanData.length;
+                const notScannedGuests = activeGuests - scannedGuests;
+                
+                doc.setFontSize(12);
+                doc.setTextColor(80, 80, 80);
+                doc.text('ESTATÍSTICAS:', 20, 90);
+                doc.text(`• Total de Convidados: ${totalGuests}`, 25, 100);
+                doc.text(`• Convidados Ativos: ${activeGuests}`, 25, 110);
+                doc.text(`• Convidados Inativos: ${inactiveGuests}`, 25, 120);
+                doc.text(`• Convidados que Entraram: ${scannedGuests}`, 25, 130);
+                doc.text(`• Convidados que Não Entraram: ${notScannedGuests}`, 25, 140);
+                doc.text(`• Taxa de Comparência: ${totalGuests > 0 ? Math.round((scannedGuests / activeGuests) * 100) : 0}%`, 25, 150);
 
-      await supabase
-        .from('events')
-        .update({ photos })
-        .eq('id', currentEventId);
+                // Prepare guest data for table
+                const guestTableData = clientGuests.map(guest => {
+                    const guestScans = scanData.filter(scan => scan.codigo_convidado === guest.codigo);
+                    const hasEntered = guestScans.length > 0;
+                    const entryTime = hasEntered ? new Date(guestScans[0].data_scan).toLocaleString('pt-PT') : 'Não entrou';
+                    const entryDevice = hasEntered ? guestScans[0].dispositivo || 'N/A' : '-';
+                    
+                    return [
+                        guest.nome,
+                        guest.codigo,
+                        guest.status === 'ativo' ? 'Ativo' : 'Inativo',
+                        hasEntered ? 'Sim' : 'Não',
+                        entryTime,
+                        entryDevice
+                    ];
+                });
 
-      hideLoading();
-      showToast('Foto eliminada');
-      await loadAllData();
-      renderCurrentView();
-    }
+                // Guest list table
+                doc.autoTable({
+                    startY: 170,
+                    head: [['Nome do Convidado', 'Código', 'Status', 'Entrou?', 'Horário de Entrada', 'Dispositivo']],
+                    body: guestTableData,
+                    styles: {
+                        fontSize: 8,
+                        cellPadding: 3,
+                    },
+                    headStyles: {
+                        fillColor: [66, 139, 202],
+                        textColor: 255,
+                        fontStyle: 'bold'
+                    },
+                    alternateRowStyles: {
+                        fillColor: [245, 245, 245]
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 40 }, // Nome
+                        1: { cellWidth: 25 }, // Código
+                        2: { cellWidth: 20 }, // Status
+                        3: { cellWidth: 15 }, // Entrou
+                        4: { cellWidth: 35 }, // Horário
+                        5: { cellWidth: 25 }  // Dispositivo
+                    },
+                    margin: { left: 20, right: 20 },
+                    didDrawPage: function (data) {
+                        // Footer
+                        doc.setFontSize(8);
+                        doc.setTextColor(128, 128, 128);
+                        doc.text(`Página ${data.pageNumber}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
+                        doc.text(`Gerado em ${new Date().toLocaleString('pt-PT')}`, 
+                                data.settings.margin.left + 100, doc.internal.pageSize.height - 10);
+                    }
+                });
 
-    function openPhotoModal(src) {
-      document.getElementById('modalImage').src = src;
-      document.getElementById('photoModal').classList.remove('hidden');
-    }
+                // If there are scans, add detailed scan log
+                if (scanData.length > 0) {
+                    doc.addPage();
+                    
+                    doc.setFontSize(16);
+                    doc.setTextColor(40, 40, 40);
+                    doc.text('HISTÓRICO DETALHADO DE ENTRADAS', 105, 20, { align: 'center' });
+                    
+                    // Scan details table
+                    const scanTableData = scanData.map(scan => {
+                        const guest = clientGuests.find(g => g.codigo === scan.codigo_convidado);
+                        return [
+                            new Date(scan.data_scan).toLocaleDateString('pt-PT'),
+                            new Date(scan.data_scan).toLocaleTimeString('pt-PT'),
+                            guest ? guest.nome : 'Convidado não encontrado',
+                            scan.codigo_convidado,
+                            scan.dispositivo || 'N/A'
+                        ];
+                    });
 
-    function closeModal() {
-      document.getElementById('photoModal').classList.add('hidden');
-    }
+                    doc.autoTable({
+                        startY: 40,
+                        head: [['Data', 'Horário', 'Nome do Convidado', 'Código', 'Dispositivo']],
+                        body: scanTableData,
+                        styles: {
+                            fontSize: 9,
+                            cellPadding: 4,
+                        },
+                        headStyles: {
+                            fillColor: [40, 167, 69],
+                            textColor: 255,
+                            fontStyle: 'bold'
+                        },
+                        alternateRowStyles: {
+                            fillColor: [248, 249, 250]
+                        },
+                        columnStyles: {
+                            0: { cellWidth: 25 }, // Data
+                            1: { cellWidth: 25 }, // Horário
+                            2: { cellWidth: 50 }, // Nome
+                            3: { cellWidth: 30 }, // Código
+                            4: { cellWidth: 30 }  // Dispositivo
+                        },
+                        margin: { left: 20, right: 20 }
+                    });
+                }
 
-    function exportConfirmations() {
-      showToast('Funcionalidade de exportação disponível em breve');
-    }
+                // Save PDF
+                const fileName = `Relatorio_${clientName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+                doc.save(fileName);
+                
+                showToast('Relatório PDF gerado com sucesso!', 'success');
+                
+            } catch (error) {
+                console.error('Erro ao gerar relatório PDF:', error);
+                showToast('Erro ao gerar relatório PDF', 'error');
+            }
+        }
 
-    init();
-  </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9af12bbbf1ffc13d',t:'MTc2NTkxOTQ2My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+        // Generate PDF report for currently selected client (from guest management view)
+        async function generateClientReport() {
+            if (!selectedClienteToken) {
+                showToast('Nenhum cliente selecionado', 'error');
+                return;
+            }
+            
+            const cliente = clientes.find(c => c.token === selectedClienteToken);
+            if (!cliente) {
+                showToast('Cliente não encontrado', 'error');
+                return;
+            }
+            
+            await generatePDFReport(selectedClienteToken, cliente.nome);
+        }
+
+        // Enable import button when client is selected
+        document.getElementById('import-cliente').addEventListener('change', function() {
+            const importBtn = document.getElementById('import-btn');
+            const fileContent = document.getElementById('file-content').textContent;
+            
+            if (this.value && fileContent) {
+                importBtn.disabled = false;
+                importBtn.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg cursor-pointer';
+            } else {
+                importBtn.disabled = true;
+                importBtn.className = 'w-full bg-gray-400 text-white py-2 px-4 rounded-lg cursor-not-allowed';
+            }
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96f9a4d5c33277e0',t:'MTc1NTI3MDg5MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
